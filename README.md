@@ -234,6 +234,8 @@ Se o 3.8 concluir os arquivos 1, 2 e 3 e esgotar a cota no arquivo 4, o 3.5 tent
 
 **Com failover ativo:** há uma tentativa por modelo para cada documento. Um 503 encaminha a mesma análise ao próximo modelo, sem repetir antes no mesmo modelo. Sem modelos alternativos, `ai_max_attempts` controla as retentativas no mesmo modelo, com espera crescente e variação aleatória. Cota diária esgotada não é repetida até a próxima janela; o orçamento de tempo e os limites locais continuam valendo. As solicitações individuais facilitam a retomada, mas consomem mais chamadas que um agrupamento bem-sucedido.
 
+**Validação individual:** o lote de 17 arquivos concluiu as cinco exceções com respostas válidas do 3.5, em solicitações separadas, após pular o 3.8 por bloqueio diário. Nenhuma análise ficou indisponível. Os testes simulam três respostas concluídas no 3.8 e o processamento somente dos dois arquivos restantes no 3.5.
+
 **Opcional:** configure `ai_batch_size = 5` para enviar até cinco documentos em uma solicitação HTTP. Cada documento e seu anexo têm um ID próprio; a resposta deve devolver exatamente um resultado por ID. O robô rejeita IDs desconhecidos, repetidos ou ausentes e evidências de outro documento. Uma falha exige reenviar o grupo completo ao alternativo.
 
 Este é um agrupamento no `generateContent` síncrono, sem serviço adicional ou fila assíncrona. Os grupos respeitam até 100 mil caracteres de contexto e 16 MiB de anexos serializados, além dos limites individuais. Se ultrapassar, o robô divide em mais solicitações; não recorta documentos. Configure `ai_batch_size = 1` para análises individuais; o máximo permitido é 10.
