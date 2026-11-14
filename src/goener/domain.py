@@ -12,7 +12,13 @@ MONEY = r"(?<![\d.,])[-+]?\s*(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2}(?:\s*[CD](?!\w))?
 
 def normalized(value: Any) -> str:
     return " ".join(
-        "".join(c for c in unicodedata.normalize("NFKD", str(value or "")) if not unicodedata.combining(c)).upper().split()
+        "".join(
+            c
+            for c in unicodedata.normalize("NFKD", str(value or ""))
+            if not unicodedata.combining(c)
+        )
+        .upper()
+        .split()
     )
 
 
@@ -90,7 +96,13 @@ class Statement:
             data[key] = money(data[key]) if data.get(key) is not None else None
         data["issues"] = [Issue(**i) for i in data.get("issues", [])]
         data["transactions"] = [
-            Transaction(**{**t, "amount": money(t["amount"]), "balance": money(t["balance"]) if t["balance"] is not None else None})
+            Transaction(
+                **{
+                    **t,
+                    "amount": money(t["amount"]),
+                    "balance": money(t["balance"]) if t["balance"] is not None else None,
+                }
+            )
             for t in data.get("transactions", [])
         ]
         return cls(**data)
@@ -117,7 +129,25 @@ class Result:
 
     def row(self) -> list:
         s = self.statement
-        return [self.filename, s.bank, s.account, s.period, float(s.closing) if s.closing is not None else None, self.format, self.status, self.observation]
+        return [
+            self.filename,
+            s.bank,
+            s.account,
+            s.period,
+            float(s.closing) if s.closing is not None else None,
+            self.format,
+            self.status,
+            self.observation,
+        ]
 
     def to_dict(self) -> dict:
-        return {"file": self.filename, "sha256": self.sha256, "format": self.format, "status": self.status, "duration_ms": self.duration_ms, "cached": self.cached, "duplicate_of": self.duplicate_of, "statement": self.statement.to_dict()}
+        return {
+            "file": self.filename,
+            "sha256": self.sha256,
+            "format": self.format,
+            "status": self.status,
+            "duration_ms": self.duration_ms,
+            "cached": self.cached,
+            "duplicate_of": self.duplicate_of,
+            "statement": self.statement.to_dict(),
+        }

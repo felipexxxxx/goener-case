@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools==80.9.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,7 +9,7 @@ description = "Consolidação auditável de extratos bancários em PDF, Excel e 
 requires-python = ">=3.11,<3.14"
 dependencies = [
   "openpyxl==3.1.5", "pdfplumber==0.11.10", "Pillow==13.0.0",
-  "rapidocr==3.10.0", "onnxruntime==1.32.0",
+  "rapidocr==3.10.0", "onnxruntime==1.32.0", "tzdata==2026.6",
 ]
 
 [project.scripts]

@@ -38,7 +38,8 @@ def load_config(path: Path, **overrides) -> Config:
     path = path.resolve()
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     data.update({k: v for k, v in overrides.items() if v is not None})
-    data.setdefault("period", previous_month())
+    if not data.get("period"):
+        data["period"] = previous_month()
     if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", data["period"]):
         raise ValueError("Competência inválida; use AAAA-MM")
     for key in ("input_dir", "output_dir", "runtime_dir", "template", "stop_file"):
