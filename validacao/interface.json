@@ -1,0 +1,44 @@
+{
+  "version": "1.8.0",
+  "source_run": "20261114T202659Z_b542cdc1",
+  "files": 17,
+  "statuses": {
+    "ok": 12,
+    "falhou": 1,
+    "revisar": 4
+  },
+  "approved_balance": "4114372.29",
+  "browser_checks": {
+    "desktop_css_width": 1517,
+    "mobile_css_width": 433,
+    "horizontal_overflow": false,
+    "all_filter": 17,
+    "regular_filter": 12,
+    "attention_filter": 5,
+    "unavailable_filter": 0,
+    "accent_insensitive_search": true,
+    "expand_collapse": true,
+    "quick_review_button": true,
+    "time_analysis_visible": false,
+    "javascript_console_errors": 0
+  },
+  "automated_tests_passed": 110,
+  "manual_reference_for_bi": {
+    "entry_minutes": 8,
+    "checking_minutes": 2,
+    "sample_files": 1,
+    "source": "Informado pelo responsável; não auditado pela automação."
+  },
+  "generated_reports_in_git": false,
+  "note": "Os commits anteriores conservam os relatórios históricos. As capturas de tela permanecem locais.",
+  "executable": {
+    "version": "1.8.0",
+    "sha256": "472fb1c94d7a97c6c7f6af92045dd8944b0baab6765c1552ead6217f266a6fcf",
+    "build_success": true,
+    "template_matches_source": true,
+    "runtime_validation": "blocked_by_windows",
+    "windows_error": 4551,
+    "code_integrity_event": 3077,
+    "reason": "Smart App Control: binário não assinado não atende ao nível de assinatura exigido. Proteções não foram alteradas."
+  }
+}

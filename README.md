@@ -18,6 +18,8 @@ Também é possível executar pelo PowerShell, mantendo as mensagens visíveis:
 
 O executável inclui o interpretador Python, bibliotecas e modelos OCR. Foi construído para **Windows x64**; não é um executável de Linux ou macOS. O modo de arquivo único extrai bibliotecas temporariamente na inicialização, por isso existe um tempo de abertura além do processamento medido. Não precisa executar pip nem ativar ambiente. OCR e regras rodam localmente; a IA precisa de internet e chave válida. O pacote privado inclui `.env`; não publique esse ZIP, pois ele contém a credencial autorizada para a avaliação.
 
+**Validação da versão 1.8.0:** o relatório foi conferido no navegador e 110 testes passaram. O novo EXE foi construído e seu HTML interno foi verificado, mas o Smart App Control desta máquina bloqueou a execução por exigir assinatura digital (erro 4551). As proteções não foram alteradas. A validação anterior do EXE 1.7.0 não substitui a validação desta versão. Nesta máquina, use a execução pelo Python abaixo; distribuir para ambientes com essa política exige assinatura confiável/liberação pela TI.
+
 O resultado de cada execução fica em `.local/outputs/`. O terminal informa a pasta; `.local/outputs/latest.json` aponta para a última publicação concluída. Não há agendamento nem monitoramento automático instalados nesta versão.
 
 ## Executar pelo código-fonte

@@ -40,3 +40,7 @@ O EXE de versão 1.7.0 inclui interpretador, bibliotecas e modelos OCR; tem apro
 - HTTP real: um PDF de comunicado, uma chamada ao 3.5 e JSON válido em high. O status financeiro `falhou` é esperado porque o comunicado não é extrato; não significa falha da chamada. Não foi usado cache nessa prova.
 
 O hash exato do executável e os tempos medidos estão em `executavel.json`. Para reproduzir o ensaio offline após construir o EXE: `py -3.12 validacao/validar_executavel.py`. A etapa de cache requer análises reais locais já existentes; ela é omitida quando não há banco de IA/chave. O ensaio HTTP externo está registrado separadamente e consome cota se for repetido.
+
+## Revisão de interface 1.8.0
+
+`interface.json` registra testes de navegação, filtros, busca, responsividade e ausência de análise de tempo no HTML. O novo EXE foi compilado e contém o template atualizado, mas sua execução foi bloqueada pelo Smart App Control (erro 4551; evento de integridade 3077) por falta de assinatura confiável. Não houve alteração de política ou tentativa de contornar a proteção. A execução pelo Python foi validada; as provas de execução do EXE 1.7.0 são históricas e não homologam o binário 1.8.0.

@@ -26,3 +26,5 @@ entrega/*.pdf
 validacao/execucoes/**/*.html
 validacao/execucoes/**/*.xlsx
 validacao/execucoes/**/*.pdf
+
+/Goener.exe
