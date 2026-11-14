@@ -20,9 +20,9 @@ SQLite guarda extrações por hash do conteúdo e versão do extrator. A valida�
 
 O lote isola erros de documentos. Erro de entrada, configuração, lock ou publicação impede declarar conclusão. STOP solicita interrupção entre arquivos; os restantes ficam registrados como cancelados. Retries atendem apenas falhas transitórias de leitura, nunca erros de interpretação.
 
-## Etapa de IA proposta (ainda não implementada)
+## Etapa de IA opcional
 
-A integração será feita por HTTP com a Responses API, com instruções versionadas e resposta em JSON validado. O contexto incluirá os dados extraídos, as regras aplicáveis e as divergências; o documento será tratado como dado, sem autoridade para mudar essas instruções.
+A integração HTTP com a Responses API está implementada com instruções versionadas e JSON validado, mas a chamada real depende de chave e não foi executada sem ela. Permanece desligada por padrão devido à possível cobrança. O documento é tratado como dado, sem autoridade para mudar instruções. Os testes de contrato usam respostas simuladas explicitamente identificadas.
 
 Dois modos foram definidos com o responsável pelo case: consultivo, que registra recomendação e justificativa sem alterar os totais; e automático, que aplica a decisão dentro de uma política aprovada pela gestão. A evidência deve separar resultado das regras, recomendação da IA, decisão aplicada e eventual revisão humana. O modelo não poderá corrigir saldos ou executar código livremente. Falha de API, recusa ou resposta inválida manterá a pendência para revisão.
 

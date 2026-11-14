@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 import shutil
 import subprocess
 import zipfile
@@ -34,7 +33,7 @@ def one_page(path: Path, summary: dict) -> None:
     c.drawString(17 * mm, height - 17 * mm, "Consolidação de saldos bancários")
     c.setFont("Helvetica", 10)
     c.drawString(
-        17 * mm, height - 25 * mm, "Case Goener  |  Felipe de Paula Lins e Silva  |  versão 1.0.0"
+        17 * mm, height - 25 * mm, "Case Goener  |  Felipe de Paula Lins e Silva  |  versão 1.1.0"
     )
     y = height - 45 * mm
     body_style = ParagraphStyle(
@@ -72,20 +71,22 @@ def one_page(path: Path, summary: dict) -> None:
     paragraph("Resultado do lote fornecido", True)
     counts = summary["statuses"]
     paragraph(
-        f"<b>{summary['files']} arquivos</b>: {counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} para revisar e {counts.get('falhou', 0)} com falha. Execução sem cache: <b>{summary['duration_seconds']:.2f} segundos</b> nesta máquina. A cópia de Lagoa Azul foi preservada e marcada por SHA-256. Também foram sinalizados um possível lançamento repetido, uma diferença de R$ 1.080,00 no saldo declarado de Sol do Sertão, um extrato de setembro e um comunicado sem dados de extrato."
+        f"<b>{summary['files']} arquivos</b>: {counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} para revisar e {counts.get('falhou', 0)} com falha. Execução do lote: <b>{summary['duration_seconds']:.2f} segundos</b> nesta máquina. A cópia de Lagoa Azul foi preservada e marcada por SHA-256. Também foram sinalizados um possível lançamento repetido, uma diferença de R$ 1.080,00 no saldo declarado de Sol do Sertão, um extrato de setembro e um comunicado sem dados de extrato."
     )
     paragraph("Premissas e ganho estimado", True)
-    minutes = math.ceil(summary["duration_seconds"] / 60)
+    cfg = summary.get("configuration", {})
+    manual_minutes = cfg.get("manual_minutes_per_file", 8)
+    review_minutes = cfg.get("review_minutes_per_file", 3)
     exceptions = counts.get("revisar", 0) + counts.get("falhou", 0)
-    manual = summary["files"] * 4
-    assisted = minutes + exceptions * 2
+    manual = summary["files"] * manual_minutes / 60
+    assisted = summary["duration_seconds"] / 3600 + exceptions * review_minutes / 60
     saved = manual - assisted
     paragraph(
-        f"Cenário mensal com {summary['files']} arquivos: 4 min por arquivo na rotina manual = <b>{manual} min</b>. Com a automação: {minutes} min de processamento (arredondado para cima) + {exceptions} exceções × 2 min de conferência = <b>{assisted} min</b>. Ganho ilustrativo: <b>{saved} min/mês ({saved / 60:.2f} h)</b>. Os tempos humanos são premissas, não medições; instalação e correções solicitadas ao emissor não entram na conta."
+        f"Hipótese por arquivo: 2 min para abrir/localizar, 3 min para copiar os campos, 2 min para conferir e 1 min para registrar e organizar: {manual_minutes} min no total. Com {summary['files']} arquivos, são <b>{manual:.2f} h mensais</b>. Automação e revisão de {exceptions} pendências ({review_minutes} min por pendência): <b>{assisted:.2f} h</b>. Capacidade estimada liberada: <b>{saved:.2f} h/mês</b>. O tempo do robô é medido; os tempos humanos são premissas editáveis, a validar com a equipe. Não há conversão em dinheiro. Instalação e espera pelo emissor ficam fora da conta."
     )
     paragraph("Limites e próximos passos", True)
     paragraph(
-        "Os layouts do case são cobertos; novos layouts exigem validação. Confiança de OCR e conciliação não autenticam o extrato. Valores com ressalva não entram no saldo aprovado e não são corrigidos automaticamente.<br/><b>1. P1:</b> cadastrar contas esperadas para identificar extratos ausentes.<br/><b>2. P2:</b> ampliar leitores e testes com novos layouts autorizados.<br/><b>3. P3:</b> expor o mesmo pipeline numa API para upload incremental e painel web."
+        "Os layouts do case são cobertos; novos layouts exigem validação. Confiança de OCR e conciliação não autenticam o extrato. Valores com ressalva não entram no saldo aprovado e não são corrigidos automaticamente.<br/><b>1. P1:</b> cadastrar contas esperadas para identificar extratos ausentes.<br/><b>2. P2:</b> ampliar leitores e testes com novos layouts autorizados.<br/><b>3. P3:</b> validar a análise assistida com casos revisados pela gestão; Power BI fica para uma etapa posterior."
     )
     if y < 19 * mm:
         raise ValueError("Documento ultrapassou uma página; revisar o layout")

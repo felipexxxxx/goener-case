@@ -17,6 +17,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from . import EXTRACTOR_VERSION, __version__
+from .ai import review
 from .config import Config, load_config
 from .models import Result, Statement, classify_duplicates, validate
 from .readers import LocalOCR, extract
@@ -251,6 +252,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
                     continue
                 results.append(process_file(path, config, ocr, cache, log))
             classify_duplicates(results)
+            review(results, config)
             for r in results:
                 log.event(
                     "FILE_FINISHED",
@@ -261,13 +263,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
                 )
             statuses = status_counts(results)
             approved = sum(
-                (
-                    r.statement.closing
-                    for r in results
-                    if r.status == "ok"
-                    and not r.duplicate_of
-                    and r.statement.period == config.period
-                ),
+                (r.statement.closing for r in results if r.included(config.ai_mode, config.period)),
                 Decimal("0.00"),
             )
             exit_code = (
@@ -298,6 +294,8 @@ def run(config: Config) -> tuple[Path, dict, int]:
                     for p in ("openpyxl", "pdfplumber", "rapidocr", "onnxruntime", "Pillow")
                 },
                 "configuration": config.to_dict(),
+                "ai_mode": config.ai_mode,
+                "included_files": sum(r.included(config.ai_mode, config.period) for r in results),
             }
             stage = config.output_dir / f".{run_id}.pending"
             stage.mkdir()
@@ -362,6 +360,11 @@ def main(argv=None) -> int:
         "--strict", action="store_true", help="Retorna código 2 quando houver revisar/falhou"
     )
     parser.add_argument("--version", action="version", version=__version__)
+    parser.add_argument(
+        "--ai-mode",
+        choices=["off", "consultivo", "automatico"],
+        help="Modo da análise assistida; API exige chave e pode gerar cobrança",
+    )
     args = parser.parse_args(argv)
     try:
         config = load_config(
@@ -372,6 +375,7 @@ def main(argv=None) -> int:
             ocr_enabled=False if args.no_ocr else None,
             cache_enabled=False if args.no_cache else None,
             strict=True if args.strict else None,
+            ai_mode=args.ai_mode,
         )
         directory, summary, code = run(config)
         print(

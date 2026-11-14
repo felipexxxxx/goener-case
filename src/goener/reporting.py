@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import html
-import json
 import math
 from collections import Counter
 from copy import copy
@@ -82,44 +81,98 @@ def write_workbook(template: Path, destination: Path, results: list[Result]) -> 
 
 
 def write_html(path: Path, summary: dict, results: list[Result]) -> None:
-    cards = "".join(
-        f'<div class="card"><span>{html.escape(label)}</span><strong>{html.escape(str(value))}</strong></div>'
-        for label, value in (
-            ("Arquivos", summary["files"]),
-            ("Aprovados", summary["statuses"].get("ok", 0)),
-            ("Para revisar", summary["statuses"].get("revisar", 0)),
-            ("Falharam", summary["statuses"].get("falhou", 0)),
-        )
-    )
+    def br(value):
+        return f"{float(value):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+
+    def plain(text):
+        import re
+
+        text = re.sub(r"\b(?:ValueError|PermissionError|OSError):\s*", "", text)
+        return re.sub(r"R\$ (-?\d+\.\d{2})", lambda m: "R$ " + br(m.group(1)), text)
+
+    labels = {
+        "ok": "Sem pendências",
+        "revisar": "Confira este arquivo",
+        "falhou": "Não foi possível ler",
+    }
+    actions = {
+        "ARQUIVO_DUPLICADO": "Use o arquivo original. Esta cópia permanece registrada, mas não entra na soma.",
+        "LANCAMENTO_REPETIDO": "Confira os dois lançamentos com o responsável pela conta antes de considerar este saldo.",
+        "FORA_COMPETENCIA": "Solicite o extrato do mês do fechamento.",
+        "DIVERGENCIA_SALDO_FINAL": "Peça um extrato atualizado ou confirme o saldo com o banco.",
+        "ERRO_EXTRACAO": "Confirme se o documento é um extrato completo e envie uma nova cópia.",
+    }
     rows = []
-    for r in results:
+    for r in sorted(results, key=lambda r: (r.status == "ok", r.filename.casefold())):
         s = r.statement
-        evidence = json.dumps(
-            {
-                "sha256": r.sha256,
-                "closing": s.evidence.get("closing"),
-                "reconciliation": s.evidence.get("reconciliation"),
-                "issues": [i.__dict__ for i in s.issues],
-                "cache": r.cached,
-                "duration_ms": r.duration_ms,
-            },
-            ensure_ascii=False,
-            indent=2,
+        messages = [plain(i.message) for i in s.issues]
+        action = next(
+            (actions[i.code] for i in s.issues if i.code in actions),
+            "Você pode considerar este arquivo conforme a política do fechamento."
+            if r.status == "ok"
+            else "Confira os dados no documento de origem.",
         )
-        cells = "".join(
-            f"<td>{html.escape(str(v if v is not None else '—'))}</td>" for v in r.row()[:7]
+        issues = "".join("<li>" + html.escape(m) + "</li>" for m in messages)
+        ai_text = (
+            "<h3>Análise assistida</h3><p>" + html.escape(r.ai.get("message", "")) + "</p>"
+            if r.ai
+            else ""
         )
+        meta = html.escape(
+            " · ".join(
+                v for v in (s.bank, "Conta " + s.account if s.account else "", s.period) if v
+            )
+        )
+        amount = "R$ " + br(s.closing) if s.closing is not None else "Saldo não identificado"
         rows.append(
-            f'<tr data-status="{r.status}">{cells}<td>{html.escape(r.observation) or "Conciliação sem divergências."}<details><summary>Ver evidência</summary><pre>{html.escape(evidence)}</pre></details></td></tr>'
+            f'<details class="item" data-status="{r.status}"><summary><span class="pill {r.status}">{labels[r.status]}</span><div><span class="filename">{html.escape(r.filename)}</span><span class="meta">{meta}</span></div><span class="amount">{amount}</span></summary><div class="body"><h3>O que encontramos</h3>{"<ul>" + issues + "</ul>" if issues else "<p>Os campos foram identificados e os saldos conferem com as movimentações lidas.</p>"}<div class="explain"><b>Próximo passo</b><br>{html.escape(action)}</div>{ai_text}</div></details>'
         )
-    document = f"""<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Goener | execução {html.escape(summary["run_id"])}</title>
-<style>body{{margin:0;background:#f4f6f5;color:#16342e;font:15px system-ui}}main{{max-width:1500px;margin:auto;padding:36px}}header p{{color:#53635e}}h1{{font-size:30px;margin:8px 0}}.cards{{display:flex;gap:14px;flex-wrap:wrap;margin:28px 0}}.card{{background:white;border:1px solid #dbe2de;border-radius:12px;padding:20px;min-width:140px}}.card span{{display:block;color:#65746e}}.card strong{{font-size:32px}}.scroll{{overflow:auto;background:white;border:1px solid #dbe2de;border-radius:12px}}table{{border-collapse:collapse;width:100%;font-size:13px}}th,td{{padding:13px;text-align:left;border-bottom:1px solid #e4e9e6;vertical-align:top}}th{{white-space:nowrap;background:#e9f0ed}}td:first-child{{min-width:230px}}td:last-child{{min-width:290px}}tr[data-status=revisar] td:nth-child(7){{color:#875c00;font-weight:700}}tr[data-status=falhou] td:nth-child(7){{color:#ad2222;font-weight:700}}tr[data-status=ok] td:nth-child(7){{color:#176038;font-weight:700}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}}details{{margin-top:9px}}select{{padding:9px;margin:10px 0 20px;border-radius:6px}}.note{{padding:15px;background:#fff2cd;border-radius:8px;line-height:1.5}}a{{color:#065d4c}}</style>
-<main><header><small>GOENER · CONSOLIDAÇÃO BANCÁRIA</small><h1>Fechamento de {html.escape(summary["period"])}</h1><p>Execução {html.escape(summary["run_id"])} · {summary["duration_seconds"]:.2f}s · versão {html.escape(summary["version"])}</p></header><div class="cards">{cards}</div>
-<p class="note">Saldo aprovado: <strong>R$ {summary["approved_balance"]}</strong>. Considera somente linhas <b>ok</b> da competência, sem cópias. Valores com ressalvas permanecem no Excel e na evidência. Nenhum valor foi corrigido para fechar a conciliação.</p>
-<label for="status">Mostrar</label> <select id="status"><option value="all">Todos os arquivos</option><option value="ok">Aprovados</option><option value="revisar">Para revisar</option><option value="falhou">Falhas</option></select>
-<p><a href="consolidado.xlsx">Abrir planilha</a> · <a href="execucao.log">Log legível</a> · <a href="evidencias.json">Evidências completas</a> · <a href="manifesto.json">Manifesto SHA-256</a></p>
-<div class="scroll"><table><thead><tr>{"".join("<th>" + html.escape(x) + "</th>" for x in HEADERS)}</tr></thead><tbody>{"".join(rows)}</tbody></table></div><p>Processamento local. Este painel não consulta serviços externos.</p></main>
-<script>document.getElementById('status').addEventListener('change',e=>document.querySelectorAll('tbody tr').forEach(r=>r.hidden=e.target.value!=='all'&&r.dataset.status!==e.target.value));</script></html>"""
+    cfg = summary.get("configuration", {})
+    minutes = cfg.get("manual_minutes_per_file", 8)
+    review_minutes = cfg.get("review_minutes_per_file", 3)
+    pending = sum(r.status != "ok" for r in results)
+    manual = len(results) * minutes / 60
+    assisted = summary["duration_seconds"] / 3600 + pending * review_minutes / 60
+    saved = manual - assisted
+    months = [
+        "janeiro",
+        "fevereiro",
+        "março",
+        "abril",
+        "maio",
+        "junho",
+        "julho",
+        "agosto",
+        "setembro",
+        "outubro",
+        "novembro",
+        "dezembro",
+    ]
+    period = summary["period"]
+    values = {
+        "PERIOD": months[int(period[5:]) - 1].capitalize() + " de " + period[:4],
+        "COUNT": len(results),
+        "BALANCE": "R$ " + br(summary["approved_balance"]),
+        "INCLUDED": summary.get("included_files", summary["statuses"].get("ok", 0)),
+        "OK": summary["statuses"].get("ok", 0),
+        "ATTENTION": pending,
+        "REVIEW": summary["statuses"].get("revisar", 0),
+        "FAILED": summary["statuses"].get("falhou", 0),
+        "SAVED": br(saved),
+        "MANUAL": br(manual),
+        "ASSISTED": br(assisted),
+        "MINUTES": minutes,
+        "REVIEW_MINUTES": review_minutes,
+        "DURATION": br(summary["duration_seconds"]),
+        "RUN": summary["run_id"],
+        "METHOD": "A análise por IA está desligada."
+        if summary.get("ai_mode", "off") == "off"
+        else "Modo de análise assistida: " + summary["ai_mode"] + ".",
+    }
+    document = Path(__file__).with_name("report.html").read_text(encoding="utf-8")
+    for key, value in values.items():
+        document = document.replace("__" + key + "__", html.escape(str(value)))
+    document = document.replace("__ROWS__", "".join(rows))
     path.write_text(document, encoding="utf-8")
 
 

@@ -24,6 +24,11 @@ class Config:
     max_pdf_pages: int = 20
     max_image_pixels: int = 30_000_000
     retries: int = 2
+    ai_mode: str = "off"
+    ai_provider: str = "openai"
+    ai_model: str = "gpt-4.1-mini"
+    manual_minutes_per_file: float = 8.0
+    review_minutes_per_file: float = 3.0
 
     def to_dict(self) -> dict:
         return {k: str(v) if isinstance(v, Path) else v for k, v in asdict(self).items()}
@@ -45,6 +50,12 @@ def load_config(path: Path, **overrides) -> Config:
     for key in ("input_dir", "output_dir", "runtime_dir", "template", "stop_file"):
         data[key] = (path.parent / data[key]).resolve()
     result = Config(**data)
+    if result.ai_mode not in ("off", "consultivo", "automatico"):
+        raise ValueError("Modo de IA inválido")
+    if result.ai_provider not in ("chatgpt", "openai"):
+        raise ValueError("Provedor de IA inválido")
+    if result.manual_minutes_per_file <= 0 or result.review_minutes_per_file < 0:
+        raise ValueError("Premissas de tempo inválidas")
     for p in (result.output_dir, result.runtime_dir):
         if p == result.input_dir or p.is_relative_to(result.input_dir):
             raise ValueError("Saída e runtime devem ficar fora da pasta de entrada")

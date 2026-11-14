@@ -120,6 +120,7 @@ class Result:
     duration_ms: float = 0
     cached: bool = False
     duplicate_of: str | None = None
+    ai: dict = field(default_factory=dict)
 
     @property
     def status(self) -> str:
@@ -128,7 +129,14 @@ class Result:
 
     @property
     def observation(self) -> str:
-        return " | ".join(f"[{i.code}] {i.message}" for i in self.statement.issues)
+        notes = [i.message for i in self.statement.issues]
+        if self.ai:
+            notes.append(self.ai.get("message", ""))
+        return " | ".join(n for n in notes if n)
+
+    def included(self, mode: str, period: str) -> bool:
+        eligible = self.status == "ok" and not self.duplicate_of and self.statement.period == period
+        return eligible and (mode != "automatico" or self.ai.get("decision") == "considerar")
 
     def row(self) -> list:
         s = self.statement
@@ -152,6 +160,7 @@ class Result:
             "duration_ms": self.duration_ms,
             "cached": self.cached,
             "duplicate_of": self.duplicate_of,
+            "ai": self.ai,
             "statement": self.statement.to_dict(),
         }
 

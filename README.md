@@ -2,7 +2,7 @@
 
 Automação em Python que lê uma pasta com PDFs, planilhas e imagens, extrai os saldos e gera o consolidado no modelo fornecido. A execução também confere as movimentações e registra o que precisa de revisão.
 
-Os arquivos deste repositório são fictícios e pertencem ao case técnico. O programa funciona sem chat, chave de API ou preenchimento manual de saldos.
+Os arquivos deste repositório são fictícios e pertencem ao case técnico. No modo padrão, o programa funciona sem chat, chave de API ou preenchimento manual de saldos. A análise por IA é opcional e vem desligada.
 
 ## Para quem vai usar
 
@@ -102,6 +102,8 @@ src/goener/
   readers.py      # leitores de Excel, PDF e imagem
   pipeline.py     # fluxo, terminal, checkpoint, lock e log
   reporting.py    # planilha no modelo e relatório local
+  ai.py           # contrato JSON, chamada HTTP e política dos dois modos
+  report.html     # apresentação do relatório, sem dependências externas
 extratos/         # entradas fictícias do case
 templates/        # modelo original
 tests/            # testes de regras, leitores e operação
@@ -192,7 +194,34 @@ Próximos passos, por prioridade:
 
 1. **P1 — Cobertura de entrada:** cadastrar as contas esperadas por competência para detectar extratos ausentes.
 2. **P2 — Novos layouts:** ampliar o conjunto de testes e leitores com documentos autorizados de outros bancos.
-3. **P3 — Aplicação web:** reaproveitar o pipeline numa API Python com upload incremental e interface de acompanhamento. A implementação web está fora desta primeira entrega.
+3. **P3 — Histórico em Power BI:** avaliar uma camada de acompanhamento após concluir a automação. Adiada por orientação do responsável pelo case.
+
+### Análise assistida e custo
+
+Existem dois transportes configuráveis. `ai_provider = "openai"` usa a Responses API por HTTPS; pode gerar cobrança e exige `OPENAI_API_KEY` no ambiente. `ai_provider = "chatgpt"` usa o adaptador experimental de navegador com perfil próprio, sem reutilizar cookies privados de outro perfil. `ai_mode = "off"` mantém ambos desligados por padrão. Não houve chamada real à API sem chave.
+
+`--ai-mode consultivo` acrescenta recomendação e justificativa à observação, preservando a seleção pelas regras. `--ai-mode automatico` permite que a IA retenha um arquivo dos totais; para incluir, ele também precisa passar nas verificações obrigatórias. Cópias, dados ausentes, outra competência e divergências não são liberados pela IA. Recusa, resposta incompleta ou JSON inválido mantêm o arquivo fora do total no modo automático. Os valores originais são preservados.
+
+O contrato tem somente `decision` (`considerar`, `nao_considerar` ou `revisar`), `reason` e `evidence_codes`. Campos extras e evidências inventadas são rejeitados localmente. Modelo, versão das instruções, identificador da resposta e uso informado pela API ficam nas evidências. O modelo não recebe ferramentas para executar código.
+
+O adaptador de navegador é um experimento, não uma alternativa homologada para o case autônomo. O teste em perfil novo parou na confirmação humana de acesso, antes do envio de mensagem. Essa dependência impede considerá-lo uma etapa autônoma e repetível. Ele permanece fora da execução padrão. O programa não remove verificações do serviço nem promete operação sem conta. A sessão pode expirar, e mudanças de interface exigem manutenção. Não há chamadas a endpoints HTTP privados do ChatGPT implementadas ou validadas.
+
+O experimento de preparação assistida fica separado da entrega autônoma. Ele não é um passo exigido pelo pipeline padrão. Para investigá-lo fora da execução do case:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install "selenium==4.52.0"
+.\.venv\Scripts\python.exe scripts\prepare_chatgpt.py
+```
+
+O operador faz login e eventuais confirmações pessoalmente e seleciona High/Alto. O perfil fica em `runtime/chatgpt-profile`, fora do Git e do pacote de entrega. Nunca compartilhe essa pasta. A preparação não comprova por si só o envio e a leitura de uma resposta: o teste completo precisa ser concluído antes de ativar o modo automático. Se o modo High não puder ser confirmado ou a resposta não cumprir o contrato, o resultado fica indisponível, sem liberação automática.
+
+Uma sessão previamente autenticada pode ser um pré-requisito de implantação, mas sua validade não é garantida pelo robô. Usuário e senha em `.env` não eliminam desafios de acesso. O projeto não armazena essas credenciais nem contorna confirmações. Se a sessão deixar de ser utilizável, a IA não libera saldos e a ocorrência é registrada.
+
+### Estimativa em horas
+
+Não há estimativa financeira. O cenário inicial usa 8 minutos por arquivo: abrir/localizar (2), copiar os campos entre formatos (3), conferir (2), registrar e organizar (1). São hipóteses explícitas, não tempos medidos da equipe. A revisão das pendências usa 3 minutos por arquivo. Ambas as premissas são editáveis em `config.toml`.
+
+Horas manuais estimadas = arquivos × minutos por arquivo ÷ 60. Horas assistidas estimadas = segundos medidos do robô ÷ 3600 + pendências × minutos de revisão ÷ 60. A diferença é capacidade estimada liberada, sem conversão em reais. Com 17 arquivos e 5 pendências, o cenário fica próximo de 2,01 horas liberadas por fechamento, dependendo da duração medida. Não há histórico de meses suficiente para afirmar uma tendência.
 
 As decisões e os motivos estão em [docs/decisoes.md](docs/decisoes.md). A documentação de uma página fica no pacote `entrega/`.
 

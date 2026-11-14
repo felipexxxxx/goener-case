@@ -14,5 +14,6 @@ models/
 .env
 .DS_Store
 entrega/*.zip
+entrega/**/*.zip
 
 ~$*.xlsx
