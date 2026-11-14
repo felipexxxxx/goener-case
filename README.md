@@ -205,6 +205,8 @@ Este é um agrupamento no `generateContent` síncrono, sem serviço adicional ou
 
 **Uma chamada não significa consumo de um documento:** os tokens de todos os documentos e respostas continuam contando. Retentativas e failover podem gerar chamadas adicionais. O resumo conta cada tentativa HTTP compartilhada apenas uma vez, sem multiplicá-la pelo número de resultados. O cache pertence ao grupo completo: alterar um documento ou a composição do grupo exige nova análise desse grupo. Se o JSON do grupo for inválido, nenhuma decisão desse grupo é aplicada.
 
+**Validação real do agrupamento (versão 1.5.0):** as cinco exceções, com PDF e imagem originais, receberam cinco decisões válidas em **uma tentativa HTTP** ao Gemini 3.1 Flash-Lite. O 3.8 foi pulado pelo bloqueio diário já registrado. Zero análises indisponíveis e zero divergências nos campos comparáveis dos quatro extratos. O comunicado foi rejeitado como documento sem saldo. O lote completo levou 91,195 segundos, incluindo reextração local; manteve 17 linhas, 12 ok, 4 revisar, 1 falhou e saldo aprovado de R$ 4.114.372,29. O ID de resposta compartilhado comprova o agrupamento; IDs dos itens preservam a associação individual.
+
 ### Failover de modelos
 
 A ordem padrão é `gemini-3.8-flash` → `gemini-3.1-flash-lite` → `gemini-3.5-flash-lite`. Ela é definida por `ai_model` e `ai_fallback_models` em `config.toml`. O 3.1 vem antes do 3.5 porque foi validado nos cinco casos reais; o 3.5 foi testado inicialmente em um PDF. Essa ordem é operacional, não um ranking de qualidade: não foi feito um comparativo que demonstre que o 3.5 é pior. A ordem pode ser alterada após avaliar os mesmos documentos em ambos. Uma lista vazia desliga a alternância. Não há troca automática de provedor, conta, chave ou projeto.
