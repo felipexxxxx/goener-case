@@ -8,7 +8,11 @@ from pathlib import Path
 from urllib.parse import quote
 
 from openpyxl import load_workbook
+from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.workbook.properties import CalcProperties
+from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.table import Table, TableStyleInfo
 
 from .core import Result, human_text
 
@@ -39,7 +43,106 @@ def source_root(run_dir, input_dir):
         return Path(input_dir).resolve().as_uri()
 
 
-def write_workbook(template: Path, destination: Path, results: list[Result]) -> None:
+def write_summary(wb, period):
+    if "Resumo" in wb.sheetnames:
+        del wb["Resumo"]
+    ws = wb.create_sheet("Resumo", 1)
+    ws.sheet_view.showGridLines = False
+    ws.sheet_properties.tabColor = "AFCA0B"
+    ws.column_dimensions["A"].width = 49
+    ws.column_dimensions["B"].width = 27
+    ws.column_dimensions["C"].width = 59
+    ws.merge_cells("A1:C1")
+    ws["A1"] = "GOENER | Resumo do fechamento"
+    ws["A1"].font = Font(name="Aptos", size=20, bold=True, color="FFFFFF")
+    ws["A1"].fill = PatternFill("solid", fgColor="003836")
+    ws.row_dimensions[1].height = 44
+    ws["A3"] = "Mês do fechamento (editável)"
+    ws["B3"] = period
+    ws["B3"].data_type = "s"
+    ws["B3"].fill = PatternFill("solid", fgColor="FFF2CD")
+    ws["B3"].font = Font(name="Aptos", size=12, bold=True, color="1565C0")
+    ws["C3"] = "Use AAAA-MM. O resumo considera somente esse mês."
+    eligible = 'Extratos[Status],"ok",Extratos[Período],$B$3'
+    rows = {
+        6: (
+            "Saldo considerado no fechamento",
+            f"=SUMIFS(Extratos[Saldo final],{eligible})",
+            "Status ok e competência igual ao mês acima.",
+        ),
+        7: (
+            "Arquivos considerados",
+            f"=COUNTIFS({eligible})",
+            "Cópias e pendências permanecem registradas no Consolidado.",
+        ),
+        9: (
+            "Arquivos registrados",
+            "=COUNTA(Extratos[Arquivo])",
+            "Cada documento ocupa uma linha, inclusive cópias e falhas.",
+        ),
+        10: (
+            "Com status ok",
+            '=COUNTIF(Extratos[Status],"ok")',
+            "Contagem de todos os meses presentes na tabela.",
+        ),
+        11: (
+            "Com status revisar",
+            '=COUNTIF(Extratos[Status],"revisar")',
+            "Não entram no saldo considerado.",
+        ),
+        12: (
+            "Com status falhou",
+            '=COUNTIF(Extratos[Status],"falhou")',
+            "Não entram no saldo considerado.",
+        ),
+        13: (
+            "Fora do mês selecionado",
+            '=COUNTIFS(Extratos[Período],"<>"&$B$3,Extratos[Período],"<>")',
+            "Períodos preenchidos diferentes do mês selecionado.",
+        ),
+        14: (
+            "Registros sem status válido",
+            "=B9-SUM(B10:B12)",
+            "Deve ser zero. Confira o status se não for.",
+        ),
+    }
+    for row, (label, formula, explanation) in rows.items():
+        ws.cell(row, 1, label)
+        ws.cell(row, 2, formula)
+        ws.cell(row, 3, explanation)
+        for cell in ws[row]:
+            cell.fill = PatternFill("solid", fgColor="F0F7F6")
+            cell.font = Font(name="Aptos", size=11, color="003836", bold=cell.column == 2)
+            cell.alignment = Alignment(vertical="center", wrap_text=True)
+        ws.row_dimensions[row].height = 39
+    ws["B6"].number_format = '"R$" #,##0.00;[Red]-"R$" #,##0.00'
+    ws["B6"].font = Font(name="Aptos", size=20, bold=True, color="003836")
+    notes = [
+        "Como editar: altere os dados na tabela da aba Consolidado. As fórmulas desta aba recalculam no Excel.",
+        "Para incluir ou excluir registros, use Inserir/Excluir linhas da tabela. Não apague apenas o nome do arquivo.",
+        "Ao marcar ok, você assume a liberação do registro. Confira cópias, competência e pendências antes de alterar o status.",
+        "As fórmulas não refazem OCR, hash, conciliação nem análise de IA. As observações descrevem a execução original.",
+        "Salve uma cópia revisada. Alterações aqui não atualizam o HTML e não são reaproveitadas pelo robô na próxima execução.",
+        "Origem: documentos do case na aba Consolidado. Cálculo: SOMASES e CONT.SES sobre a tabela Extratos.",
+    ]
+    for row, note in enumerate(notes, 17):
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+        cell = ws.cell(row, 1, note)
+        cell.font = Font(name="Aptos", size=11, color="526762")
+        cell.alignment = Alignment(wrap_text=True, vertical="center")
+        ws.row_dimensions[row].height = 32
+    ws.freeze_panes = "A5"
+    ws.print_area = "A1:C22"
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.page_setup.orientation = "landscape"
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 1
+
+
+def write_workbook(
+    template: Path, destination: Path, results: list[Result], period: str | None = None
+) -> None:
     wb = load_workbook(template, keep_links=False)
     try:
         ws = wb["Consolidado"]
@@ -107,6 +210,38 @@ def write_workbook(template: Path, destination: Path, results: list[Result]) -> 
         ws.page_setup.paperSize = ws.PAPERSIZE_A3
         ws.page_setup.fitToWidth = 1
         ws.page_setup.fitToHeight = 0
+        ws.tables.clear()
+        if results:
+            table = Table(displayName="Extratos", ref=f"A1:H{len(results) + 1}")
+            table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
+            ws.add_table(table)
+            status_validation = DataValidation(type="list", formula1='"ok,revisar,falhou"')
+            status_validation.errorTitle = "Escolha um status válido"
+            status_validation.error = "Use ok, revisar ou falhou."
+            status_validation.showErrorMessage = True
+            status_validation.errorStyle = "stop"
+            ws.add_data_validation(status_validation)
+            status_validation.add("G2:G1048576")
+            for status, bg, fg in [
+                ("ok", "E7F3EC", "176038"),
+                ("revisar", "FFF2CD", "805A00"),
+                ("falhou", "FCE5E5", "A52222"),
+            ]:
+                ws.conditional_formatting.add(
+                    "G2:G1048576",
+                    CellIsRule(
+                        operator="equal",
+                        formula=[f'"{status}"'],
+                        fill=PatternFill("solid", fgColor=bg),
+                        font=Font(color=fg, bold=True),
+                    ),
+                )
+            write_summary(
+                wb, period or next((r.statement.period for r in results if r.statement.period), "")
+            )
+        wb.calculation = CalcProperties(
+            calcId=0, fullCalcOnLoad=True, forceFullCalc=True, calcMode="auto"
+        )
         wb.save(destination)
     finally:
         wb.close()

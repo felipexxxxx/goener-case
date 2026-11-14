@@ -110,7 +110,7 @@ def test_excel_output_does_not_turn_text_into_formulas(config):
     assert wb["Consolidado"]["A2"].data_type == "s"
     assert wb["Consolidado"]["B2"].data_type == "s"
     assert wb["Consolidado"]["E2"].value == 0
-    assert wb.sheetnames == load_workbook(config.template).sheetnames
+    assert wb.sheetnames == ["Consolidado", "Resumo", "Instruções"]
 
 
 def test_empty_input_is_not_reported_as_success(config):
@@ -181,3 +181,49 @@ def test_workbook_retains_model_with_human_review_reference(config):
     assert not ws.sheet_view.showGridLines and ws.freeze_panes == "A2"
     assert ws.auto_filter.ref == "A1:H2"
     wb.close()
+
+
+def test_summary_uses_editable_table_and_formulas_without_changing_source(config):
+    r = Result("extrato.pdf", "sha", "PDF", Statement("Banco", "1-0", "2026-10", closing=money(10)))
+    config.output_dir.mkdir()
+    path = config.output_dir / "formulas.xlsx"
+    write_workbook(config.template, path, [r], "2026-11")
+    wb = load_workbook(path, data_only=False)
+    assert [c.value for c in wb["Consolidado"][1]] == HEADERS
+    assert wb["Consolidado"].tables["Extratos"].ref == "A1:H2"
+    assert wb["Consolidado"]["E2"].value == 10
+    assert wb["Resumo"]["B3"].value == "2026-11"
+    assert (
+        wb["Resumo"]["B6"].value
+        == '=SUMIFS(Extratos[Saldo final],Extratos[Status],"ok",Extratos[Período],$B$3)'
+    )
+    assert all(wb["Resumo"][f"B{i}"].data_type == "f" for i in [6, 7, 9, 10, 11, 12, 13, 14])
+    assert wb.calculation.calcMode == "auto" and wb.calculation.fullCalcOnLoad
+    assert len(wb["Consolidado"].data_validations.dataValidation) == 1
+    wb.close()
+
+
+def test_package_excludes_env_by_default_and_includes_only_when_requested(
+    config, tmp_path, monkeypatch
+):
+    import zipfile
+    from types import SimpleNamespace
+
+    from goener import entrega
+
+    source(config)
+    run_dir, _, _ = run(config)
+    secret = "fake-private-demo-key"
+    (tmp_path / ".env").write_text("GEMINI_API_KEY=" + secret, encoding="utf-8")
+    (tmp_path / ".env.example").write_text("GEMINI_API_KEY=", encoding="utf-8")
+    monkeypatch.setattr(entrega, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        entrega.subprocess, "run", lambda *a, **kw: SimpleNamespace(stdout=b".env\0.env.example\0")
+    )
+    default = entrega.build(run_dir, tmp_path / "public")
+    with zipfile.ZipFile(default) as z:
+        assert "goener-case/.env" not in z.namelist()
+        assert not any(secret.encode() in z.read(n) for n in z.namelist())
+    private = entrega.build(run_dir, tmp_path / "private", include_env=True)
+    with zipfile.ZipFile(private) as z:
+        assert secret in z.read("goener-case/.env").decode()

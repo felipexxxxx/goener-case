@@ -316,7 +316,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
             }
             stage = config.output_dir / f".{run_id}.pending"
             stage.mkdir()
-            write_workbook(config.template, stage / "consolidado.xlsx", results)
+            write_workbook(config.template, stage / "consolidado.xlsx", results, config.period)
             atomic_json(stage / "evidencias.json", [r.to_dict() for r in results])
             summary["duration_seconds"] = round(time.perf_counter() - start, 3)
             atomic_json(stage / "resumo.json", summary)

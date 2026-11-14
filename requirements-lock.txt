@@ -26,6 +26,7 @@ Pygments==2.21.0
 pypdfium2==5.15.2
 pytest==9.2.0
 pytest-cov==7.1.0
+python-dotenv==1.2.4
 PyYAML==6.0.3
 rapidocr==3.10.0
 reportlab==5.1.0

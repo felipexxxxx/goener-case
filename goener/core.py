@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from dotenv import load_dotenv
+
 CENT = Decimal("0.01")
 
 
@@ -437,6 +439,7 @@ def previous_month() -> str:
 
 def load_config(path: Path, **overrides) -> Config:
     path = path.resolve()
+    load_dotenv(path.parent / ".env", override=False, interpolate=False, encoding="utf-8-sig")
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     data.update({k: v for k, v in overrides.items() if v is not None})
     if not data.get("period"):

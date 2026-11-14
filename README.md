@@ -40,7 +40,9 @@ O cenário de referência tem 17 arquivos: 12 ok, 4 revisar e 1 falhou. O saldo 
 
 ### Conferência rápida no Excel e no HTML
 
-A planilha mantém as oito colunas do modelo, filtro e cabeçalho congelado. Status usa cor e texto; Observação separa pendência, onde conferir, referência e análise da IA. Os saldos continuam numéricos e os originais são preservados.
+A aba `Consolidado` mantém as oito colunas do modelo, agora como tabela do Excel (`Extratos`), com filtro e cabeçalho congelado. A nova aba `Resumo` usa fórmulas para calcular saldo considerado, quantidades por status e arquivos fora da competência. A aba original `Instruções` é preservada. Status usa cor e texto; Observação separa pendência, onde conferir, referência e análise da IA. Os saldos continuam numéricos e os originais são preservados. No `Resumo`, a célula amarela B3 escolhe o mês (AAAA-MM). O total soma somente linhas com status `ok` desse mês; as contagens abrangem a tabela completa, independentemente dos filtros visuais.
+
+Para corrigir ou acrescentar dados, edite a tabela em `Consolidado`; para remover um registro, use **Excluir linhas da tabela**. O resumo recalcula no Excel, inclusive ao expandir a tabela. O status tem lista de opções e cores que acompanham a alteração. Marcar `ok` é uma liberação manual sob responsabilidade de quem revisa: as fórmulas não repetem hash, OCR, conciliação ou IA. As observações registram a execução original. Salve uma cópia revisada; o HTML não acompanha edições do Excel e uma nova execução do robô não importa essas alterações.
 
 O relatório abre na fila de atenção e mostra o motivo antes de expandir o arquivo. Há filtros para recomendações concluídas e indisponibilidades da IA. Dentro de cada item: regras → IA → onde conferir → próximo passo. O botão abre o documento de origem; em PDF, inclui a página quando identificada. A origem da indicação fica explícita: extração local ou sugestão da IA. Quando a localização não é conhecida, o relatório pede conferência do documento completo, sem inventar página.
 
@@ -71,7 +73,7 @@ $env:GEMINI_API_KEY = [Environment]::GetEnvironmentVariable('GEMINI_API_KEY', 'U
 py -3.12 -m goener
 ```
 
-A linha de `GEMINI_API_KEY` carrega a chave já cadastrada no Windows, sem mostrá-la. `-m goener` executa a entrada Python do projeto (`goener/__main__.py`) e lê `config.toml`. Não execute `ai.py` ou `pipeline.py` isoladamente: são módulos internos. Para usar somente as regras locais:
+A linha de `GEMINI_API_KEY` é opcional quando existe um `.env`; ela carrega a chave cadastrada no Windows, sem mostrá-la. `-m goener` executa a entrada Python do projeto (`goener/__main__.py`) e lê `config.toml`. Não execute `ai.py` ou `pipeline.py` isoladamente: são módulos internos. Para usar somente as regras locais:
 
 ```powershell
 py -3.12 -m goener --ai-mode off
@@ -198,6 +200,33 @@ A disponibilidade externa não é garantida. Quando uma análise não puder ser 
 
 **Reexecução validada:** o mesmo lote reaproveitou as cinco análises válidas, com zero novas chamadas HTTP, zero análises indisponíveis e 0,225 segundo de processamento medido (instalação/inicialização do Python não entram nessa duração). Os 12 arquivos regulares continuaram dispensando IA. Os hashes dos 17 documentos de entrada permaneceram inalterados.
 
+### Chave em arquivo `.env` e pacote privado
+
+O projeto carrega automaticamente o `.env` que estiver **na mesma pasta de `config.toml`**, tanto pelo comando Python quanto pelo atalho. Não procura arquivos em outras pastas e não substitui variáveis já presentes no processo. As referências `${VAR}` no arquivo não são expandidas.
+
+Copie `.env.example` como `.env` e preencha:
+
+```dotenv
+GEMINI_API_KEY=sua_chave_aqui
+```
+
+Na máquina de quem recebe o projeto, execute na pasta extraída:
+
+```powershell
+py -3.12 -m pip install -r requirements-lock.txt
+py -3.12 -m goener
+```
+
+Instalar dependências prepara a leitura do `.env`; o segundo comando inicia a automação. Não é necessário cadastrar variável do Windows quando o `.env` está preenchido. Use Python 3.12 instalado. Sem chave válida ou cota disponível, o fluxo mantém as regras locais e registra as análises indisponíveis.
+
+O Git ignora `.env`; somente `.env.example`, vazio, é versionado. O empacotamento padrão também exclui a credencial. Por solicitação do responsável, é possível montar um **ZIP privado com a chave**:
+
+```powershell
+py -3.12 -m goener.entrega --include-env
+```
+
+Nesse caso, o ZIP contém `goener-case/.env` ao lado do `config.toml`. Quem receber o arquivo poderá utilizar a chave e consumir sua cota. Envie esse pacote somente aos avaliadores e revogue a chave após a avaliação. Não publique esse ZIP como release ou anexo público. Chaves e conteúdo do `.env` não são registrados nos logs.
+
 ### Vários documentos na mesma chamada
 
 O Gemini recebe por padrão **até cinco documentos em uma solicitação HTTP** (`ai_batch_size = 5`). Assim, as cinco exceções deste case cabem em um único pedido novo, se o serviço responder normalmente. Os 12 documentos sem pendências não são enviados. Cada documento e seu anexo têm um ID próprio; a resposta deve devolver exatamente um resultado por ID. O robô rejeita IDs desconhecidos, repetidos ou ausentes e evidências de outro documento.
@@ -230,9 +259,9 @@ py -3.12 -m pytest --cov=goener --cov-report=term-missing
 py -3.12 -m goener.entrega
 ```
 
-Validação local da estrutura simplificada: **96 testes passaram**, incluindo OCR dos documentos do case. Os ensaios reais de leitura multimodal e failover estão registrados acima; não constituem garantia de disponibilidade futura. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
+Validação local da estrutura simplificada: **99 testes passaram**, incluindo OCR dos documentos do case. Os ensaios reais de leitura multimodal e failover estão registrados acima; não constituem garantia de disponibilidade futura. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
 
-A execução pela pasta do projeto precisa apenas de `py -3.12 -m pip install -r requirements-lock.txt`; não exige instalação editável do projeto. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado; não inclui chaves ou dados locais de execução. Nenhum agendamento foi criado nesta máquina.
+A execução pela pasta do projeto precisa apenas de `py -3.12 -m pip install -r requirements-lock.txt`; não exige instalação editável do projeto. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado. Por padrão não inclui chave; `--include-env` é a opção explícita para o pacote privado. Dados locais de execução não são incluídos. Nenhum agendamento foi criado nesta máquina.
 
 ### Ganho estimado em horas
 

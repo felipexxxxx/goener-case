@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot
 try {
-    if (-not $env:GEMINI_API_KEY) {
+    if (-not $env:GEMINI_API_KEY -and -not (Test-Path -LiteralPath ".env")) {
         $env:GEMINI_API_KEY = [Environment]::GetEnvironmentVariable('GEMINI_API_KEY', 'User')
     }
     [string[]]$pythonArgs = if ($Python -eq "py") { @("-3.12") } else { @() }

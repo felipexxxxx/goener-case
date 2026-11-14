@@ -64,3 +64,24 @@ def test_period_and_path_validation(tmp_path):
 
 def test_previous_month_uses_sao_paulo():
     assert len(previous_month()) == 7
+
+
+def test_dotenv_is_loaded_next_to_config_without_overriding_environment(tmp_path, monkeypatch):
+    import os
+    import shutil
+
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GOENER_DOTENV_TEST", raising=False)
+    monkeypatch.setenv("GOENER_DOTENV_LITERAL", "existing")
+    cfg = tmp_path / "config.toml"
+    shutil.copyfile(ROOT / "config.toml", cfg)
+    (tmp_path / ".env").write_text(
+        "GEMINI_API_KEY=fake-test-key\nGOENER_DOTENV_TEST=${UNEXPANDED}\nGOENER_DOTENV_LITERAL=replaced\n",
+        encoding="utf-8",
+    )
+    load_config(cfg)
+    assert os.environ["GEMINI_API_KEY"] == "fake-test-key"
+    assert os.environ["GOENER_DOTENV_TEST"] == "${UNEXPANDED}"
+    assert os.environ["GOENER_DOTENV_LITERAL"] == "existing"
+    monkeypatch.delenv("GEMINI_API_KEY")
+    monkeypatch.delenv("GOENER_DOTENV_TEST")

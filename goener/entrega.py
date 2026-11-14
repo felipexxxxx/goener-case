@@ -108,7 +108,9 @@ def one_page(path: Path, summary: dict) -> None:
     c.save()
 
 
-def build(run_dir: Path, destination: Path) -> Path:
+def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
+    if include_env and not (ROOT / ".env").is_file():
+        raise ValueError("Arquivo .env não encontrado para inclusão no pacote privado")
     summary = json.loads((run_dir / "resumo.json").read_text(encoding="utf-8"))
     destination.mkdir(parents=True, exist_ok=True)
     shutil.copy2(run_dir / "consolidado.xlsx", destination / "consolidado.xlsx")
@@ -121,8 +123,10 @@ def build(run_dir: Path, destination: Path) -> Path:
     archive = destination / "goener_automacao.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
         for name in names:
-            if name and not name.startswith("entrega/"):
+            if name and not name.startswith("entrega/") and Path(name).name != ".env":
                 z.write(ROOT / name, "goener-case/" + name)
+        if include_env:
+            z.write(ROOT / ".env", "goener-case/.env")
         payloads = {
             p.name: p.read_bytes()
             for p in sorted(run_dir.iterdir())
@@ -156,8 +160,13 @@ if __name__ == "__main__":
         "--run", type=Path, help="Pasta publicada; padrão: .local/outputs/latest.json"
     )
     parser.add_argument("--destination", type=Path, default=ROOT / "entrega")
+    parser.add_argument(
+        "--include-env",
+        action="store_true",
+        help="Inclui a credencial .env no ZIP privado, por solicitação explícita",
+    )
     args = parser.parse_args()
     selected = args.run or Path(
         json.loads((ROOT / ".local/outputs/latest.json").read_text(encoding="utf-8"))["directory"]
     )
-    print(build(selected, args.destination))
+    print(build(selected, args.destination, include_env=args.include_env))
