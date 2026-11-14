@@ -158,6 +158,8 @@ Os limites locais são 12 RPM e 450 RPD, deixando margem abaixo da cota observad
 
 A disponibilidade externa não é garantida. Quando uma análise não puder ser concluída, o consolidado é entregue com a retenção e a ressalva correspondentes. Em uma nova execução, extrações e análises válidas são reaproveitadas; somente o que ainda necessita de análise demanda novas chamadas. Isso mantém a geração automática sem inventar aprovação ou corrigir o saldo de um extrato por inferência.
 
+**Validação real após a correção:** com Gemini 3.1 Flash-Lite e o modo automático padrão, as cinco exceções do lote receberam respostas JSON válidas, usando os documentos originais. Foram seis tentativas HTTP (um timeout seguido de recuperação), com zero análises indisponíveis no resultado final. O processamento levou 124,315 segundos nesta máquina, incluindo extração local. As leituras de saldo, conta e competência dos quatro extratos conferiram com os documentos; o comunicado foi reconhecido como não sendo extrato. A cópia foi excluída dos totais pela regra determinística mesmo com a recomendação de revisão da IA. Os 17 arquivos permaneceram registrados e o saldo incluído continuou em R$ 4.114.372,29.
+
 ### Testar e preparar a entrega
 
 ```powershell

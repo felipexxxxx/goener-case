@@ -653,9 +653,14 @@ def review(results, config, requester=None, log=None):
             )
             disagreements = []
             if "source_check" in response:
-                disagreements = source_disagreements(
-                    validate_source_check(response["source_check"]), s
-                )
+                check = validate_source_check(response["source_check"])
+                # Um comunicado reconhecido por ambos não é divergência de saldo/conta.
+                if not (
+                    response["decision"] == "nao_considerar"
+                    and rules_status == "falhou"
+                    and s.closing is None
+                ):
+                    disagreements = source_disagreements(check, s)
             r.ai = {
                 **response,
                 "mode": config.ai_mode,
