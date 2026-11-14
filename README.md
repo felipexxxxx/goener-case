@@ -82,6 +82,8 @@ O lote fornecido contém **17 arquivos: 12 ok, 4 revisar e 1 falhou**, com saldo
 
 ### Painel interativo da versão 1.9.0
 
+**Validação:** 122 testes passaram; a atualização e a abertura do painel pelo novo EXE foram verificadas nesta máquina. A primeira tentativa do EXE foi bloqueada pelo Windows e a repetição concluiu, sem mudar proteções. O formulário completo foi testado em uma cópia separada; nenhuma correção de ensaio foi aplicada à base entregue.
+
 Execute **Goener.exe** para processar e abrir o painel; ou **Abrir painel.cmd** para abrir os resultados existentes. No painel, clique em **Revisar este arquivo**, preencha a decisão e clique em **Salvar e atualizar**. O programa mantém o Excel e o HTML sincronizados. Deixe a janela do robô aberta enquanto usa esses botões. A execução automática pela pasta continua disponível pelos mesmos parâmetros de terminal, sem intervenção manual entre etapas.
 
 ### Conferir e corrigir sem perder o histórico
@@ -90,7 +92,7 @@ Use sempre **`resultados/consolidado.xlsx`** como planilha de trabalho. A aba **
 
 1. No HTML, clique em **Abrir cópia destacada**. Os trechos numerados têm explicação visível ao lado. O original não é alterado.
 2. Na aba **Revisões**, encontre o arquivo e preencha somente as colunas amarelas **F a J**: decisão, saldo confirmado quando necessário, justificativa, responsável e data.
-3. **Salve e feche o Excel.** Execute **`Abrir painel.cmd`**, ao lado de `Goener.exe`. O atalho pede uma confirmação e abre o painel local, onde o botão **Revisar este arquivo** permite salvar e atualizar sem reexecução manual.
+3. **Salve e feche o Excel.** Execute **`Abrir painel.cmd`**, ao lado de `Goener.exe`. O atalho pede uma confirmação e abre o painel local (com alternativa pelo Python 3.12 se o EXE falhar), onde o botão **Revisar este arquivo** permite salvar e atualizar sem reexecução manual.
 4. No painel, clique em **Salvar e atualizar** após preencher o formulário, ou execute `--update-reviews` se a decisão já foi registrada no Excel. O robô valida as decisões e publica Excel e HTML atualizados juntos em uma nova pasta do histórico. Abra `resultados/relatorio.html` ou use o link na célula A3 da aba Revisões.
 
 | Decisão | Resultado após atualizar |

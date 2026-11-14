@@ -103,9 +103,9 @@
   },
   "reviews_panel": {
     "version": "1.9.0",
-    "full_suite_passed": 121,
+    "full_suite_passed": 122,
     "affected_checks_after_layout_changes": 14,
-    "production_run_id": "20261114T211754Z_08ad9096",
+    "production_run_id": "20261114T212448Z_dedabc9c",
     "production_files": 17,
     "production_statuses": {
       "ok": 12,
@@ -143,7 +143,26 @@
       "original hash checked"
     ],
     "executable": {
-      "runtime_validation": "pending"
+      "version": "1.9.0",
+      "sha256": "856ce97e1de6ad28f9589fbe9d12867e1c9cbfa7ea2acf30f11d9deda6cae6dc",
+      "build_success": true,
+      "runtime_validation": "passed_on_retry",
+      "windows_error": 4551,
+      "reason": "[WinError 4551] Uma política de Controle de Aplicativo bloqueou este arquivo",
+      "retry_returncode": 0,
+      "run_id": "20261114T212448Z_dedabc9c",
+      "files": 17,
+      "statuses": {
+        "ok": 12,
+        "falhou": 1,
+        "revisar": 4
+      },
+      "http_attempts": 0,
+      "highlights_created": 5,
+      "manifest_verified": true,
+      "source_commit": "dc57a1a265511ad1e3c93ce79c84f5bb9e3590b5",
+      "local_panel_started": true,
+      "form_visually_verified": true
     }
   }
 }

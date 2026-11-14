@@ -2,11 +2,13 @@
 cd /d "%~dp0"
 echo Salve e feche o Excel antes de continuar.
 pause
-if exist "Goener.exe" (
-    Goener.exe --panel
-) else (
-    py -3.12 executar.py --panel
-)
+if not exist "Goener.exe" goto python
+Goener.exe --panel
+if not errorlevel 1 goto fim
+echo O executavel nao iniciou ou nao concluiu. Tentando pelo Python 3.12.
+:python
+py -3.12 executar.py --panel
+:fim
 echo.
-echo Confira o resultado acima. O relatorio fica na pasta resultados.
+echo O relatorio salvo fica na pasta resultados.
 pause
