@@ -69,17 +69,16 @@ Com o Python 3.12 instalado, prepare as dependências uma vez e execute:
 ```powershell
 cd C:\Users\felip\OneDrive\Desktop\goener
 py -3.12 -m pip install -r requirements-lock.txt
-$env:GEMINI_API_KEY = [Environment]::GetEnvironmentVariable('GEMINI_API_KEY', 'User')
 py -3.12 -m goener
 ```
 
-A linha de `GEMINI_API_KEY` é opcional quando existe um `.env`; ela carrega a chave cadastrada no Windows, sem mostrá-la. `-m goener` executa a entrada Python do projeto (`goener/__main__.py`) e lê `config.toml`. Não execute `ai.py` ou `pipeline.py` isoladamente: são módulos internos. Para usar somente as regras locais:
+A chave é lida automaticamente do `.env` ao lado do `config.toml`. `-m goener` executa a entrada Python do projeto (`goener/__main__.py`) e lê `config.toml`. Não execute `ai.py` ou `pipeline.py` isoladamente: são módulos internos. Para usar somente as regras locais:
 
 ```powershell
 py -3.12 -m goener --ai-mode off
 ```
 
-Nas próximas execuções basta `py -3.12 -m goener` no mesmo terminal. O atalho `executar.ps1` carrega a chave e confere as dependências automaticamente. Para outro executável compatível: `.\executar.ps1 -Python "C:\caminho\python.exe"`. No Linux: `sh executar.sh --period 2026-10`, usando Python 3.11 a 3.13 e uma instalação com permissão para instalar dependências; `PYTHON=python3.12 sh executar.sh` permite escolher a versão.
+Nas próximas execuções basta `py -3.12 -m goener` no mesmo terminal. O atalho `executar.ps1` confere as dependências; o próprio Python lê a chave do `.env`. Para outro executável compatível: `.\executar.ps1 -Python "C:\caminho\python.exe"`. No Linux: `sh executar.sh --period 2026-10`, usando Python 3.11 a 3.13 e uma instalação com permissão para instalar dependências; `PYTHON=python3.12 sh executar.sh` permite escolher a versão.
 
 ## Para manter
 
@@ -202,7 +201,7 @@ A disponibilidade externa não é garantida. Quando uma análise não puder ser 
 
 ### Chave em arquivo `.env` e pacote privado
 
-O projeto carrega automaticamente o `.env` que estiver **na mesma pasta de `config.toml`**, tanto pelo comando Python quanto pelo atalho. Não procura arquivos em outras pastas e não substitui variáveis já presentes no processo. As referências `${VAR}` no arquivo não são expandidas.
+O projeto carrega automaticamente o `.env` que estiver **na mesma pasta de `config.toml`**, tanto pelo comando Python quanto pelo atalho. Não procura arquivos em outras pastas. Os valores do `.env` têm prioridade sobre variáveis já presentes no processo. O atalho não busca a chave cadastrada no Windows nem utiliza sessão de navegador. As referências `${VAR}` no arquivo não são expandidas.
 
 Copie `.env.example` como `.env` e preencha:
 

@@ -66,7 +66,7 @@ def test_previous_month_uses_sao_paulo():
     assert len(previous_month()) == 7
 
 
-def test_dotenv_is_loaded_next_to_config_without_overriding_environment(tmp_path, monkeypatch):
+def test_dotenv_is_loaded_next_to_config_with_priority_over_environment(tmp_path, monkeypatch):
     import os
     import shutil
 
@@ -82,6 +82,6 @@ def test_dotenv_is_loaded_next_to_config_without_overriding_environment(tmp_path
     load_config(cfg)
     assert os.environ["GEMINI_API_KEY"] == "fake-test-key"
     assert os.environ["GOENER_DOTENV_TEST"] == "${UNEXPANDED}"
-    assert os.environ["GOENER_DOTENV_LITERAL"] == "existing"
+    assert os.environ["GOENER_DOTENV_LITERAL"] == "replaced"
     monkeypatch.delenv("GEMINI_API_KEY")
     monkeypatch.delenv("GOENER_DOTENV_TEST")
