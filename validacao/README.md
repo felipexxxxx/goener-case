@@ -13,7 +13,7 @@ Esta pasta reúne os testes e execuções reais selecionadas para o avaliador. O
 | `executavel.json` e `compilacao.log` | Condições, hash do binário, tempos e registro de construção PyInstaller. |
 | `comparacao_tokens.json` | Metadados de consumo informados pela API, por documento, no ensaio low/high. |
 
-Cada execução preservada contém planilha, HTML, resumo, evidências, logs legíveis/JSONL e manifesto de integridade. São registros históricos; caminhos absolutos e versões antigas podem aparecer porque não foram reescritos. Somente o link do HTML no ensaio HTTP foi ajustado para o documento em `extratos/`, atualizando o hash correspondente no manifesto. Os documentos do case são fictícios. Chaves de API, bancos de cache e `.env` não são versionados.
+A regra em `.gitattributes` preserva os bytes dessas execuções no Git, inclusive finais de linha, para não invalidar os hashes dos manifestos. Cada execução preservada contém planilha, HTML, resumo, evidências, logs legíveis/JSONL e manifesto de integridade. São registros históricos; caminhos absolutos e versões antigas podem aparecer porque não foram reescritos. Somente o link do HTML no ensaio HTTP foi ajustado para o documento em `extratos/`, atualizando o hash correspondente no manifesto. Os documentos do case são fictícios. Chaves de API, bancos de cache e `.env` não são versionados.
 
 ## Reproduzir
 
