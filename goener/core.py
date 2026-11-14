@@ -154,6 +154,12 @@ class Result:
                 notes.append("Referência (" + ref["origin"] + "): " + ref["quote"])
         if self.ai:
             notes.append(self.ai.get("message", ""))
+            if self.ai.get("selected_model"):
+                notes.append(
+                    "Modelo utilizado: "
+                    + self.ai["selected_model"]
+                    + (" (failover)" if self.ai.get("failover_used") else "")
+                )
             if self.ai.get("policy_block") and self.ai["policy_block"] not in self.ai.get(
                 "message", ""
             ):
@@ -405,7 +411,10 @@ class Config:
     ai_mode: str = "automatico"
     ai_scope: str = "excecoes"
     ai_provider: str = "gemini"
-    ai_model: str = "gemini-3.1-flash-lite"
+    ai_model: str = "gemini-3.8-flash"
+    ai_fallback_models: list[str] = field(
+        default_factory=lambda: ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"]
+    )
     ai_document_mode: str = "completo"
     ai_thinking_level: str = "low"
     ai_requests_per_minute: int = 12
@@ -442,6 +451,14 @@ def load_config(path: Path, **overrides) -> Config:
         raise ValueError("Escopo de IA inválido")
     if result.ai_provider not in ("openai", "gemini"):
         raise ValueError("Provedor de IA inválido")
+    if not isinstance(result.ai_fallback_models, list) or len(result.ai_fallback_models) > 4:
+        raise ValueError("Lista de modelos alternativos inválida")
+    models = [result.ai_model, *result.ai_fallback_models]
+    if any(
+        not isinstance(model, str) or not re.fullmatch(r"[A-Za-z0-9._-]+", model)
+        for model in models
+    ) or len(set(models)) != len(models):
+        raise ValueError("Modelos inválidos ou repetidos na ordem de failover")
     if result.ai_document_mode not in ("dados", "completo"):
         raise ValueError("Modo de documento da IA inválido")
     if result.ai_thinking_level not in ("low", "medium", "high"):

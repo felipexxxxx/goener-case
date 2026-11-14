@@ -195,6 +195,12 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
             else "<p>Os campos e a conciliação passaram nas verificações programadas.</p>"
         )
         ai_message = plain(r.ai.get("message", "Não foi solicitada análise por IA nesta execução."))
+        if r.ai.get("selected_model"):
+            ai_message += (
+                " Modelo utilizado: "
+                + r.ai["selected_model"]
+                + (" (alternativo ao principal)." if r.ai.get("failover_used") else ".")
+            )
         if r.ai.get("policy_block") and r.ai["policy_block"] not in ai_message:
             ai_message += " Bloqueio obrigatório: " + plain(r.ai["policy_block"])
         if r.ai.get("source_disagreements"):

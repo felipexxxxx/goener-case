@@ -534,3 +534,87 @@ def test_automatic_actions_preserve_source_balance_and_exclude_copy():
     assert "excluída" in r.applied_action and not r.included("automatico", "2026-10")
     assert r.statement.closing == money(10)
     assert "Medida aplicada:" in r.observation
+
+
+@pytest.mark.parametrize("failure_count", [1, 2])
+def test_model_failover_uses_configured_order_and_keeps_attempt_history(config, failure_count):
+    from goener.ai import AIError, request_gemini_failover
+
+    calls = []
+
+    def request(context, model, **kwargs):
+        calls.append(model)
+        assert kwargs["config"].ai_max_attempts == 1
+        if len(calls) <= failure_count:
+            raise AIError("http_error", [{"number": 1, "http_status": 503}], http_status=503)
+        return {
+            "decision": "revisar",
+            "reason": "Conferir",
+            "evidence_codes": [],
+            "model": model,
+            "attempts": [{"number": 1, "http_status": 200}],
+        }
+
+    result = request_gemini_failover({"issues": []}, config, requester=request)
+    assert calls == [config.ai_model, *config.ai_fallback_models[:failure_count]]
+    assert result["failover_used"] and result["selected_model"] == calls[-1]
+    assert [a["http_status"] for a in result["attempts"]] == [503] * failure_count + [200]
+    assert [a["model"] for a in result["attempts"]] == calls
+
+
+@pytest.mark.parametrize(
+    "category,status",
+    [
+        ("contract_invalid", None),
+        ("response_blocked", None),
+        ("http_error", 401),
+        ("http_error", 403),
+        ("http_error", 400),
+    ],
+)
+def test_model_failover_never_bypasses_invalid_contract_safety_or_auth(config, category, status):
+    from goener.ai import AIError, request_gemini_failover
+
+    calls = []
+
+    def request(context, model, **kwargs):
+        calls.append(model)
+        raise AIError(category, http_status=status)
+
+    with pytest.raises(AIError):
+        request_gemini_failover({"issues": []}, config, requester=request)
+    assert calls == [config.ai_model]
+
+
+def test_valid_rejection_is_not_sent_to_another_model(config):
+    from goener.ai import request_gemini_failover
+
+    calls = []
+
+    def request(context, model, **kwargs):
+        calls.append(model)
+        return {
+            "decision": "nao_considerar",
+            "reason": "Documento inválido",
+            "evidence_codes": [],
+            "model": model,
+        }
+
+    result = request_gemini_failover({"issues": []}, config, requester=request)
+    assert calls == [config.ai_model] and not result["failover_used"]
+    assert result["decision"] == "nao_considerar"
+
+
+def test_all_models_unavailable_returns_error_with_full_history(config):
+    from goener.ai import AIError, request_gemini_failover
+
+    def request(context, model, **kwargs):
+        raise AIError("quota_daily", http_status=429)
+
+    with pytest.raises(AIError) as caught:
+        request_gemini_failover({"issues": []}, config, requester=request)
+    assert [x["model"] for x in caught.value.details["models_tried"]] == [
+        config.ai_model,
+        *config.ai_fallback_models,
+    ]
+    assert caught.value.details["attempts"] == []

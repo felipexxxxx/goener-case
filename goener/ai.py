@@ -12,6 +12,7 @@ import re
 import sqlite3
 import time
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import datetime, timedelta
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -137,9 +138,11 @@ class GeminiState:
         now = time.time() if now is None else now
         start, reset = self.day_bounds(now)
         # Limites observados no projeto; podem cair, por isso o HTTP 429 também é tratado.
-        cap = {"gemini-3.8-flash": (5, 20), "gemini-3.1-flash-lite": (15, 500)}.get(
-            model, (rpm, rpd)
-        )
+        cap = {
+            "gemini-3.8-flash": (5, 20),
+            "gemini-3.1-flash-lite": (15, 500),
+            "gemini-3.5-flash-lite": (15, 500),
+        }.get(model, (rpm, rpd))
         rpm, rpd = min(rpm, cap[0]), min(rpd, cap[1])
         with self.connection() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -344,6 +347,7 @@ def request_gemini(
     emit=None,
     deadline=None,
     network_allowed=True,
+    fail_fast=False,
 ):
     """HTTP com tentativas limitadas, diagnóstico por tentativa e orçamento de lote."""
     emit = emit or (lambda *a, **k: None)
@@ -416,8 +420,10 @@ def request_gemini(
             while wait := state.reserve(
                 model, config.ai_requests_per_minute, config.ai_requests_per_day
             ):
-                if wait["category"] == "quota_daily" or (
-                    deadline is not None and time.monotonic() + wait["wait"] >= deadline
+                if (
+                    wait["category"] == "quota_daily"
+                    or (fail_fast and wait["wait"] > 5)
+                    or (deadline is not None and time.monotonic() + wait["wait"] >= deadline)
                 ):
                     raise AIError(wait["category"], attempts, retry_at=wait["retry_at"])
                 emit("AI_THROTTLED", wait_seconds=round(wait["wait"], 2), reason=wait["category"])
@@ -536,6 +542,105 @@ def request_gemini(
     return result
 
 
+def request_gemini_failover(
+    context, config, *, parts=(), emit=None, deadline=None, network_allowed=True, requester=None
+):
+    """Alterna só por disponibilidade; nunca troca de modelo para procurar aprovação."""
+    emit = emit or (lambda *a, **k: None)
+    requester = requester or request_gemini
+    models = [config.ai_model, *config.ai_fallback_models]
+    deadline = (
+        deadline if deadline is not None else time.monotonic() + config.ai_batch_timeout_seconds
+    )
+    history, attempts = [], []
+    for index, model in enumerate(models):
+        local = replace(
+            config, ai_model=model, ai_max_attempts=1 if len(models) > 1 else config.ai_max_attempts
+        )
+
+        def model_event(event, selected=model, **fields):
+            emit(event, model=selected, **fields)
+
+        try:
+            response = requester(
+                context,
+                model,
+                parts=parts,
+                config=local,
+                emit=model_event,
+                deadline=min(deadline, time.monotonic() + config.ai_timeout_seconds + 5)
+                if len(models) > 1
+                else deadline,
+                network_allowed=network_allowed,
+                fail_fast=len(models) > 1,
+            )
+            current = [{**entry, "model": model} for entry in response.get("attempts", [])]
+            attempts.extend(current)
+            history.append(
+                {
+                    "model": model,
+                    "outcome": "cached" if response.get("cached") else "completed",
+                    "attempts": current,
+                }
+            )
+            emit(
+                "AI_MODEL_SELECTED",
+                requested_model=config.ai_model,
+                selected_model=model,
+                cached=bool(response.get("cached")),
+            )
+            return {
+                **response,
+                "requested_model": config.ai_model,
+                "selected_model": model,
+                "models_tried": history,
+                "failover_used": index > 0,
+                "attempts": attempts,
+            }
+        except AIError as exc:
+            details = exc.details
+            current = [{**entry, "model": model} for entry in details.get("attempts", [])]
+            attempts.extend(current)
+            history.append(
+                {
+                    "model": model,
+                    "outcome": details["category"],
+                    "http_status": details.get("http_status"),
+                    "attempts": current,
+                }
+            )
+            eligible = details["category"] in (
+                "quota_daily",
+                "quota_rate",
+                "timeout",
+                "network_error",
+                "model_cooldown",
+                "circuit_open",
+            ) or (
+                details["category"] == "http_error"
+                and details.get("http_status") in (404, 429, 500, 502, 503, 504)
+            )
+            if eligible and details["category"] in ("timeout", "network_error", "http_error"):
+                GeminiState(config.runtime_dir).block(model, time.time() + 60, "model_cooldown")
+            if not eligible or index == len(models) - 1:
+                extra = {k: v for k, v in details.items() if k not in ("category", "attempts")}
+                raise AIError(
+                    details["category"],
+                    attempts,
+                    **extra,
+                    requested_model=config.ai_model,
+                    models_tried=history,
+                    failover_used=index > 0,
+                ) from None
+            emit(
+                "AI_FAILOVER",
+                from_model=model,
+                to_model=models[index + 1],
+                reason=details["category"],
+                http_status=details.get("http_status"),
+            )
+
+
 def source_disagreements(check, statement):
     """A leitura independente pode bloquear; nunca reescreve a extração."""
     fields = []
@@ -638,11 +743,10 @@ def review(results, config, requester=None, log=None):
             if requester is not None:
                 response = requester(context, config.ai_model)
             elif config.ai_provider == "gemini":
-                response = request_gemini(
+                response = request_gemini_failover(
                     context,
-                    config.ai_model,
+                    config,
                     parts=parts,
-                    config=config,
                     emit=emit,
                     deadline=deadline,
                     network_allowed=consecutive < 3,

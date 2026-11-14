@@ -162,6 +162,18 @@ A disponibilidade externa não é garantida. Quando uma análise não puder ser 
 
 **Reexecução validada:** o mesmo lote reaproveitou as cinco análises válidas, com zero novas chamadas HTTP, zero análises indisponíveis e 0,225 segundo de processamento medido (instalação/inicialização do Python não entram nessa duração). Os 12 arquivos regulares continuaram dispensando IA. Os hashes dos 17 documentos de entrada permaneceram inalterados.
 
+### Failover de modelos
+
+A ordem padrão é `gemini-3.8-flash` → `gemini-3.1-flash-lite` → `gemini-3.5-flash-lite`. Ela é definida por `ai_model` e `ai_fallback_models` em `config.toml`. Uma lista vazia desliga a alternância. Não há troca automática de provedor, conta, chave ou projeto.
+
+O principal é tentado primeiro, inclusive verificando o cache daquele modelo. Cota esgotada ou espera de cota superior a cinco segundos permite seguir para o próximo. Também há alternância para timeout, falha de rede, indisponibilidade HTTP 5xx e modelo não encontrado (404). Um modelo que falha por comunicação fica em pausa por 60 segundos; bloqueios de cota diária respeitam a janela diária. Cache válido continua podendo ser usado durante a pausa.
+
+Com alternativos configurados, é feita uma tentativa por modelo antes de seguir a ordem, dentro do orçamento compartilhado do lote. Sem alternativos, `ai_max_attempts` controla as repetições do único modelo. Os limites locais continuam valendo por modelo: para o 3.8 há o teto observado de 5 RPM/20 RPD; para os dois Lite, 15 RPM/500 RPD. O limite configurado pode ser mais restritivo.
+
+Uma decisão válida encerra a busca, inclusive quando é revisar ou não considerar. Falhas de contrato JSON, bloqueios de segurança, autenticação/permissão e HTTP 400 não são contornados por outra resposta de modelo. Os bloqueios financeiros obrigatórios são aplicados pelo Python em todos os casos. Se nenhum modelo responder, o saldo segue retido com ressalva.
+
+A prioridade é preservada: quando o principal voltar a ficar disponível, pode gerar uma nova análise mesmo se existir uma resposta anterior de um alternativo. O cache é específico de cada modelo. `AI_FAILOVER` registra motivo e troca; `AI_MODEL_SELECTED` registra a escolha final. As evidências guardam principal solicitado, modelo selecionado, modelos percorridos e tentativas HTTP de toda a cadeia. Planilha e HTML mostram o modelo utilizado e se houve failover.
+
 ### Testar e preparar a entrega
 
 ```powershell
@@ -170,7 +182,7 @@ A disponibilidade externa não é garantida. Quando uma análise não puder ser 
 .\.venv\Scripts\python.exe -m goener.entrega
 ```
 
-Validação local da estrutura simplificada: **79 testes passaram**, incluindo OCR dos documentos do case. A versão anterior teve chamadas HTTP reais válidas; a validação da versão multimodal é registrada abaixo, sem presumir homologação do lote inteiro. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
+Validação local da estrutura simplificada: **88 testes passaram**, incluindo OCR dos documentos do case. A versão anterior teve chamadas HTTP reais válidas; a validação da versão multimodal é registrada abaixo, sem presumir homologação do lote inteiro. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
 
 A instalação manual usa apenas `requirements-lock.txt` e `pip install -e . --no-deps`. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado; não inclui chaves ou dados locais de execução. Nenhum agendamento foi criado nesta máquina.
 
@@ -205,3 +217,5 @@ O projeto atende aos layouts fornecidos. Não autentica extratos nem substitui a
 
 - [Gemini 3.1 Flash-Lite: entradas multimodais e JSON](https://aistudio.google.com/docs/models/gemini-3.1-flash-lite)
 - [Gemini: cotas e reinício diário](https://ai.google.dev/gemini-api/docs/rate-limits)
+
+- [Gemini 3.5 Flash-Lite: documentos e saída estruturada](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite)

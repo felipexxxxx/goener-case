@@ -297,6 +297,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
                 "configuration": config.to_dict(),
                 "ai_mode": config.ai_mode,
                 "ai_summary": {
+                    "failover_files": sum(bool(r.ai.get("failover_used")) for r in results),
                     "cached_decisions": sum(bool(r.ai.get("cached")) for r in results),
                     "rules_only_files": sum(r.ai.get("routing") == "rules_passed" for r in results),
                     "valid_decisions": sum(
