@@ -108,7 +108,7 @@ def build(run_dir: Path, destination: Path) -> Path:
     result_dir = destination / "resultado"
     result_dir.mkdir(exist_ok=True)
     for p in run_dir.iterdir():
-        if p.is_file():
+        if p.is_file() and not p.name.startswith(chr(126) + chr(36)):
             shutil.copy2(p, result_dir / p.name)
     one_page(destination / "documentacao_1_pagina.pdf", summary)
     instructions = "# Arquivos para envio\n\n1. Automação exportada: `goener_automacao.zip`.\n2. Planilha gerada: `resultado/consolidado.xlsx`.\n3. Documentação de uma página: `documentacao_1_pagina.pdf`.\n\nO ZIP inclui código, entradas fictícias, modelo, testes, documentação e o resultado desta execução. Não contém ambiente virtual nem checkpoints locais. Para rodar, veja o README.\n\nRepositório: https://github.com/felipexxxxx/goener-case\n"
@@ -124,12 +124,19 @@ def build(run_dir: Path, destination: Path) -> Path:
             if name and not name.startswith("entrega/"):
                 z.write(ROOT / name, "goener-case/" + name)
         for p in destination.rglob("*"):
-            if p.is_file() and p != archive and p.name != "checksums.sha256":
+            if (
+                p.is_file()
+                and not p.name.startswith(chr(126) + chr(36))
+                and p != archive
+                and p.name != "checksums.sha256"
+            ):
                 z.write(p, "goener-case/entrega/" + p.relative_to(destination).as_posix())
     checks = [
         f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(destination).as_posix()}"
         for p in sorted(destination.rglob("*"))
-        if p.is_file() and p.name != "checksums.sha256"
+        if p.is_file()
+        and not p.name.startswith(chr(126) + chr(36))
+        and p.name != "checksums.sha256"
     ]
     (destination / "checksums.sha256").write_text("\n".join(checks) + "\n", encoding="utf-8")
     return archive
