@@ -412,7 +412,7 @@ class Config:
     retries: int = 2
     ai_mode: str = "automatico"
     ai_scope: str = "excecoes"
-    ai_batch_size: int = 5
+    ai_batch_size: int = 1
     ai_provider: str = "gemini"
     ai_model: str = "gemini-3.8-flash"
     ai_fallback_models: list[str] = field(

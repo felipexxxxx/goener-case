@@ -111,7 +111,7 @@ flowchart TD
     B --> C[Validar saldo, conta, competência, conciliação e duplicidade]
     C --> D{Precisa de IA pelo escopo?}
     D -- Não ou IA desligada --> J[Aplicar regras financeiras]
-    D -- Sim --> E[Agrupar até 5 documentos, cada um com ID próprio]
+    D -- Sim --> E[Analisar um documento por vez, com cache individual]
     E --> F{Resposta válida em cache?}
     F -- Sim --> H[Validar JSON e associar cada resultado ao documento]
     F -- Não --> G[HTTP Gemini: 3.8 → 3.5 Lite → 3.1 Lite]
@@ -226,9 +226,15 @@ py -3.12 -m goener.entrega --include-env
 
 Nesse caso, o ZIP contém `goener-case/.env` ao lado do `config.toml`. Quem receber o arquivo poderá utilizar a chave e consumir sua cota. Envie esse pacote somente aos avaliadores e revogue a chave após a avaliação. Não publique esse ZIP como release ou anexo público. Chaves e conteúdo do `.env` não são registrados nos logs.
 
-### Vários documentos na mesma chamada
+### Chamadas individuais e agrupamento opcional
 
-O Gemini recebe por padrão **até cinco documentos em uma solicitação HTTP** (`ai_batch_size = 5`). Assim, as cinco exceções deste case cabem em um único pedido novo, se o serviço responder normalmente. Os 12 documentos sem pendências não são enviados. Cada documento e seu anexo têm um ID próprio; a resposta deve devolver exatamente um resultado por ID. O robô rejeita IDs desconhecidos, repetidos ou ausentes e evidências de outro documento.
+O padrão agora é **um documento por solicitação HTTP** (`ai_batch_size = 1`), em sequência, sem paralelismo. Cada solicitação envia o contexto JSON e o documento daquele arquivo; a resposta é validada e salva em cache individualmente. Os 12 arquivos sem pendências continuam dispensando IA.
+
+Se o 3.8 concluir os arquivos 1, 2 e 3 e esgotar a cota no arquivo 4, o 3.5 tenta somente o arquivo 4. O arquivo 5 também pode seguir ao 3.5, pulando o 3.8 enquanto estiver bloqueado. Os três resultados concluídos não são reenviados nessa execução. Se o 3.5 também ficar indisponível, o próximo é o 3.1. Caches anteriores feitos em grupo não são convertidos automaticamente em respostas individuais.
+
+**Com failover ativo:** há uma tentativa por modelo para cada documento. Um 503 encaminha a mesma análise ao próximo modelo, sem repetir antes no mesmo modelo. Sem modelos alternativos, `ai_max_attempts` controla as retentativas no mesmo modelo, com espera crescente e variação aleatória. Cota diária esgotada não é repetida até a próxima janela; o orçamento de tempo e os limites locais continuam valendo. As solicitações individuais facilitam a retomada, mas consomem mais chamadas que um agrupamento bem-sucedido.
+
+**Opcional:** configure `ai_batch_size = 5` para enviar até cinco documentos em uma solicitação HTTP. Cada documento e seu anexo têm um ID próprio; a resposta deve devolver exatamente um resultado por ID. O robô rejeita IDs desconhecidos, repetidos ou ausentes e evidências de outro documento. Uma falha exige reenviar o grupo completo ao alternativo.
 
 Este é um agrupamento no `generateContent` síncrono, sem serviço adicional ou fila assíncrona. Os grupos respeitam até 100 mil caracteres de contexto e 16 MiB de anexos serializados, além dos limites individuais. Se ultrapassar, o robô divide em mais solicitações; não recorta documentos. Configure `ai_batch_size = 1` para análises individuais; o máximo permitido é 10.
 
@@ -262,7 +268,7 @@ py -3.12 -m pytest --cov=goener --cov-report=term-missing
 py -3.12 -m goener.entrega
 ```
 
-Validação local da estrutura simplificada: **101 testes passaram**, incluindo OCR dos documentos do case. Os ensaios reais de leitura multimodal e failover estão registrados acima; não constituem garantia de disponibilidade futura. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
+Validação local da estrutura simplificada: **102 testes passaram**, incluindo OCR dos documentos do case. Os ensaios reais de leitura multimodal e failover estão registrados acima; não constituem garantia de disponibilidade futura. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
 
 A execução pela pasta do projeto precisa apenas de `py -3.12 -m pip install -r requirements-lock.txt`; não exige instalação editável do projeto. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado. Por padrão não inclui chave; `--include-env` é a opção explícita para o pacote privado. Dados locais de execução não são incluídos. Nenhum agendamento foi criado nesta máquina.
 

@@ -826,3 +826,48 @@ def test_rate_quota_preserves_provider_status_and_retry_time(config, monkeypatch
     assert details["category"] == "quota_rate" and details["retry_at"] > 0
     assert details["attempts"][0]["provider_status"] == "RESOURCE_EXHAUSTED"
     assert details["quotas"][0]["quotaId"] == "RequestsPerMinute"
+
+
+def test_individual_failover_keeps_three_completed_documents_and_routes_remaining(
+    config, monkeypatch
+):
+    from goener.ai import AIError, http_attempt_count
+
+    config.ai_mode = "automatico"
+    config.ai_document_mode = "dados"
+    assert config.ai_batch_size == 1
+    rows = [
+        Result(f"{i}.pdf", str(i), "PDF", Statement("Banco", str(i), "2026-10", closing=money(10)))
+        for i in range(1, 6)
+    ]
+    for row in rows:
+        row.statement.issue("TEST", "Conferir")
+    sent, blocked = [], set()
+
+    def request(context, model, **kwargs):
+        if model in blocked:
+            raise AIError("quota_daily")
+        account = context["account"]
+        sent.append((account, model))
+        if model == config.ai_model and account == "4":
+            blocked.add(model)
+            raise AIError("quota_daily", [{"http_status": 429}], http_status=429)
+        return {
+            "decision": "revisar",
+            "reason": "Conferir arquivo " + account,
+            "evidence_codes": ["TEST"],
+            "model": model,
+            "attempts": [{"http_status": 200}],
+        }
+
+    monkeypatch.setattr("goener.ai.request_gemini", request)
+    review(rows, config)
+    assert sent == [(str(i), "gemini-3.8-flash") for i in range(1, 5)] + [
+        ("4", "gemini-3.5-flash-lite"),
+        ("5", "gemini-3.5-flash-lite"),
+    ]
+    assert [r.ai["selected_model"] for r in rows] == ["gemini-3.8-flash"] * 3 + [
+        "gemini-3.5-flash-lite"
+    ] * 2
+    assert all(r.ai["reason"].endswith(str(i)) for i, r in enumerate(rows, 1))
+    assert http_attempt_count(rows) == 6
