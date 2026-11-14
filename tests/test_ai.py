@@ -760,3 +760,69 @@ def test_grouped_review_splits_at_configured_size(config, monkeypatch):
     monkeypatch.setattr("goener.ai.request_gemini_failover", request)
     review(rows, config)
     assert calls == [2, 1]
+
+
+def test_failover_uses_38_35_31_and_preserves_quota_reason(config):
+    from goener.ai import AIError, request_gemini_failover
+
+    calls, events = [], []
+
+    def request(context, model, **kwargs):
+        calls.append(model)
+        if len(calls) < 3:
+            raise AIError(
+                "quota_daily",
+                [{"http_status": 429, "provider_status": "RESOURCE_EXHAUSTED"}],
+                http_status=429,
+                retry_at=1234567890,
+                quotas=[{"quotaId": "RequestsPerDay"}],
+            )
+        return {
+            "decision": "revisar",
+            "reason": "Conferir",
+            "evidence_codes": [],
+            "attempts": [{"http_status": 200}],
+        }
+
+    result = request_gemini_failover(
+        {"issues": []},
+        config,
+        requester=request,
+        emit=lambda name, **fields: events.append((name, fields)),
+    )
+    assert calls == ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+    assert result["models_tried"][0]["retry_at"] == 1234567890
+    assert result["models_tried"][0]["quotas"] == [{"quotaId": "RequestsPerDay"}]
+    switches = [f for e, f in events if e == "AI_FAILOVER"]
+    assert len(switches) == 2 and all(
+        f["reason"] == "quota_daily" and f["provider_status"] == "RESOURCE_EXHAUSTED"
+        for f in switches
+    )
+
+
+def test_rate_quota_preserves_provider_status_and_retry_time(config, monkeypatch):
+    from urllib.error import HTTPError
+
+    from goener.ai import AIError, request_gemini
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only")
+    config.ai_max_attempts = 1
+    error = {
+        "error": {
+            "status": "RESOURCE_EXHAUSTED",
+            "details": [
+                {"violations": [{"quotaId": "RequestsPerMinute", "quotaValue": "15"}]},
+                {"retryDelay": "120s"},
+            ],
+        }
+    }
+
+    def opener(req, timeout):
+        raise HTTPError(req.full_url, 429, "quota", {}, io.BytesIO(json.dumps(error).encode()))
+
+    with pytest.raises(AIError) as caught:
+        request_gemini({"issues": []}, config.ai_model, opener, config=config)
+    details = caught.value.details
+    assert details["category"] == "quota_rate" and details["retry_at"] > 0
+    assert details["attempts"][0]["provider_status"] == "RESOURCE_EXHAUSTED"
+    assert details["quotas"][0]["quotaId"] == "RequestsPerMinute"

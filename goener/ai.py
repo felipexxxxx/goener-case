@@ -527,6 +527,8 @@ def request_gemini(
             )
         except (ValueError, UnicodeError):
             category = "http_body_invalid"
+        if status == 429:
+            category = quota_kind or "quota_rate"
         entry = {
             "number": number,
             "http_status": status,
@@ -553,7 +555,10 @@ def request_gemini(
                 state.block(model, time.time() + retry_after, "quota_rate")
         retryable = status in (429, 500, 502, 503, 504) or category in ("timeout", "network_error")
         if not retryable or number == getattr(config, "ai_max_attempts", 3):
-            raise AIError(category, attempts, http_status=status)
+            extra = (
+                {"retry_at": time.time() + retry_after, "quotas": quotas} if status == 429 else {}
+            )
+            raise AIError(category, attempts, http_status=status, **extra)
         delay = max(retry_after, 2**number + random.uniform(0, 1))
         if deadline is not None and time.monotonic() + delay >= deadline:
             raise AIError(
@@ -661,6 +666,8 @@ def request_gemini_failover(
                     "model": model,
                     "outcome": details["category"],
                     "http_status": details.get("http_status"),
+                    "retry_at": details.get("retry_at"),
+                    "quotas": details.get("quotas", []),
                     "attempts": current,
                 }
             )
@@ -696,6 +703,8 @@ def request_gemini_failover(
                 to_model=models[index + 1],
                 reason=details["category"],
                 http_status=details.get("http_status"),
+                retry_at=details.get("retry_at"),
+                provider_status=current[-1].get("provider_status") if current else None,
             )
 
 

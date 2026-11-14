@@ -114,7 +114,7 @@ flowchart TD
     D -- Sim --> E[Agrupar até 5 documentos, cada um com ID próprio]
     E --> F{Resposta válida em cache?}
     F -- Sim --> H[Validar JSON e associar cada resultado ao documento]
-    F -- Não --> G[HTTP Gemini: 3.8 → 3.1 Lite → 3.5 Lite]
+    F -- Não --> G[HTTP Gemini: 3.8 → 3.5 Lite → 3.1 Lite]
     G -- Resposta válida --> H
     G -- Serviço indisponível --> I[Registrar indisponibilidade e reter saldo no automático]
     H --> J
@@ -238,7 +238,7 @@ Este é um agrupamento no `generateContent` síncrono, sem serviço adicional ou
 
 ### Failover de modelos
 
-A ordem padrão é `gemini-3.8-flash` → `gemini-3.1-flash-lite` → `gemini-3.5-flash-lite`. Ela é definida por `ai_model` e `ai_fallback_models` em `config.toml`. O 3.1 vem antes do 3.5 porque foi validado nos cinco casos reais; o 3.5 foi testado inicialmente em um PDF. Essa ordem é operacional, não um ranking de qualidade: não foi feito um comparativo que demonstre que o 3.5 é pior. A ordem pode ser alterada após avaliar os mesmos documentos em ambos. Uma lista vazia desliga a alternância. Não há troca automática de provedor, conta, chave ou projeto.
+A ordem padrão é `gemini-3.8-flash` → `gemini-3.5-flash-lite` → `gemini-3.1-flash-lite`. Ela é definida por `ai_model` e `ai_fallback_models` em `config.toml`. A prioridade segue a preferência definida para o case; não representa um comparativo comprovado de qualidade entre modelos. Uma lista vazia desliga a alternância. Não há troca automática de provedor, conta, chave ou projeto.
 
 O principal é tentado primeiro, inclusive verificando o cache daquele modelo. Cota esgotada ou espera de cota superior a cinco segundos permite seguir para o próximo. Também há alternância para timeout, falha de rede, indisponibilidade HTTP 5xx e modelo não encontrado (404). Um modelo que falha por comunicação fica em pausa por 60 segundos; bloqueios de cota diária respeitam a janela diária. Cache válido continua podendo ser usado durante a pausa.
 
@@ -250,6 +250,8 @@ A prioridade é preservada: quando o principal voltar a ficar disponível, pode 
 
 **Validação do failover:** no lote real de 17 arquivos, as cinco exceções percorreram 3.8 (bloqueio de cota diária já registrado) → 3.1 Flash-Lite (análise válida em cache), sem novas chamadas HTTP e sem análises indisponíveis. O terceiro modelo, 3.5 Flash-Lite, também respondeu em teste HTTP com um PDF original e identificou corretamente o comunicado como documento que não deve ser considerado no fechamento. Os testes simulam indisponibilidade dos dois primeiros, esgotamento de toda a cadeia e a preservação das esperas indicadas pelo provedor.
 
+Os logs registram o código HTTP e o status seguro do provedor (por exemplo, `RESOURCE_EXHAUSTED` ou `UNAVAILABLE`). Para 429, o código distingue cota diária de limitação de frequência quando o provedor informa os detalhes; registra métrica, limite e horário de nova tentativa quando disponíveis. Sem detalhes suficientes, não afirma que a cota diária acabou. A sequência não volta ao 3.8 na mesma análise: se os três falharem por disponibilidade/cota, o fluxo local conclui com a IA indisponível e as ressalvas correspondentes.
+
 ### Testar e preparar a entrega
 
 ```powershell
@@ -258,7 +260,7 @@ py -3.12 -m pytest --cov=goener --cov-report=term-missing
 py -3.12 -m goener.entrega
 ```
 
-Validação local da estrutura simplificada: **99 testes passaram**, incluindo OCR dos documentos do case. Os ensaios reais de leitura multimodal e failover estão registrados acima; não constituem garantia de disponibilidade futura. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
+Validação local da estrutura simplificada: **101 testes passaram**, incluindo OCR dos documentos do case. Os ensaios reais de leitura multimodal e failover estão registrados acima; não constituem garantia de disponibilidade futura. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
 
 A execução pela pasta do projeto precisa apenas de `py -3.12 -m pip install -r requirements-lock.txt`; não exige instalação editável do projeto. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado. Por padrão não inclui chave; `--include-env` é a opção explícita para o pacote privado. Dados locais de execução não são incluídos. Nenhum agendamento foi criado nesta máquina.
 

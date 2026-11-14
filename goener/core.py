@@ -416,7 +416,7 @@ class Config:
     ai_provider: str = "gemini"
     ai_model: str = "gemini-3.8-flash"
     ai_fallback_models: list[str] = field(
-        default_factory=lambda: ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"]
+        default_factory=lambda: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
     )
     ai_document_mode: str = "completo"
     ai_thinking_level: str = "low"
