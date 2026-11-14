@@ -66,11 +66,11 @@ def one_page(path: Path, summary: dict) -> None:
 
     paragraph("O que foi automatizado", True)
     paragraph(
-        "Um único comando lê a pasta de entrada, extrai banco, conta, competência e saldo final de PDF, Excel e imagem e preenche o modelo fornecido. A execução gera planilha, log, evidências por arquivo e um relatório local filtrável. Não há leitura manual pelo chat nem ajuste manual da base."
+        "Um único comando lê a pasta de entrada, extrai banco, conta, competência e saldo final de PDF, Excel e imagem e preenche o modelo fornecido. A execução gera planilha, log, evidências por arquivo e relatório filtrável. Aplica retenções e exclusões nos totais, preserva uma linha por arquivo e entrega as ressalvas sem aguardar intervenção humana. Os extratos originais são preservados."
     )
     paragraph("Fluxo e controles", True)
     paragraph(
-        "Entrada &rarr; hash e limites &rarr; leitura direta ou OCR local &rarr; conciliação das movimentações &rarr; duplicidades &rarr; planilha e log &rarr; reabertura, conferência e publicação. Há checkpoint por conteúdo, bloqueio de execução concorrente, retries de leitura, interruptor STOP e modo estrito. O original permanece intacto."
+        "Entrada &rarr; hash e limites &rarr; leitura direta ou OCR &rarr; conciliação e competência &rarr; duplicidades &rarr; IA nas exceções &rarr; medidas no consolidado &rarr; validação e publicação. Há cache de extração e análises, controle de cotas, bloqueio de execução concorrente, retries, interruptor STOP e modo estrito. Cópias não entram na soma e inconsistências ficam retidas com ressalva."
     )
     paragraph("Resultado do lote fornecido", True)
     counts = summary["statuses"]
