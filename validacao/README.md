@@ -48,3 +48,12 @@ O hash exato do executável e os tempos medidos estão em `executavel.json`. Par
 Após o bloqueio registrado da versão 1.8.0, o usuário iniciou o mesmo binário e a execução concluiu com os 17 arquivos. O resultado e a conferência dos hashes foram registrados em `interface.json`. Não se identificou nos eventos a causa da liberação na segunda tentativa; o registro de bloqueio original foi preservado.
 
 A versão 1.8.1 publica em `resultados/`, com atalhos para HTML e Excel. Foram aprovados 112 testes e uma execução real do novo EXE pelo terminal nesta máquina (17 arquivos, cinco decisões em cache, nenhuma chamada HTTP nova). O registro está em `interface.json`, seção `output_visibility`; não representa validação em uma instalação limpa do Windows nem teste de abertura automática do navegador.
+
+
+## Revisões e painel local 1.9.0
+
+121 testes passaram na suíte completa. Após os últimos ajustes de apresentação, 14 verificações afetadas passaram novamente. Foram conferidos: correção, liberação, exclusão, saldo zero, campos obrigatórios, mudança do documento, preservação de revisão durante edição concorrente e hashes das cópias destacadas. O endpoint local exige token/origem, rejeita telas antigas e não serve `.env`.
+
+O formulário foi testado no navegador em uma cópia separada de Sol do Sertão: saldo confirmado de R$ 456.099,12, original R$ 457.179,12 preservado, Excel/HTML atualizados e zero novas chamadas à IA. Essa correção é um ensaio, não uma decisão aplicada ao resultado entregue. A base real permanece com 12 ok, 4 revisar e 1 falhou. A prévia da aba Revisões foi conferida, e as fórmulas do Resumo foram recalculadas no artifact-tool. Isso não equivale a homologação em todas as versões do Excel.
+
+Registros em `interface.json`, seção `reviews_panel`. O comando operacional rápido é `py -3.12 executar.py --update-reviews`; o painel é `py -3.12 executar.py --panel`. O teste funcional de HTTP está em `tests/test_painel.py`; ele usa servidor local e não consome API externa.

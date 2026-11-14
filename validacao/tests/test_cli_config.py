@@ -14,7 +14,8 @@ def test_cli_reports_configuration_error(tmp_path, capsys):
 
 
 def test_cli_forwards_operational_switches(monkeypatch, tmp_path, capsys):
-    def fake_run(config):
+    def fake_run(config, *, reviews_only=False):
+        assert not reviews_only
         assert config.period == "2026-09"
         assert not config.cache_enabled and not config.ocr_enabled and config.strict
         return (

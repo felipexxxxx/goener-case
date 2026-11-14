@@ -69,7 +69,7 @@ def one_page(path: Path, summary: dict) -> None:
 
     paragraph("O que foi automatizado", True)
     paragraph(
-        "Um executável Windows sem instalação de Python, ou um comando, lê a pasta de entrada, extrai banco, conta, competência e saldo final de PDF, Excel e imagem e preenche o modelo fornecido. A execução gera planilha, log, evidências por arquivo e relatório filtrável. Aplica retenções e exclusões nos totais, preserva uma linha por arquivo e entrega as ressalvas sem aguardar intervenção humana. Os extratos originais são preservados."
+        "Um executável Windows sem instalação de Python, ou um comando, lê a pasta de entrada, extrai banco, conta, competência e saldo final de PDF, Excel e imagem e preenche o modelo fornecido. A execução gera planilha, log, evidências por arquivo e relatório filtrável. Aplica retenções e exclusões nos totais, preserva uma linha por arquivo e entrega as ressalvas sem aguardar intervenção humana. Os extratos originais são preservados. O painel local permite registrar revisões e atualizar Excel e HTML juntos; cópias destacadas facilitam localizar divergências."
     )
     paragraph("Fluxo e controles", True)
     paragraph(
@@ -88,11 +88,11 @@ def one_page(path: Path, summary: dict) -> None:
     manual = summary["files"] * (entry + checking) / 60
     difference = manual - summary["duration_seconds"] / 3600
     paragraph(
-        f"Referência manual informada pelo responsável, por amostragem de um arquivo: {entry:g} min para preencher + {checking:g} min para conferir os valores. Projeção para {summary['files']} arquivos: <b>{manual:.2f} h</b>. Processamento do robô nesta execução: <b>{summary['duration_seconds']:.2f} s</b>. Diferença projetada na consolidação: <b>{difference:.2f} h por lote</b>. A automação não auditou a cronometragem manual; uma amostra não representa todos os formatos. Não se estima revisão humana nem espera por terceiros. Cache não representa uma primeira execução. A análise detalhada de tempo fica reservada ao futuro BI; não aparece no HTML."
+        f"Referência manual informada pelo responsável, por amostragem de um arquivo: {entry:g} min para preencher + {checking:g} min para conferir os valores. Projeção para {summary['files']} arquivos: <b>{manual:.2f} h</b>. Processamento do robô nesta execução: <b>{summary['duration_seconds']:.2f} s</b>. Diferença projetada na consolidação: <b>{difference:.2f} h por lote</b>. A automação não auditou a cronometragem manual; uma amostra não representa todos os formatos. Não se estima revisão humana nem espera por terceiros. Cache não representa uma primeira execução. A referência de tempo fica no resumo JSON; não aparece no HTML."
     )
     paragraph("Limites e próximos passos", True)
     paragraph(
-        "Os layouts do case são cobertos; novos layouts exigem validação. Confiança de OCR e conciliação não autenticam o extrato. Valores com ressalva não entram no saldo aprovado e não são corrigidos automaticamente.<br/><b>1. P1:</b> definir origem, banco/conta/competência esperados, prazo e critério de fechamento completo.<br/><b>2. P2:</b> agendar verificação da pasta por mudanças e reconstruir o Excel por competência, sem duplicar linhas; evolução ainda não implementada.<br/><b>3. P3:</b> homologar correções, retomadas, layouts e IA; avaliar Power BI financeiro e de tempo como evolução futura."
+        "Os layouts do case são cobertos; novos layouts exigem validação. Confiança de OCR e conciliação não autenticam o extrato. Valores com ressalva não entram no saldo aprovado e não são corrigidos automaticamente.<br/><b>1. P1:</b> definir origem, banco/conta/competência esperados, prazo e critério de fechamento completo.<br/><b>2. P2:</b> agendar verificação da pasta por mudanças e reconstruir o Excel por competência, sem duplicar linhas; evolução ainda não implementada.<br/><b>3. P3:</b> homologar correções, retomadas, layouts e IA; ampliar a operação após validar os critérios de aprovação."
     )
     if y < 19 * mm:
         raise ValueError("Documento ultrapassou uma página; revisar o layout")
@@ -177,8 +177,8 @@ def build(
         if executable:
             z.write(executable, "goener-case/Goener.exe")
         payloads = {
-            p.name: p.read_bytes()
-            for p in sorted(run_dir.iterdir())
+            p.relative_to(run_dir).as_posix(): p.read_bytes()
+            for p in sorted(run_dir.rglob("*"))
             if p.is_file() and not p.name.startswith("~$")
         }
         if "relatorio.html" in payloads:

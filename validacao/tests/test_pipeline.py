@@ -110,7 +110,7 @@ def test_excel_output_does_not_turn_text_into_formulas(config):
     assert wb["Consolidado"]["A2"].data_type == "s"
     assert wb["Consolidado"]["B2"].data_type == "s"
     assert wb["Consolidado"]["E2"].value == 0
-    assert wb.sheetnames == ["Consolidado", "Resumo", "Instruções"]
+    assert wb.sheetnames == ["Consolidado", "Resumo", "Revisões", "Instruções"]
 
 
 def test_empty_input_is_not_reported_as_success(config):

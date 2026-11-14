@@ -28,9 +28,9 @@ O executável inclui o interpretador Python, bibliotecas e modelos OCR. Foi cons
 - **`consolidado.xlsx`** é a cópia da última planilha gerada. Feche-a antes de rodar novamente para permitir a atualização dessa cópia.
 - As pastas com o identificador de cada execução guardam os respectivos Excel, HTML, logs e evidências. Se a cópia acima estiver aberta, a nova planilha continua disponível dentro da pasta da execução.
 
-Por duplo clique no EXE, o relatório abre no navegador ao concluir. Pelo terminal, o programa informa os caminhos. `resultados/latest.json` identifica a última publicação. Saídas antigas em `.local/outputs/` continuam preservadas; os relatórios gerados não são enviados ao Git. Não há agendamento nem monitoramento automático instalados nesta versão.
+Por duplo clique no EXE, o painel local abre no navegador ao concluir. Mantenha o processo aberto para salvar revisões pelo formulário. O HTML salvo continua disponível para consulta sem o processo aberto. Pelo terminal, o programa informa os caminhos. `resultados/latest.json` identifica a última publicação. Saídas antigas em `.local/outputs/` continuam preservadas; os relatórios gerados não são enviados ao Git. Não há agendamento nem monitoramento automático instalados nesta versão.
 
-A versão **1.8.1** torna a saída visível em `resultados/` e abre o HTML ao concluir por duplo clique. **112 testes passaram**, incluindo a publicação dos atalhos e o caso de a cópia do Excel estar aberta. O EXE 1.8.1 também foi executado pelo terminal nesta máquina: 17 arquivos processados e resultados publicados; a abertura automática do navegador por duplo clique ainda não foi verificada nesta versão.
+O histórico de validação da versão **1.8.1** registra a saída visível em `resultados/` e abre o HTML ao concluir por duplo clique. **112 testes passaram**, incluindo a publicação dos atalhos e o caso de a cópia do Excel estar aberta. O EXE 1.8.1 também foi executado pelo terminal nesta máquina: 17 arquivos processados e resultados publicados; a abertura automática do navegador por duplo clique ainda não foi verificada nesta versão.
 
 ## Executar pelo código-fonte
 
@@ -69,7 +69,7 @@ A pasta `entrega/` mantém três arquivos: **ZIP da automação, consolidado Exc
 
 | Saída por execução | Finalidade |
 | --- | --- |
-| `consolidado.xlsx` | Aba Consolidado com as oito colunas obrigatórias, Resumo com fórmulas e Instruções preservada. |
+| `consolidado.xlsx` | Aba Consolidado com as oito colunas obrigatórias, Resumo com fórmulas, Revisões para decisões e Instruções preservada. |
 | `relatorio.html` | Visão geral financeira, composição do saldo por banco, busca, filtros, IA, medidas aplicadas e acesso ao original. Sem análise de tempo. |
 | `execucao.log` e `execucao.jsonl` | Eventos, duração, tentativas e conclusão por arquivo. |
 | `evidencias.json` | Extração, conciliação, origem dos valores e resposta validada da IA. |
@@ -80,11 +80,51 @@ As oito colunas são **Arquivo, Banco, Conta, Período, Saldo final, Formato de 
 
 O lote fornecido contém **17 arquivos: 12 ok, 4 revisar e 1 falhou**, com saldo aprovado de **R$ 4.114.372,29**. `EXT_102026_LagoaAzul (1).pdf` é cópia exata do original sem sufixo, identificada por SHA-256; permanece registrada e fora da soma. Também há possível lançamento repetido, divergência de R$ 1.080,00 em Sol do Sertão, extrato de setembro num lote de outubro e comunicado sem saldo. Nenhum saldo é corrigido para fazer a conciliação fechar.
 
-### Editar a planilha
+### Painel interativo da versão 1.9.0
 
-A aba Consolidado é uma tabela Excel chamada `Extratos`. Edite os valores nessa tabela; para acrescentar ou remover registros, use Inserir/Excluir linhas da tabela. O Resumo recalcula no Excel. A célula amarela B3 escolhe o mês; o total usa somente status `ok` dessa competência. Filtros visuais não mudam o total geral. O status tem lista de opções e cores dinâmicas.
+Execute **Goener.exe** para processar e abrir o painel; ou **Abrir painel.cmd** para abrir os resultados existentes. No painel, clique em **Revisar este arquivo**, preencha a decisão e clique em **Salvar e atualizar**. O programa mantém o Excel e o HTML sincronizados. Deixe a janela do robô aberta enquanto usa esses botões. A execução automática pela pasta continua disponível pelos mesmos parâmetros de terminal, sem intervenção manual entre etapas.
 
-Marcar `ok` é uma liberação manual sob responsabilidade do revisor: as fórmulas não repetem hash, OCR, conciliação ou IA. As observações descrevem a execução original. Salve uma cópia revisada; editar o Excel não atualiza o HTML, e uma nova execução não importa essas alterações.
+### Conferir e corrigir sem perder o histórico
+
+Use sempre **`resultados/consolidado.xlsx`** como planilha de trabalho. A aba **Consolidado** mantém as oito colunas obrigatórias; a aba **Resumo** mantém as fórmulas. A nova aba **Revisões** é a entrada das decisões humanas.
+
+1. No HTML, clique em **Abrir cópia destacada**. Os trechos numerados têm explicação visível ao lado. O original não é alterado.
+2. Na aba **Revisões**, encontre o arquivo e preencha somente as colunas amarelas **F a J**: decisão, saldo confirmado quando necessário, justificativa, responsável e data.
+3. **Salve e feche o Excel.** Execute **`Abrir painel.cmd`**, ao lado de `Goener.exe`. O atalho pede uma confirmação e abre o painel local, onde o botão **Revisar este arquivo** permite salvar e atualizar sem reexecução manual.
+4. No painel, clique em **Salvar e atualizar** após preencher o formulário, ou execute `--update-reviews` se a decisão já foi registrada no Excel. O robô valida as decisões e publica Excel e HTML atualizados juntos em uma nova pasta do histórico. Abra `resultados/relatorio.html` ou use o link na célula A3 da aba Revisões.
+
+| Decisão | Resultado após atualizar |
+| --- | --- |
+| Pendente | Mantém o resultado das regras e da IA, sem aplicar uma decisão humana. |
+| Liberar | Inclui o saldo original após conferência registrada. Deixe Saldo confirmado vazio. |
+| Corrigir e liberar | Usa o Saldo confirmado, inclusive zero, preservando o original e a justificativa. |
+| Excluir | Mantém o registro e o histórico, sem incluir o saldo nos totais. |
+
+Justificativa, responsável e data são obrigatórios para decisões diferentes de Pendente. Data aceita célula de data do Excel, `DD/MM/AAAA` ou ISO. Cópias exatas, outro mês e documentos sem identificação/saldo válidos não podem ser liberados por essa aba: substitua o documento ou ajuste a competência do processamento completo. Uma divergência pode ser liberada ou corrigida **por decisão humana explícita**; a IA sozinha não pode superar esse bloqueio.
+
+O comando equivalente, sem atalho, é:
+
+```powershell
+.\Goener.exe --update-reviews
+# Alternativa com Python:
+py -3.12 executar.py --update-reviews
+```
+
+Essa atualização reaproveita a extração e a análise anteriores, **sem novas chamadas à IA nem nova extração financeira**. Confere os hashes dos documentos, lê Revisões e regenera fórmulas, relatório e cópias visuais; PDF digitalizado pode exigir OCR somente para localizar as marcações. Se houver documento novo, removido ou alterado, competência ou modo de IA diferente, execute o fluxo completo. Revisões anteriores só valem para o mesmo nome, SHA-256 e fechamento; versões antigas permanecem na aba como histórico.
+
+Você também pode revisar **diretamente no HTML interativo**: execute `Goener.exe --panel` ou `py -3.12 executar.py --panel` e mantenha a janela aberta. O painel usa somente `127.0.0.1`, na própria máquina, sem nuvem, login de navegador ou dependências web adicionais. Escolha o arquivo, clique em **Revisar este arquivo**, preencha o formulário e salve. Ele registra a decisão na aba Revisões e chama o mesmo pipeline com `reviews_only=True`. O Excel precisa estar fechado. Uma cópia baixada pelo navegador é somente uma cópia: a base operacional continua em `resultados/consolidado.xlsx`.
+
+Abrir o HTML diretamente pelo Explorer continua sendo consulta: os botões de edição só aparecem no painel servido pelo robô. O painel não modifica código nem pede à IA para programar; as opções são fixas e validadas. O endpoint exige token por sessão e origem local, bloqueia acesso a `.env` e rejeita envio de uma tela antiga. O modo de revisão não faz novas chamadas à IA. Não exponha esse servidor na rede: ele foi feito para uso local por um operador.
+
+Uma célula do Excel não executa esse processo automaticamente: isso exigiria macro ou abertura de programa externo, com permissões próprias do Excel. O atalho evita macros. Não é necessário recompilar ou reempacotar o Python para aplicar decisões; recompilar o EXE só é necessário quando o código muda.
+
+Editar diretamente o **Consolidado** ainda recalcula as fórmulas do **Resumo** no Excel, mas essas edições não são importadas pelo robô. Para manter o HTML sincronizado, registre a mudança em **Revisões**. A célula B3 do Resumo é uma simulação do mês apenas dentro do Excel; o fechamento do robô continua definido no config.
+
+### Como funcionam os destaques
+
+As cópias ficam em `resultados/<execução>/destaques/`. PDFs e imagens recebem uma cópia PDF visual rasterizada, com grifos numerados e um quadro lateral de explicações; não substitui o arquivo original nem conserva suas assinaturas digitais ou a camada de texto original. Em PDF com texto, as posições vêm da extração local; nos digitalizados, do OCR, aceitando somente leituras com confiança de pelo menos 90%. Esse limiar não garante acerto. Sem referência localizável, o relatório informa que não há marcação segura. Nenhuma região é grifada por coordenada inventada pela IA.
+
+No caso Sol do Sertão, a cópia marca o último saldo das movimentações (**R$ 456.099,12**) e o saldo final declarado (**R$ 457.179,12**). A diferença de R$ 1.080,00 é uma inconsistência a conferir, não prova de qual valor deveria ser corrigido. Para Excel de origem, a cópia destaca e comenta a célula do saldo quando a extração fornece aba e endereço.
 
 ## Fluxo atual
 
@@ -101,8 +141,14 @@ flowchart TD
     H --> I
     G -- Sem resposta válida --> J[Registrar indisponibilidade; reter no automático]
     J --> I
-    I --> K[Excel, HTML, logs e evidências]
+    I --> R[Validar revisões humanas por documento, hash e mês]
+    R --> K[Excel com fórmulas, HTML, destaques, logs e evidências]
     K --> L[Validar e publicar sem aprovação manual entre etapas]
+    L --> M[Opcional: conferir ressalvas e preencher Revisões]
+    M --> N[Salvar e fechar Excel; atualizar com --update-reviews]
+    N --> R
+    L --> O[Painel local: formulário Revisar este arquivo]
+    O --> R
 ```
 
 O processamento é sequencial, sem chamadas paralelas. `Decimal` preserva os centavos. A conciliação compara saldo inicial + movimentos com o saldo final declarado. Cópias exatas e competência diferente são excluídas dos totais, sem apagar linhas ou originais. Suspeitas e divergências ficam retidas com explicação; o fluxo não espera intervenção humana para terminar.
@@ -163,7 +209,7 @@ entrega/             ZIP, consolidado e documentação de uma página
 .local/              execução e construção locais; fora do Git
 ```
 
-`goener/` mantém cinco módulos operacionais: `core.py`, `readers.py`, `ai.py`, `reporting.py` e `pipeline.py`; `report.html` é a apresentação e `entrega.py` prepara os arquivos de envio. A integração contínua está em `.github/`. Não há servidor web, banco remoto ou instalação de serviço Windows.
+`goener/` mantém sete módulos operacionais: `core.py`, `readers.py`, `ai.py`, `reporting.py`, `pipeline.py`, `revisoes.py` e `painel.py`; `report.html` é a apresentação e `entrega.py` prepara os arquivos de envio. A integração contínua está em `.github/`. O painel usa o servidor HTTP da biblioteca padrão do Python, apenas local. Não há hospedagem, banco remoto ou instalação de serviço Windows.
 
 Veja **[validacao/README.md](validacao/README.md)** para o histórico selecionado e como reproduzir os testes. Os registros antigos preservam as configurações, commits, logs e resultados das respectivas rodadas. A migração para o executável tem evidência própria; não se presume funcionamento apenas porque o empacotamento terminou.
 
@@ -179,7 +225,7 @@ py -3.12 -m goener.entrega --build-exe --include-env
 
 PyInstaller e hooks são fixados no `pyproject.toml`. Intermediários ficam em `.local/build/`; o binário em `.local/bin/Goener.exe`. `--exe .local/bin/Goener.exe` reutiliza um binário já construído. Sem `--include-env`, a chave não entra no ZIP. Fonte e configurações ficam legíveis no repositório; o executável não é proteção do código. Ele deve ser reconstruído quando o código operacional mudar. Distribua sempre o ZIP completo, não apenas o EXE sem seus arquivos externos.
 
-## Dados de tempo para o futuro BI
+## Referência de tempo e medição do robô
 
 O HTML é exclusivamente financeiro e operacional. Não contém painel de produtividade nem estimativa de revisão humana.
 
@@ -193,13 +239,13 @@ O `resumo.json` guarda separadamente, em `time_estimate`:
 - diferença projetada apenas para a etapa de consolidação;
 - indicação de cache, para não confundir reexecução com primeira execução.
 
-Não são estimados minutos de revisão humana com automação, espera pelo banco, recebimento ou implantação. A comparação e a apresentação dessas informações ficam reservadas à página de tempo do BI. Não há conversão para dinheiro.
+Não são estimados minutos de revisão humana com automação, espera pelo banco, recebimento ou implantação. Os metadados de tempo ficam no resumo JSON para uma análise futura; o case não depende de Power BI. Não há conversão para dinheiro.
 
 ## Próximos passos, por prioridade
 
 1. **P1 — Definir um critério mínimo de fechamento com o financeiro.** Cadastro por banco e conta ativa, competência esperada e prazo de entrega. Cada conta esperada precisa ter um extrato válido do mês, com saldo e identificação, sem bloqueio crítico. Cópias não contam duas vezes; recebido não significa validado. Contas ausentes mantêm o fechamento parcial. No prazo, publicar entrega com ressalvas sem chamá-la de completa. A quantidade de arquivos, sozinha, não comprova completude.
 2. **P2 — Agendar conferência da pasta e consolidar por mês.** Verificar a cada hora ou diariamente e comparar inclusões, alterações e remoções por hash. Mudança de código/configuração/competência, prazo atingido ou IA pendente com nova janela também podem exigir processamento. Reconstruir `resultados/AAAA-MM/consolidado.xlsx`, sem acrescentar linhas duplicadas; publicar somente após validação e preservar histórico. Revisões manuais ficam em cópia separada. Esta evolução ainda não está implementada.
-3. **P3 — Disponibilizar análise histórica no Power BI e homologar a operação.** Confirmar a origem usada pela empresa (SharePoint, OneDrive corporativo ou outra), publicar dados em estrutura estável e configurar atualização depois do robô. Ampliar layouts e avaliar decisões da IA com a gestão. Não há BI ou integração SharePoint implementados nesta versão.
+3. **P3 — Homologar a operação e as decisões.** Validar novos layouts, retomadas, revisões e critérios de aprovação com o financeiro; acompanhar erros da extração e decisões da IA antes de ampliar o uso automático.
 
 ```mermaid
 flowchart TD
@@ -210,18 +256,10 @@ flowchart TD
     D --> E[Comparar contas recebidas com cadastro esperado]
     E --> F[Publicar competência parcial ou completa]
     F --> G[Excel mensal e histórico de execuções]
-    G --> H[Power BI: financeiro e eficiência]
+    G --> H[Consulta e revisões pelo painel local]
 ```
 
 Este desenho é futuro. O processo só inclui recebimento sem trabalho manual se a origem abastecer a pasta automaticamente. Ausência de mudanças não significa que todos os documentos chegaram. O robô não autentica extratos nem substitui conciliação com o razão contábil.
-
-### Por que Power BI antes de um sistema web
-
-Para este case, a recomendação é usar o robô como produtor dos dados e o Power BI como leitura gerencial. Um sistema web acrescentaria upload, autenticação, hospedagem e manutenção antes de demonstrar mais valor financeiro. O Power BI tem [conector de pasta SharePoint](https://learn.microsoft.com/en-us/power-query/connectors/sharepoint-folder); publicação e atualização dependem de credenciais, infraestrutura e licenças disponíveis na empresa.
-
-Duas páginas são suficientes: **Financeiro**, com saldos por banco/conta, competência, histórico e ressalvas; **Tempo e operação**, com duração, arquivos processados, falhas, uso da IA, cache e horas estimadas liberadas. Não converter horas para dinheiro sem premissas aprovadas. Separar tempos reais do robô de hipóteses de trabalho humano, e execuções frias de reexecuções com cache.
-
-O financeiro deve escolher a última versão válida de cada competência, sem somar novamente o mesmo mês a cada reprocessamento. O histórico operacional preserva todas as execuções, identificadas por run_id. Atualização do BI deve ser configurada após a publicação dos dados pelo robô; salvar um arquivo na nuvem não garante atualização instantânea do relatório. [Atualização do Power BI](https://learn.microsoft.com/en-us/power-bi/connect-data/refresh-data).
 
 ## Referências
 

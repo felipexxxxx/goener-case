@@ -100,5 +100,50 @@
       },
       "http_attempts": 0
     }
+  },
+  "reviews_panel": {
+    "version": "1.9.0",
+    "full_suite_passed": 121,
+    "affected_checks_after_layout_changes": 14,
+    "production_run_id": "20261114T211754Z_08ad9096",
+    "production_files": 17,
+    "production_statuses": {
+      "ok": 12,
+      "falhou": 1,
+      "revisar": 4
+    },
+    "production_balance": "4114372.29",
+    "production_human_reviews": 0,
+    "production_http_attempts": 0,
+    "manifest_with_highlights_verified": true,
+    "browser_test": {
+      "isolated_copy": true,
+      "modal_opened": true,
+      "save_and_refresh": true,
+      "confirmed_balance": "456099.12",
+      "original_balance_preserved": "457179.12",
+      "human_reviews_applied": 1,
+      "no_new_ai_calls": true
+    },
+    "spreadsheet_engine": {
+      "baseline_formula_balance": "4114372.29",
+      "engine": "artifact-tool recalculation",
+      "visual_review": true
+    },
+    "pdf_visual_review": {
+      "two_references_marked": true,
+      "original_preserved": true
+    },
+    "security_checks": [
+      "session token",
+      "local origin",
+      "stale page rejected",
+      "credential path blocked",
+      "incomplete review rejected",
+      "original hash checked"
+    ],
+    "executable": {
+      "runtime_validation": "pending"
+    }
   }
 }

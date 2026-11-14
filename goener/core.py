@@ -138,11 +138,28 @@ class Result:
     cached: bool = False
     duplicate_of: str | None = None
     ai: dict = field(default_factory=dict)
+    human_review: dict = field(default_factory=dict)
+    highlight: dict = field(default_factory=dict)
+
+    @property
+    def rules_status(self) -> str:
+        levels = {i.severity for i in self.statement.issues}
+        return "falhou" if "falhou" in levels else "revisar" if "revisar" in levels else "ok"
 
     @property
     def status(self) -> str:
-        levels = {i.severity for i in self.statement.issues}
-        return "falhou" if "falhou" in levels else "revisar" if "revisar" in levels else "ok"
+        if self.human_review.get("state") == "applied":
+            return "revisar" if self.human_review["decision"] == "Excluir" else "ok"
+        if self.human_review.get("state") == "invalid":
+            return "falhou" if self.rules_status == "falhou" else "revisar"
+        return self.rules_status
+
+    @property
+    def effective_balance(self):
+        value = self.human_review.get("balance")
+        if self.human_review.get("state") == "applied" and value is not None:
+            return money(value)
+        return self.statement.closing
 
     @property
     def observation(self) -> str:
@@ -167,11 +184,24 @@ class Result:
                 "message", ""
             ):
                 notes.append("Bloqueio obrigatório: " + self.ai["policy_block"])
+        if self.human_review:
+            h = self.human_review
+            notes.append(h["message"])
+            if h.get("state") == "applied":
+                notes.append(
+                    f"Decisão humana: {h['decision']}. Original: {h['original_balance']}; saldo utilizado: {self.effective_balance}. Responsável: {h['reviewer']}; data: {h['date']}. Motivo: {h['reason']}"
+                )
         notes.append("Medida aplicada: " + self.applied_action)
         return human_text("\n".join(n for n in notes if n))
 
     @property
     def applied_action(self) -> str:
+        if self.human_review.get("state") == "applied":
+            return (
+                "Excluído dos totais por decisão humana registrada."
+                if self.human_review["decision"] == "Excluir"
+                else "Saldo confirmado e incluído por revisão humana; valor original preservado na aba Revisões e nas evidências."
+            )
         codes = {issue.code for issue in self.statement.issues}
         if self.duplicate_of:
             return "Cópia registrada e excluída dos totais."
@@ -262,7 +292,8 @@ class Result:
     def included(self, mode: str, period: str) -> bool:
         eligible = self.status == "ok" and not self.duplicate_of and self.statement.period == period
         return eligible and (
-            mode != "automatico"
+            self.human_review.get("state") == "applied"
+            or mode != "automatico"
             or self.ai.get("decision") == "considerar"
             or self.ai.get("routing") == "rules_passed"
         )
@@ -274,7 +305,7 @@ class Result:
             s.bank,
             s.account,
             s.period,
-            float(s.closing) if s.closing is not None else None,
+            float(self.effective_balance) if self.effective_balance is not None else None,
             self.format,
             self.status,
             self.observation,
@@ -290,6 +321,11 @@ class Result:
             "cached": self.cached,
             "duplicate_of": self.duplicate_of,
             "ai": self.ai,
+            "human_review": self.human_review,
+            "highlight": self.highlight,
+            "effective_balance": str(self.effective_balance)
+            if self.effective_balance is not None
+            else None,
             "applied_action": self.applied_action,
             "statement": self.statement.to_dict(),
         }

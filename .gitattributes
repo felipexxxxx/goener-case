@@ -10,3 +10,5 @@
 
 # Preserva bytes dos registros historicos para manter os hashes dos manifestos.
 validacao/execucoes/** -text
+
+*.cmd text eol=crlf

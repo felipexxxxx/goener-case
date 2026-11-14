@@ -21,6 +21,7 @@ from .ai import http_attempt_count, review
 from .core import Config, Result, Statement, classify_duplicates, load_config, validate
 from .readers import LocalOCR, extract
 from .reporting import estimate_effort, status_counts, write_html, write_workbook
+from .revisoes import apply_reviews, digest, read_reviews, write_highlights
 
 
 def atomic_json(path: Path, data: dict | list) -> None:
@@ -32,7 +33,7 @@ def atomic_json(path: Path, data: dict | list) -> None:
     os.replace(temporary, path)
 
 
-def publish_shortcuts(directory: Path, log) -> None:
+def publish_shortcuts(directory: Path, log, *, require_workbook=False) -> None:
     """Atalhos para a última execução; o histórico publicado permanece intacto."""
     targets = {
         "consolidado.xlsx": None,
@@ -53,6 +54,10 @@ def publish_shortcuts(directory: Path, log) -> None:
                 temporary.write_text(content, encoding="utf-8")
             os.replace(temporary, target)
         except OSError as exc:
+            if require_workbook and name == "consolidado.xlsx":
+                raise PermissionError(
+                    "Feche resultados/consolidado.xlsx e execute novamente; as revisões foram preservadas."
+                ) from exc
             log.event("SHORTCUT_UNAVAILABLE", file=name, message=str(exc), directory=str(directory))
         finally:
             temporary.unlink(missing_ok=True)
@@ -230,7 +235,7 @@ def process_file(
     return result
 
 
-def run(config: Config) -> tuple[Path, dict, int]:
+def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
     if not config.input_dir.is_dir():
         raise ValueError(f"Pasta de entrada inexistente: {config.input_dir}")
     if not config.template.is_file():
@@ -248,13 +253,45 @@ def run(config: Config) -> tuple[Path, dict, int]:
     start = time.perf_counter()
     started_at = datetime.now(UTC).isoformat()
     with RunLock(config.runtime_dir / "execution.lock"):
+        operational = config.output_dir / "consolidado.xlsx"
+        review_rows, operational_hash = read_reviews(operational)
         log.event("RUN_STARTED", version=__version__, period=config.period, files=len(files))
+        ocr = LocalOCR()
+        previous_results = {}
+        if reviews_only:
+            pointer = json.loads((config.output_dir / "latest.json").read_text(encoding="utf-8"))
+            previous_dir = Path(pointer["directory"]).resolve()
+            if previous_dir.parent != config.output_dir.resolve():
+                raise ValueError("A execução anterior não pertence à pasta de resultados.")
+            previous_summary = json.loads(
+                (previous_dir / "resumo.json").read_text(encoding="utf-8")
+            )
+            if (
+                previous_summary["period"] != config.period
+                or previous_summary["ai_mode"] != config.ai_mode
+            ):
+                raise ValueError("Competência ou modo mudou. Execute o processamento completo.")
+            manifest = json.loads((previous_dir / "manifesto.json").read_text(encoding="utf-8"))
+            if (
+                file_hash(previous_dir / "evidencias.json")
+                != manifest["artifacts"]["evidencias.json"]
+            ):
+                raise ValueError(
+                    "As evidências anteriores foram alteradas; execute o processamento completo."
+                )
+            data = json.loads((previous_dir / "evidencias.json").read_text(encoding="utf-8"))
+            if {row["file"] for row in data} != {p.name for p in files}:
+                raise ValueError("A pasta de entrada mudou; execute o processamento completo.")
+            previous_results = {row["file"]: row for row in data}
+            if any(file_hash(p) != previous_results[p.name]["sha256"] for p in files):
+                raise ValueError(
+                    "Um documento mudou; execute o processamento completo antes de revisar."
+                )
         cache = (
             Cache(config.runtime_dir / "extractions.sqlite3", config)
-            if config.cache_enabled
+            if config.cache_enabled and not reviews_only
             else None
         )
-        ocr = LocalOCR()
         results: list[Result] = []
         stopped = False
         try:
@@ -279,9 +316,27 @@ def run(config: Config) -> tuple[Path, dict, int]:
                     results.append(r)
                     log.event("FILE_CANCELLED", file=path.name)
                     continue
-                results.append(process_file(path, config, ocr, cache, log))
-            classify_duplicates(results)
-            review(results, config, log=log)
+                if reviews_only:
+                    old = previous_results[path.name]
+                    ai = dict(old["ai"])
+                    ai.update(attempts=[], cached=True)
+                    results.append(
+                        Result(
+                            path.name,
+                            old["sha256"],
+                            old["format"],
+                            Statement.from_dict(old["statement"]),
+                            cached=True,
+                            duplicate_of=old["duplicate_of"],
+                            ai=ai,
+                        )
+                    )
+                else:
+                    results.append(process_file(path, config, ocr, cache, log))
+            if not reviews_only:
+                classify_duplicates(results)
+                review(results, config, log=log)
+            apply_reviews(results, review_rows, config.period, log)
             stopped = stopped or config.stop_file.exists()
             for r in results:
                 log.event(
@@ -294,7 +349,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
                 )
             statuses = status_counts(results)
             approved = sum(
-                (r.statement.closing for r in results if r.included(config.ai_mode, config.period)),
+                (r.effective_balance for r in results if r.included(config.ai_mode, config.period)),
                 Decimal("0.00"),
             )
             exit_code = (
@@ -318,6 +373,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
                 "approved_balance": str(approved),
                 "approved_balance_rule": "Somente status ok, competência esperada e sem cópia de arquivo",
                 "stopped": stopped,
+                "reviews_only": reviews_only,
                 "exit_code": exit_code,
                 "python": platform.python_version(),
                 "dependencies": {
@@ -342,11 +398,20 @@ def run(config: Config) -> tuple[Path, dict, int]:
                         bool(r.ai.get("source_disagreements")) for r in results
                     ),
                 },
+                "human_reviews_applied": sum(
+                    r.human_review.get("state") == "applied" for r in results
+                ),
+                "human_reviews_invalid": sum(
+                    r.human_review.get("state") == "invalid" for r in results
+                ),
                 "included_files": sum(r.included(config.ai_mode, config.period) for r in results),
             }
             stage = config.output_dir / f".{run_id}.pending"
             stage.mkdir()
-            write_workbook(config.template, stage / "consolidado.xlsx", results, config.period)
+            write_highlights(stage, results, config, ocr, log)
+            write_workbook(
+                config.template, stage / "consolidado.xlsx", results, config.period, review_rows
+            )
             atomic_json(stage / "evidencias.json", [r.to_dict() for r in results])
             summary["duration_seconds"] = round(time.perf_counter() - start, 3)
             summary["time_estimate"] = estimate_effort(results, summary)
@@ -364,16 +429,24 @@ def run(config: Config) -> tuple[Path, dict, int]:
                 "algorithm": "SHA-256",
                 "inputs": {r.filename: r.sha256 for r in results},
                 "template_sha256": file_hash(config.template),
-                "artifacts": {p.name: file_hash(p) for p in sorted(stage.iterdir())},
+                "artifacts": {
+                    p.relative_to(stage).as_posix(): file_hash(p)
+                    for p in sorted(stage.rglob("*"))
+                    if p.is_file()
+                },
             }
             atomic_json(stage / "manifesto.json", manifest)
+            if (digest(operational) if operational.exists() else None) != operational_hash:
+                raise RuntimeError(
+                    "A planilha operacional mudou durante o processamento. Salve, feche e execute novamente; revisões preservadas."
+                )
             published = config.output_dir / run_id
             os.replace(stage, published)
+            publish_shortcuts(published, log, require_workbook=True)
             atomic_json(
                 config.output_dir / "latest.json",
                 {"run_id": run_id, "directory": str(published), "exit_code": exit_code},
             )
-            publish_shortcuts(published, log)
             log.event(
                 "RUN_FINISHED",
                 directory=str(published),
@@ -417,6 +490,16 @@ def main(argv=None) -> int:
     parser.add_argument(
         "--ai-scope", choices=["excecoes", "todos"], help="Quais arquivos enviar à IA"
     )
+    parser.add_argument(
+        "--update-reviews",
+        action="store_true",
+        help="Aplica Revisões e regenera Excel/HTML sem nova extração ou chamada de IA; exige originais inalterados",
+    )
+    parser.add_argument(
+        "--panel",
+        action="store_true",
+        help="Abre painel local para revisar pelo HTML; mantenha o processo aberto",
+    )
     args = parser.parse_args(argv)
     try:
         config = load_config(
@@ -430,7 +513,16 @@ def main(argv=None) -> int:
             ai_mode=args.ai_mode,
             ai_scope=args.ai_scope,
         )
-        directory, summary, code = run(config)
+        if args.panel:
+            from .painel import serve
+
+            if not (config.output_dir / "latest.json").exists():
+                run(config)
+            else:
+                run(config, reviews_only=True)
+            serve(config)
+            return 0
+        directory, summary, code = run(config, reviews_only=args.update_reviews)
         print(
             json.dumps(
                 {
@@ -454,12 +546,9 @@ def main(argv=None) -> int:
         print(f"Relatório: {directory / 'relatorio.html'}")
         print(f"Planilha: {directory / 'consolidado.xlsx'}")
         if getattr(sys, "frozen", False) and len(sys.argv) == 1:
-            try:
-                import webbrowser
+            from .painel import serve
 
-                webbrowser.open((directory / "relatorio.html").as_uri())
-            except Exception:
-                print("Abra o relatório na pasta resultados.")
+            serve(config)
         return code
     except (Exception, KeyboardInterrupt) as exc:
         print(f"ERRO: {type(exc).__name__}: {exc}", file=sys.stderr)

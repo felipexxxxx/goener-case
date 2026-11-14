@@ -29,6 +29,8 @@ HEADERS = [
 
 
 def needs_attention(result):
+    if result.human_review.get("state") == "applied":
+        return False
     return (
         result.status != "ok"
         or bool(result.ai.get("source_disagreements"))
@@ -145,11 +147,11 @@ def write_summary(wb, period):
     ws["B6"].number_format = '"R$" #,##0.00;[Red]-"R$" #,##0.00'
     ws["B6"].font = Font(name="Aptos", size=20, bold=True, color="003836")
     notes = [
-        "Como editar: altere os dados na tabela da aba Consolidado. As fórmulas desta aba recalculam no Excel.",
+        "Para sincronizar Excel e HTML: preencha a aba Revisões em resultados/consolidado.xlsx, salve, feche e reexecute o robô.",
         "Para incluir ou excluir registros, use Inserir/Excluir linhas da tabela. Não apague apenas o nome do arquivo.",
         "Ao marcar ok, você assume a liberação do registro. Confira cópias, competência e pendências antes de alterar o status.",
         "As fórmulas não refazem OCR, hash, conciliação nem análise de IA. As observações descrevem a execução original.",
-        "Salve uma cópia revisada. Alterações aqui não atualizam o HTML e não são reaproveitadas pelo robô na próxima execução.",
+        "Edite as colunas amarelas da aba Revisões. Edições diretas no Consolidado atualizam só este Excel e serão substituídas na reexecução.",
         "Origem: documentos do case na aba Consolidado. Cálculo: SOMASES e CONT.SES sobre a tabela Extratos.",
     ]
     for row, note in enumerate(notes, 17):
@@ -168,7 +170,11 @@ def write_summary(wb, period):
 
 
 def write_workbook(
-    template: Path, destination: Path, results: list[Result], period: str | None = None
+    template: Path,
+    destination: Path,
+    results: list[Result],
+    period: str | None = None,
+    review_rows: list | None = None,
 ) -> None:
     wb = load_workbook(template, keep_links=False)
     try:
@@ -266,6 +272,9 @@ def write_workbook(
             write_summary(
                 wb, period or next((r.statement.period for r in results if r.statement.period), "")
             )
+        from .revisoes import write_reviews
+
+        write_reviews(wb, results, review_rows or [], period or "")
         wb.calculation = CalcProperties(
             calcId=0, fullCalcOnLoad=True, forceFullCalc=True, calcMode="auto"
         )
@@ -395,7 +404,11 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
                 v for v in (s.bank, "Conta " + s.account if s.account else "", s.period) if v
             )
         )
-        amount = "R$ " + br(s.closing) if s.closing is not None else "Saldo não identificado"
+        amount = (
+            "R$ " + br(r.effective_balance)
+            if r.effective_balance is not None
+            else "Saldo não identificado"
+        )
         finding = (
             f"Cópia idêntica a {r.duplicate_of}. Excluída da soma."
             if r.duplicate_of
@@ -407,6 +420,26 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
                 else "Conferido automaticamente pelas regras."
             )
         )
+        human_block = ""
+        if r.human_review:
+            h = r.human_review
+            content = h["message"]
+            if h.get("state") == "applied":
+                content += f" {h['decision']} por {h['reviewer']}, em {h['date']}. Motivo: {h['reason']}. Valor original: {h['original_balance']}; saldo utilizado: {r.effective_balance}."
+                finding = "Revisão humana registrada: " + h["decision"]
+                action = "Conferência concluída pelo responsável; os achados originais continuam registrados."
+            human_block = "<p><b>Revisão humana:</b> " + html.escape(content) + "</p>"
+        highlighted_link = ""
+        if r.highlight.get("path"):
+            highlighted_link = (
+                '<a class="btn secondary" href="'
+                + html.escape(quote(r.highlight["path"], safe="/"), quote=True)
+                + '" target="_blank" rel="noopener">Abrir cópia destacada ↗</a><p class="caption">'
+                + html.escape(r.highlight["message"])
+                + "</p>"
+            )
+        elif r.highlight:
+            highlighted_link = '<p class="caption">' + html.escape(r.highlight["message"]) + "</p>"
         quote_block = (
             "<blockquote>" + html.escape(ref["quote"]) + "</blockquote>"
             if ref["quote"]
@@ -414,12 +447,31 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         )
         if r.included(summary.get("ai_mode", "off"), summary["period"]):
             bank = s.bank or "Banco não identificado"
-            bank_totals[bank] = bank_totals.get(bank, 0) + s.closing
+            bank_totals[bank] = bank_totals.get(bank, 0) + r.effective_balance
             bank_counts[bank] += 1
         if needs_attention(r):
             attention_links.append(
                 f'<button class="attention-link" data-open-file="{html.escape(r.filename, quote=True)}"><span class="attention-dot {r.status}"></span><span><b>{html.escape(s.bank or r.filename)}</b><small>{html.escape(finding)}</small></span><span class="arrow" aria-hidden="true">↗</span></button>'
             )
+        review_button = (
+            '<button class="btn review-open" hidden type="button" data-review-file="'
+            + html.escape(r.filename, quote=True)
+            + '" data-review-sha="'
+            + r.sha256
+            + '" data-run="'
+            + summary["run_id"]
+            + '" data-review-decision="'
+            + html.escape(r.human_review.get("decision", "Pendente"), quote=True)
+            + '" data-review-balance="'
+            + html.escape(r.human_review.get("balance") or "", quote=True)
+            + '" data-review-reason="'
+            + html.escape(r.human_review.get("reason", ""), quote=True)
+            + '" data-review-reviewer="'
+            + html.escape(r.human_review.get("reviewer", ""), quote=True)
+            + '" data-review-original="'
+            + html.escape(str(s.closing), quote=True)
+            + '">Revisar este arquivo</button>'
+        )
         rows.append(
             f'<details class="item" data-status="{r.status}" data-attention="{str(needs_attention(r)).lower()}" data-ai="{ai_state}" data-file="{html.escape(r.filename, quote=True)}">'
             f'<summary><span class="pill {r.status}">{labels[r.status]}</span><div><span class="filename">{html.escape(r.filename)}</span>'
@@ -427,8 +479,8 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
             f'<span class="amount">{amount}</span></summary><div class="body"><div class="reviewgrid"><section><h3>1. O que as regras encontraram</h3>{issues}</section>'
             f"<section><h3>2. Recomendação da IA</h3><p>{html.escape(ai_message)}</p></section></div>"
             f'<div class="reference"><h3>3. Onde conferir</h3><p><b>{html.escape(ref["where"])}</b></p><span class="caption">{html.escape(ref["origin"])}</span>{quote_block}'
-            f'<a class="btn secondary" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener">Abrir documento de origem ↗</a></div>'
-            f'<div class="explain"><b>4. Medida aplicada automaticamente</b><br>{html.escape(r.applied_action)}'
+            f'<a class="btn secondary" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener">Abrir documento de origem ↗</a>{highlighted_link}{review_button}</div>'
+            f'<div class="explain"><b>4. Medida aplicada automaticamente</b><br>{html.escape(r.applied_action)}{human_block}'
             f'<p class="caption">Ressalva para acompanhamento: {html.escape(action)}</p></div></div></details>'
         )
     pending = sum(needs_attention(r) for r in results)
@@ -473,7 +525,11 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         "REVIEW": pending - summary["statuses"].get("falhou", 0),
         "FAILED": summary["statuses"].get("falhou", 0),
         "RECEIVED_PERCENT": round(summary["statuses"].get("ok", 0) / max(len(results), 1) * 100, 1),
-        "STATUS_LABEL": "Gerado com ressalvas" if pending else "Sem ressalvas identificadas",
+        "STATUS_LABEL": "Gerado com ressalvas"
+        if pending
+        else "Pendências tratadas por revisão"
+        if summary.get("human_reviews_applied")
+        else "Sem ressalvas identificadas",
         "CACHE_LABEL": "Reexecução com cache"
         if summary.get("cache_hits", 0) or summary.get("ai_summary", {}).get("cached_decisions", 0)
         else "Execução sem cache",
@@ -494,7 +550,12 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         if summary["ai_mode"] == "consultivo"
         else "Automático: a decisão é aplicada no escopo configurado, respeitando as regras obrigatórias.",
     }
+    from .revisoes import DECISIONS
+
     document = Path(__file__).with_name("report.html").read_text(encoding="utf-8")
+    document = document.replace(
+        "__REVIEW_OPTIONS__", "".join("<option>" + html.escape(d) + "</option>" for d in DECISIONS)
+    )
     for key, value in values.items():
         document = document.replace("__" + key + "__", html.escape(str(value)))
     document = document.replace("__ROWS__", "".join(rows))
