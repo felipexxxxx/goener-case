@@ -160,6 +160,8 @@ A disponibilidade externa não é garantida. Quando uma análise não puder ser 
 
 **Validação real após a correção:** com Gemini 3.1 Flash-Lite e o modo automático padrão, as cinco exceções do lote receberam respostas JSON válidas, usando os documentos originais. Foram seis tentativas HTTP (um timeout seguido de recuperação), com zero análises indisponíveis no resultado final. O processamento levou 124,315 segundos nesta máquina, incluindo extração local. As leituras de saldo, conta e competência dos quatro extratos conferiram com os documentos; o comunicado foi reconhecido como não sendo extrato. A cópia foi excluída dos totais pela regra determinística mesmo com a recomendação de revisão da IA. Os 17 arquivos permaneceram registrados e o saldo incluído continuou em R$ 4.114.372,29.
 
+**Reexecução validada:** o mesmo lote reaproveitou as cinco análises válidas, com zero novas chamadas HTTP, zero análises indisponíveis e 0,225 segundo de processamento medido (instalação/inicialização do Python não entram nessa duração). Os 12 arquivos regulares continuaram dispensando IA. Os hashes dos 17 documentos de entrada permaneceram inalterados.
+
 ### Testar e preparar a entrega
 
 ```powershell
