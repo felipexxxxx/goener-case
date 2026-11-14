@@ -30,7 +30,7 @@ O executável inclui o interpretador Python, bibliotecas e modelos OCR. Foi cons
 
 Por duplo clique no EXE, o relatório abre no navegador ao concluir. Pelo terminal, o programa informa os caminhos. `resultados/latest.json` identifica a última publicação. Saídas antigas em `.local/outputs/` continuam preservadas; os relatórios gerados não são enviados ao Git. Não há agendamento nem monitoramento automático instalados nesta versão.
 
-A versão **1.8.1** torna a saída visível em `resultados/` e abre o HTML ao concluir por duplo clique. **112 testes passaram**, incluindo a publicação dos atalhos e o caso de a cópia do Excel estar aberta.
+A versão **1.8.1** torna a saída visível em `resultados/` e abre o HTML ao concluir por duplo clique. **112 testes passaram**, incluindo a publicação dos atalhos e o caso de a cópia do Excel estar aberta. O EXE 1.8.1 também foi executado pelo terminal nesta máquina: 17 arquivos processados e resultados publicados; a abertura automática do navegador por duplo clique ainda não foi verificada nesta versão.
 
 ## Executar pelo código-fonte
 

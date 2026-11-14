@@ -85,6 +85,20 @@
       "consolidado.xlsx"
     ],
     "frozen_double_click_opens_browser": true,
-    "new_executable_runtime": "pending"
+    "executable": {
+      "version": "1.8.1",
+      "sha256": "6a53ddd2265e25d93068fcffd1114230ecffa8da488b03ef458b89a3341ebc5a",
+      "build_success": true,
+      "returncode": 0,
+      "runtime_validation": "passed",
+      "run_id": "20261114T204956Z_041d336f",
+      "files": 17,
+      "statuses": {
+        "ok": 12,
+        "falhou": 1,
+        "revisar": 4
+      },
+      "http_attempts": 0
+    }
   }
 }
