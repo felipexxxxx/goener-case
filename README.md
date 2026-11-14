@@ -12,7 +12,7 @@ Automação em Python: recebe uma pasta com PDFs, Excel e imagens, lê o saldo f
 .\executar.ps1
 ```
 
-O script instala as dependências na primeira execução. Nas seguintes, reaproveita o ambiente. A instalação e o download inicial dos modelos OCR precisam de internet. Com a IA desligada, a leitura dos documentos acontece localmente.
+O script usa o Python 3.12 instalado no Windows (`py -3.12`), confere as dependências e instala as que faltarem nas versões fixadas. Não cria ambiente virtual nem exige ativação. As bibliotecas ficam na instalação selecionada do Python e são compartilhadas com outros projetos que a utilizem. A instalação e o download inicial dos modelos OCR precisam de internet. Com a IA desligada, a leitura dos documentos acontece localmente.
 
 O terminal mostra a pasta do resultado. `.local/outputs/latest.json` aponta para a última execução concluída. Cada execução preserva suas evidências. A pasta `entrega/` contém somente os três arquivos para envio: `goener_automacao.zip`, `consolidado.xlsx` e `documentacao_1_pagina.pdf`. O relatório, os logs e as evidências permanecem no resultado da execução e dentro do ZIP, em `resultado/`.
 
@@ -62,21 +62,22 @@ Edite `config.toml` para trocar pasta, competência, limites e modo de IA. Os ca
 
 ### Rodar diretamente pelo Python nesta máquina
 
-Com o ambiente já instalado, abra o PowerShell na pasta do projeto:
+Com o Python 3.12 instalado, prepare as dependências uma vez e execute:
 
 ```powershell
 cd C:\Users\felip\OneDrive\Desktop\goener
+py -3.12 -m pip install -r requirements-lock.txt
 $env:GEMINI_API_KEY = [Environment]::GetEnvironmentVariable('GEMINI_API_KEY', 'User')
-.\.venv\Scripts\python.exe -m goener
+py -3.12 -m goener
 ```
 
-A segunda linha carrega a chave já cadastrada no Windows, sem mostrá-la. `-m goener` executa a entrada Python do projeto (`goener/__main__.py`) e lê `config.toml`. Não execute `ai.py` ou `pipeline.py` isoladamente: são módulos internos. Para usar somente as regras locais:
+A linha de `GEMINI_API_KEY` carrega a chave já cadastrada no Windows, sem mostrá-la. `-m goener` executa a entrada Python do projeto (`goener/__main__.py`) e lê `config.toml`. Não execute `ai.py` ou `pipeline.py` isoladamente: são módulos internos. Para usar somente as regras locais:
 
 ```powershell
-.\.venv\Scripts\python.exe -m goener --ai-mode off
+py -3.12 -m goener --ai-mode off
 ```
 
-Em uma instalação nova, use primeiro `executar.ps1`, que prepara o ambiente. No Linux: `sh executar.sh --period 2026-10`.
+Nas próximas execuções basta `py -3.12 -m goener` no mesmo terminal. O atalho `executar.ps1` carrega a chave e confere as dependências automaticamente. Para outro executável compatível: `.\executar.ps1 -Python "C:\caminho\python.exe"`. No Linux: `sh executar.sh --period 2026-10`, usando Python 3.11 a 3.13 e uma instalação com permissão para instalar dependências; `PYTHON=python3.12 sh executar.sh` permite escolher a versão.
 
 ## Para manter
 
@@ -99,7 +100,7 @@ config.toml         parâmetros da execução
 requirements-lock.txt  versões fixadas das dependências
 ```
 
-`__init__.py` e `__main__.py` permitem executar `python -m goener`. `.github/` contém a integração contínua. `.venv/` guarda o ambiente Python. `.local/` guarda saídas, checkpoints, logs e arquivos locais anteriores; essas pastas não vão para o Git nem para o ZIP. O histórico das versões entregues continua disponível no Git.
+`__init__.py` e `__main__.py` permitem executar `python -m goener`. `.github/` contém a integração contínua. `.local/` guarda saídas, checkpoints, logs e arquivos locais anteriores; essa pasta não vai para o Git nem para o ZIP. O histórico das versões entregues continua disponível no Git.
 
 ### Fluxo e escolhas técnicas
 
@@ -224,14 +225,14 @@ A prioridade é preservada: quando o principal voltar a ficar disponível, pode 
 ### Testar e preparar a entrega
 
 ```powershell
-.\.venv\Scripts\python.exe -m ruff check goener tests
-.\.venv\Scripts\python.exe -m pytest --cov=goener --cov-report=term-missing
-.\.venv\Scripts\python.exe -m goener.entrega
+py -3.12 -m ruff check goener tests
+py -3.12 -m pytest --cov=goener --cov-report=term-missing
+py -3.12 -m goener.entrega
 ```
 
 Validação local da estrutura simplificada: **96 testes passaram**, incluindo OCR dos documentos do case. Os ensaios reais de leitura multimodal e failover estão registrados acima; não constituem garantia de disponibilidade futura. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
 
-A instalação manual usa apenas `requirements-lock.txt` e `pip install -e . --no-deps`. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado; não inclui chaves ou dados locais de execução. Nenhum agendamento foi criado nesta máquina.
+A execução pela pasta do projeto precisa apenas de `py -3.12 -m pip install -r requirements-lock.txt`; não exige instalação editável do projeto. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado; não inclui chaves ou dados locais de execução. Nenhum agendamento foi criado nesta máquina.
 
 ### Ganho estimado em horas
 
