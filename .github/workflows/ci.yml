@@ -32,14 +32,17 @@ jobs:
         run: python -m pytest --cov=goener --cov-report=xml --junitxml=test-results.xml -q
       - name: Executar automacao de ponta a ponta
         run: python -m goener --config config.toml --no-cache
-      - name: Guardar resultado e evidencias
+      - name: Guardar logs e evidencias tecnicas
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: validacao-${{ matrix.os }}
           include-hidden-files: true
           path: |
-            .local/outputs/
+            .local/outputs/*/execucao.log
+            .local/outputs/*/execucao.jsonl
+            .local/outputs/*/resumo.json
+            .local/outputs/*/evidencias.json
             test-results.xml
             coverage.xml
           retention-days: 14

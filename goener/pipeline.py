@@ -20,7 +20,7 @@ from . import EXTRACTOR_VERSION, __version__
 from .ai import http_attempt_count, review
 from .core import Config, Result, Statement, classify_duplicates, load_config, validate
 from .readers import LocalOCR, extract
-from .reporting import status_counts, write_html, write_workbook
+from .reporting import estimate_effort, status_counts, write_html, write_workbook
 
 
 def atomic_json(path: Path, data: dict | list) -> None:
@@ -323,6 +323,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
             write_workbook(config.template, stage / "consolidado.xlsx", results, config.period)
             atomic_json(stage / "evidencias.json", [r.to_dict() for r in results])
             summary["duration_seconds"] = round(time.perf_counter() - start, 3)
+            summary["time_estimate"] = estimate_effort(results, summary)
             atomic_json(stage / "resumo.json", summary)
             write_html(stage / "relatorio.html", summary, results)
             log.event(

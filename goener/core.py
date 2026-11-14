@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 import tomllib
 import unicodedata
@@ -426,7 +427,9 @@ class Config:
     ai_max_attempts: int = 3
     ai_batch_timeout_seconds: int = 300
     manual_minutes_per_file: float = 8.0
-    review_minutes_per_file: float = 3.0
+    manual_check_minutes_per_file: float = 2.0
+    manual_sample_files: int = 1
+    manual_sample_basis: str = "Amostragem manual informada pelo responsável: 8 minutos para preencher e 2 minutos para conferir os valores de um arquivo."
 
     def to_dict(self) -> dict:
         return {k: str(v) if isinstance(v, Path) else v for k, v in asdict(self).items()}
@@ -477,8 +480,27 @@ def load_config(path: Path, **overrides) -> Config:
         and 1 <= result.ai_batch_timeout_seconds <= 900
     ):
         raise ValueError("Limites de execução da IA inválidos")
-    if result.manual_minutes_per_file <= 0 or result.review_minutes_per_file < 0:
-        raise ValueError("Premissas de tempo inválidas")
+    if (
+        isinstance(result.manual_minutes_per_file, bool)
+        or not isinstance(result.manual_minutes_per_file, (int, float))
+        or not math.isfinite(result.manual_minutes_per_file)
+        or result.manual_minutes_per_file <= 0
+    ):
+        raise ValueError("Referência de tempo manual inválida")
+    if (
+        isinstance(result.manual_check_minutes_per_file, bool)
+        or not isinstance(result.manual_check_minutes_per_file, (int, float))
+        or not math.isfinite(result.manual_check_minutes_per_file)
+        or result.manual_check_minutes_per_file < 0
+    ):
+        raise ValueError("Referência de conferência manual inválida")
+    if (
+        isinstance(result.manual_sample_files, bool)
+        or not isinstance(result.manual_sample_files, int)
+        or result.manual_sample_files < 1
+        or not isinstance(result.manual_sample_basis, str)
+    ):
+        raise ValueError("Referência da amostragem inválida")
     for p in (result.output_dir, result.runtime_dir):
         if p == result.input_dir or p.is_relative_to(result.input_dir):
             raise ValueError("Saída e runtime devem ficar fora da pasta de entrada")

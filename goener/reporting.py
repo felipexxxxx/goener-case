@@ -43,6 +43,33 @@ def source_root(run_dir, input_dir):
         return Path(input_dir).resolve().as_uri()
 
 
+def estimate_effort(results, summary):
+    """Referência manual declarada e duração medida; dados de apoio ao BI, fora do HTML."""
+    cfg = summary.get("configuration", {})
+    minutes = cfg.get("manual_minutes_per_file", 8.0)
+    check_minutes = cfg.get("manual_check_minutes_per_file", 2.0)
+    manual_seconds = len(results) * (minutes + check_minutes) * 60
+    robot_seconds = summary["duration_seconds"]
+    return {
+        "version": "2",
+        "manual_entry_minutes": minutes,
+        "manual_check_minutes": check_minutes,
+        "manual_sample_minutes": minutes + check_minutes,
+        "manual_sample_files": cfg.get("manual_sample_files", 1),
+        "manual_sample_basis": cfg.get(
+            "manual_sample_basis", "Referência manual informada pelo responsável."
+        ),
+        "manual_source": "Declaração do responsável; a automação não auditou a cronometragem manual.",
+        "files": len(results),
+        "projected_manual_seconds": round(manual_seconds, 3),
+        "measured_robot_seconds": robot_seconds,
+        "projected_difference_seconds": round(manual_seconds - robot_seconds, 3),
+        "uses_extraction_cache": bool(summary.get("cache_hits", 0)),
+        "uses_ai_cache": bool(summary.get("ai_summary", {}).get("cached_decisions", 0)),
+        "scope": "Somente consolidação dos arquivos recebidos. Não estima revisão humana, espera por terceiros, implantação ou recebimento. Extrapolação de uma amostra não é média medida de todos os formatos. Reexecução com cache não representa primeira execução.",
+    }
+
+
 def write_summary(wb, period):
     if "Resumo" in wb.sheetnames:
         del wb["Resumo"]
@@ -284,7 +311,7 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         "DIVERGENCIA_SALDO_FINAL": "Peça um extrato atualizado ou confirme o saldo com o banco.",
         "ERRO_EXTRACAO": "Confirme se o documento é um extrato completo e envie uma nova cópia.",
     }
-    rows = []
+    rows, bank_totals, bank_counts, attention_links = [], {}, Counter(), []
     cfg = summary.get("configuration", {})
     input_dir = Path(cfg.get("input_dir", path.parent))
     source_base = source_root(path.parent, input_dir)
@@ -293,11 +320,30 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         "revisar": "IA sugere revisão",
         "nao_considerar": "IA sugere não considerar",
     }
-    for r in sorted(
-        results, key=lambda r: (not needs_attention(r), r.status != "falhou", r.filename.casefold())
-    ):
+
+    def priority(r):
+        codes = {i.code for i in r.statement.issues}
+        level = (
+            4
+            if r.duplicate_of
+            else 0
+            if codes
+            & {"CONCILIACAO_NAO_FECHA", "DIVERGENCIA_SALDO_FINAL", "DIVERGENCIA_MOVIMENTOS"}
+            else 1
+            if "FORA_COMPETENCIA" in codes
+            else 3
+            if r.statement.closing is None
+            else 2
+        )
+        return (not needs_attention(r), level, r.filename.casefold())
+
+    for r in sorted(results, key=priority):
         s = r.statement
-        messages = [plain(i.message) for i in s.issues]
+        messages = [
+            plain(i.message)
+            for i in s.issues
+            if i.code not in {"IA_RETIDO", "IA_DIVERGENCIA_ORIGINAL"}
+        ]
         action = (
             actions["ARQUIVO_DUPLICADO"]
             if r.duplicate_of
@@ -351,7 +397,9 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         )
         amount = "R$ " + br(s.closing) if s.closing is not None else "Saldo não identificado"
         finding = (
-            messages[0]
+            f"Cópia idêntica a {r.duplicate_of}. Excluída da soma."
+            if r.duplicate_of
+            else messages[0]
             if messages
             else (
                 "A IA apontou uma diferença na leitura do original."
@@ -364,8 +412,16 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
             if ref["quote"]
             else '<p class="caption">Não há trecho localizado disponível. Confira o documento completo.</p>'
         )
+        if r.included(summary.get("ai_mode", "off"), summary["period"]):
+            bank = s.bank or "Banco não identificado"
+            bank_totals[bank] = bank_totals.get(bank, 0) + s.closing
+            bank_counts[bank] += 1
+        if needs_attention(r):
+            attention_links.append(
+                f'<button class="attention-link" data-open-file="{html.escape(r.filename, quote=True)}"><span class="attention-dot {r.status}"></span><span><b>{html.escape(s.bank or r.filename)}</b><small>{html.escape(finding)}</small></span><span class="arrow" aria-hidden="true">↗</span></button>'
+            )
         rows.append(
-            f'<details class="item" data-status="{r.status}" data-attention="{str(needs_attention(r)).lower()}" data-ai="{ai_state}">'
+            f'<details class="item" data-status="{r.status}" data-attention="{str(needs_attention(r)).lower()}" data-ai="{ai_state}" data-file="{html.escape(r.filename, quote=True)}">'
             f'<summary><span class="pill {r.status}">{labels[r.status]}</span><div><span class="filename">{html.escape(r.filename)}</span>'
             f'<span class="meta">{meta}</span><span class="finding">{html.escape(finding)}</span><span class="ai-badge {ai_state}">{html.escape(ai_label)}</span></div>'
             f'<span class="amount">{amount}</span></summary><div class="body"><div class="reviewgrid"><section><h3>1. O que as regras encontraram</h3>{issues}</section>'
@@ -375,13 +431,15 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
             f'<div class="explain"><b>4. Medida aplicada automaticamente</b><br>{html.escape(r.applied_action)}'
             f'<p class="caption">Ressalva para acompanhamento: {html.escape(action)}</p></div></div></details>'
         )
-    cfg = summary.get("configuration", {})
-    minutes = cfg.get("manual_minutes_per_file", 8)
-    review_minutes = cfg.get("review_minutes_per_file", 3)
     pending = sum(needs_attention(r) for r in results)
-    manual = len(results) * minutes / 60
-    assisted = summary["duration_seconds"] / 3600 + pending * review_minutes / 60
-    saved = manual - assisted
+    largest_bank = max((abs(value) for value in bank_totals.values()), default=1) or 1
+    bank_rows = (
+        "".join(
+            f'<div class="bank-row"><div><b>{html.escape(bank)}</b><small>{bank_counts[bank]} arquivo(s) incluído(s)</small></div><strong>R$ {br(amount)}</strong><div class="bank-track"><span style="width:{float(abs(amount) / largest_bank) * 100:.3f}%"></span></div></div>'
+            for bank, amount in sorted(bank_totals.items(), key=lambda item: item[1], reverse=True)
+        )
+        or '<p class="muted">Nenhum saldo elegível nesta execução.</p>'
+    )
     months = [
         "janeiro",
         "fevereiro",
@@ -412,13 +470,18 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         if cfg.get("ai_scope") == "excecoes"
         else "IA em todo o lote",
         "ATTENTION": pending,
-        "REVIEW": summary["statuses"].get("revisar", 0),
+        "REVIEW": pending - summary["statuses"].get("falhou", 0),
         "FAILED": summary["statuses"].get("falhou", 0),
-        "SAVED": br(saved),
-        "MANUAL": br(manual),
-        "ASSISTED": br(assisted),
-        "MINUTES": minutes,
-        "REVIEW_MINUTES": review_minutes,
+        "RECEIVED_PERCENT": round(summary["statuses"].get("ok", 0) / max(len(results), 1) * 100, 1),
+        "STATUS_LABEL": "Gerado com ressalvas" if pending else "Sem ressalvas identificadas",
+        "CACHE_LABEL": "Reexecução com cache"
+        if summary.get("cache_hits", 0) or summary.get("ai_summary", {}).get("cached_decisions", 0)
+        else "Execução sem cache",
+        "MODE_LABEL": "Automático"
+        if summary.get("ai_mode") == "automatico"
+        else "Consultivo"
+        if summary.get("ai_mode") == "consultivo"
+        else "Regras locais",
         "DURATION": br(summary["duration_seconds"]),
         "RUN": summary["run_id"],
         "AI_ANALYZED": sum(r.ai.get("decision") in decisions for r in results),
@@ -435,6 +498,10 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
     for key, value in values.items():
         document = document.replace("__" + key + "__", html.escape(str(value)))
     document = document.replace("__ROWS__", "".join(rows))
+    document = document.replace("__BANKS__", bank_rows).replace(
+        "__ATTENTION_LINKS__",
+        "".join(attention_links) or '<p class="muted">Não há ressalvas nesta execução.</p>',
+    )
     path.write_text(document, encoding="utf-8")
 
 

@@ -19,3 +19,10 @@ entrega/**/*.zip
 ~$*.xlsx
 
 .local/
+
+# Relatorios gerados sao entregues localmente, nao versionados.
+entrega/*.xlsx
+entrega/*.pdf
+validacao/execucoes/**/*.html
+validacao/execucoes/**/*.xlsx
+validacao/execucoes/**/*.pdf

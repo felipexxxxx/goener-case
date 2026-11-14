@@ -227,3 +227,48 @@ def test_package_excludes_env_by_default_and_includes_only_when_requested(
     private = entrega.build(run_dir, tmp_path / "private", include_env=True)
     with zipfile.ZipFile(private) as z:
         assert secret in z.read("goener-case/.env").decode()
+
+
+def test_time_reference_for_bi_separates_sample_projection_and_measurement():
+    from goener.reporting import estimate_effort
+
+    rows = [Result(str(i), str(i), "PDF", Statement()) for i in range(17)]
+    report = estimate_effort(
+        rows,
+        {
+            "duration_seconds": 60,
+            "configuration": {
+                "manual_minutes_per_file": 8,
+                "manual_check_minutes_per_file": 2,
+                "manual_sample_files": 1,
+            },
+        },
+    )
+    assert report["manual_sample_minutes"] == 10
+    assert report["projected_manual_seconds"] == 10200
+    assert report["measured_robot_seconds"] == 60
+    assert report["projected_difference_seconds"] == 10140
+    assert "assisted_human_minutes" not in report
+    assert report["manual_sample_files"] == 1
+
+
+def test_html_does_not_include_time_estimate_or_manual_projection(config):
+    from goener.reporting import write_html
+
+    r = Result("extrato.pdf", "a", "PDF", Statement("Banco", "1", "2026-10", closing=money(10)))
+    summary = {
+        "period": "2026-10",
+        "duration_seconds": 1,
+        "approved_balance": "10.00",
+        "run_id": "test",
+        "statuses": {"ok": 1},
+        "time_estimate": {"projected_manual_seconds": 600, "manual_source": "NAO_EXIBIR_NO_HTML"},
+    }
+    config.output_dir.mkdir()
+    path = config.output_dir / "report.html"
+    write_html(path, summary, [r])
+    text = path.read_text(encoding="utf-8")
+    assert "NAO_EXIBIR_NO_HTML" not in text and "projected_manual_seconds" not in text
+    assert "capacidade liberada" not in text.lower() and "21 minutos" not in text.lower()
+    assert "Composição do saldo" in text and 'data-tab="files-panel"' in text
+    assert "__BANKS__" not in text and "__ROWS__" not in text

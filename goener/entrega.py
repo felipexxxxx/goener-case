@@ -82,14 +82,12 @@ def one_page(path: Path, summary: dict) -> None:
     )
     paragraph("Premissas e ganho estimado", True)
     cfg = summary.get("configuration", {})
-    manual_minutes = cfg.get("manual_minutes_per_file", 8)
-    review_minutes = cfg.get("review_minutes_per_file", 3)
-    exceptions = counts.get("revisar", 0) + counts.get("falhou", 0)
-    manual = summary["files"] * manual_minutes / 60
-    assisted = summary["duration_seconds"] / 3600 + exceptions * review_minutes / 60
-    saved = manual - assisted
+    entry = cfg.get("manual_minutes_per_file", 8)
+    checking = cfg.get("manual_check_minutes_per_file", 2)
+    manual = summary["files"] * (entry + checking) / 60
+    difference = manual - summary["duration_seconds"] / 3600
     paragraph(
-        f"Hipótese por arquivo: 2 min para abrir/localizar, 3 min para copiar os campos, 2 min para conferir e 1 min para registrar e organizar: {manual_minutes} min no total. Com {summary['files']} arquivos, são <b>{manual:.2f} h mensais</b>. Automação e revisão de {exceptions} pendências ({review_minutes} min por pendência): <b>{assisted:.2f} h</b>. Capacidade estimada liberada: <b>{saved:.2f} h/mês</b>. O tempo do robô é medido; os tempos humanos são premissas editáveis, a validar com a equipe. Não há conversão em dinheiro. Instalação e espera pelo emissor ficam fora da conta."
+        f"Referência manual informada pelo responsável, por amostragem de um arquivo: {entry:g} min para preencher + {checking:g} min para conferir os valores. Projeção para {summary['files']} arquivos: <b>{manual:.2f} h</b>. Processamento do robô nesta execução: <b>{summary['duration_seconds']:.2f} s</b>. Diferença projetada na consolidação: <b>{difference:.2f} h por lote</b>. A automação não auditou a cronometragem manual; uma amostra não representa todos os formatos. Não se estima revisão humana nem espera por terceiros. Cache não representa uma primeira execução. A análise detalhada de tempo fica reservada ao futuro BI; não aparece no HTML."
     )
     paragraph("Limites e próximos passos", True)
     paragraph(

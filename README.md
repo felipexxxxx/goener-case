@@ -51,12 +51,12 @@ py -3.12 executar.py --strict
 
 ## O que é entregue
 
-A pasta `entrega/` mantém três arquivos: **ZIP da automação, consolidado Excel e documentação de uma página**. O ZIP inclui o executável Windows, fonte, entradas e resultado de referência em `resultado/`. Testes e evidências históricas ficam agrupados em `validacao/`, inclusive no Git, separados da operação.
+A pasta `entrega/` mantém três arquivos: **ZIP da automação, consolidado Excel e documentação de uma página**. O ZIP inclui o executável Windows, fonte, entradas e resultado de referência em `resultado/`. Testes, logs e evidências técnicas ficam agrupados em `validacao/`, inclusive no Git, separados da operação. HTML, Excel e PDF gerados ficam apenas na entrega local e no ZIP privado; não são mais versionados. Os commits antigos continuam no histórico.
 
 | Saída por execução | Finalidade |
 | --- | --- |
 | `consolidado.xlsx` | Aba Consolidado com as oito colunas obrigatórias, Resumo com fórmulas e Instruções preservada. |
-| `relatorio.html` | Busca, filtros, pendências, IA, medidas aplicadas e referência ao original. |
+| `relatorio.html` | Visão geral financeira, composição do saldo por banco, busca, filtros, IA, medidas aplicadas e acesso ao original. Sem análise de tempo. |
 | `execucao.log` e `execucao.jsonl` | Eventos, duração, tentativas e conclusão por arquivo. |
 | `evidencias.json` | Extração, conciliação, origem dos valores e resposta validada da IA. |
 | `resumo.json` | Quantidades, saldo considerado, tempo, configuração e consumo de chamadas. |
@@ -165,15 +165,21 @@ py -3.12 -m goener.entrega --build-exe --include-env
 
 PyInstaller e hooks são fixados no `pyproject.toml`. Intermediários ficam em `.local/build/`; o binário em `.local/bin/Goener.exe`. `--exe .local/bin/Goener.exe` reutiliza um binário já construído. Sem `--include-env`, a chave não entra no ZIP. Fonte e configurações ficam legíveis no repositório; o executável não é proteção do código. Ele deve ser reconstruído quando o código operacional mudar. Distribua sempre o ZIP completo, não apenas o EXE sem seus arquivos externos.
 
-## Ganho estimado em horas
+## Dados de tempo para o futuro BI
 
-Hipótese editável: **8 minutos por arquivo** — abrir/localizar (2), copiar (3), conferir (2), registrar/organizar (1). Revisão: **3 minutos por pendência**. São premissas, não tempos observados na equipe.
+O HTML é exclusivamente financeiro e operacional. Não contém painel de produtividade nem estimativa de revisão humana.
 
-- Manual: `17 × 8 ÷ 60 = 2,27 h`.
-- Assistido: `duração medida ÷ 3600 + 5 × 3 ÷ 60`.
-- Capacidade liberada: diferença entre os dois.
+Referência informada pelo responsável por amostragem de um arquivo: **8 minutos para preencher + 2 minutos para conferir os valores = 10 minutos por arquivo**. A automação não auditou essa cronometragem; o formato/arquivo da amostra não foi identificado. A extrapolação não é uma média medida de todos os formatos.
 
-O tempo do robô varia com OCR, API e cache. Instalação/inicialização não entram na duração de processamento. Não há conversão da economia para dinheiro, nem histórico de meses suficiente para afirmar tendência.
+O `resumo.json` guarda separadamente, em `time_estimate`:
+
+- referência manual declarada e tamanho da amostra;
+- projeção para o volume: `17 × (8 + 2) = 170 minutos`, ou 2h50;
+- duração do processamento efetivamente medida pelo robô;
+- diferença projetada apenas para a etapa de consolidação;
+- indicação de cache, para não confundir reexecução com primeira execução.
+
+Não são estimados minutos de revisão humana com automação, espera pelo banco, recebimento ou implantação. A comparação e a apresentação dessas informações ficam reservadas à página de tempo do BI. Não há conversão para dinheiro.
 
 ## Próximos passos, por prioridade
 
