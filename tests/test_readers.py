@@ -86,3 +86,5 @@ def test_images_read_and_reconcile_without_manual_values(config):
         if filename.startswith("print_serra"):
             assert s.period == "2026-09"
             assert any(i.code == "FORA_COMPETENCIA" for i in s.issues)
+        else:
+            assert not s.issues, filename

@@ -304,23 +304,13 @@ class LocalOCR:
         return self._engine
 
     def words(self, image: Image.Image, page: int = 1) -> list[dict]:
-        # Tiras sobrepostas preservam a resolução de prints longos. Nada é enviado à rede.
+        # A leitura integral mantém o contexto dos cartões. Nada é enviado à rede.
         words: list[dict] = []
-        for top in range(0, image.height, 800):
-            crop = image.crop((0, max(0, top - 70), image.width, min(image.height, top + 900)))
-            offset = max(0, top - 70)
-            result = self.engine()(crop)
-            if result.txts is None:
-                continue
+        result = self.engine()(image)
+        if result.txts is not None:
             for text, score, box in zip(result.txts, result.scores, result.boxes, strict=True):
                 x0, x1 = float(box[:, 0].min()), float(box[:, 0].max())
-                y0, y1 = float(box[:, 1].min()) + offset, float(box[:, 1].max()) + offset
-                center = (y0 + y1) / 2
-                if any(
-                    abs((w["top"] + w["bottom"]) / 2 - center) < 13 and abs(w["x0"] - x0) < 30
-                    for w in words
-                ):
-                    continue
+                y0, y1 = float(box[:, 1].min()), float(box[:, 1].max())
                 words.append(
                     {
                         "text": str(text),

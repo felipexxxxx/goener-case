@@ -118,7 +118,7 @@ Os leitores retornam o mesmo contrato `Statement`. CLI e uma futura API podem ch
 
 - **Excel:** identifica as duas estruturas do case pelos cabeçalhos, preserva contas como texto e lê os valores sem executar fórmulas. Fórmulas, macros e relacionamentos externos são rejeitados.
 - **PDF:** usa texto e posições das colunas. O débito é interpretado pelo sufixo `D` ou pela coluna de débito. PDFs digitalizados usam OCR como alternativa; layouts novos podem exigir ajuste do leitor.
-- **Imagem:** usa RapidOCR com modelos PP-OCRv4 em CPU. Prints longos são lidos em tiras sobrepostas. Quando um sinal monetário desaparece na primeira leitura, a região é relida ampliada. Se o sinal continuar incerto, o arquivo exige revisão.
+- **Imagem:** usa RapidOCR com modelos PP-OCRv4 em CPU, mantendo a posição dos textos. Quando um sinal monetário desaparece na primeira leitura, a região é relida ampliada. Se o sinal continuar incerto, o arquivo exige revisão.
 - **Conciliação:** compara cada saldo com o anterior mais a movimentação e compara o saldo final declarado com o último saldo e com a soma do período. Cálculos usam `Decimal`, com centavos.
 - **Duplicidades:** conteúdo igual é identificado por hash. Conteúdos diferentes para a mesma combinação banco/conta/período também exigem revisão. Lançamentos semelhantes são suspeitas, não exclusões automáticas.
 - **Segurança dos dados:** documentos são tratados como dados. Texto do arquivo não vira comando nem fórmula na saída. O HTML escapa os textos recebidos. Há limites de tamanho, páginas, pixels e descompactação.
