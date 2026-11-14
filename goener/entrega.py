@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import shutil
 import subprocess
@@ -107,11 +106,7 @@ def one_page(path: Path, summary: dict) -> None:
 def build(run_dir: Path, destination: Path) -> Path:
     summary = json.loads((run_dir / "resumo.json").read_text(encoding="utf-8"))
     destination.mkdir(parents=True, exist_ok=True)
-    result_dir = destination
-    result_dir.mkdir(exist_ok=True)
-    for p in run_dir.iterdir():
-        if p.is_file() and not p.name.startswith(chr(126) + chr(36)):
-            shutil.copy2(p, result_dir / p.name)
+    shutil.copy2(run_dir / "consolidado.xlsx", destination / "consolidado.xlsx")
     one_page(destination / "documentacao_1_pagina.pdf", summary)
     names = (
         subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True)
@@ -121,24 +116,12 @@ def build(run_dir: Path, destination: Path) -> Path:
     archive = destination / "goener_automacao.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
         for name in names:
-            if name and (not name.startswith("entrega/") or name == "entrega/gerar.py"):
+            if name and not name.startswith("entrega/"):
                 z.write(ROOT / name, "goener-case/" + name)
-        for p in destination.rglob("*"):
-            if (
-                p.is_file()
-                and not p.name.startswith(chr(126) + chr(36))
-                and p != archive
-                and p.name not in ("checksums.sha256", "gerar.py")
-            ):
-                z.write(p, "goener-case/entrega/" + p.relative_to(destination).as_posix())
-    checks = [
-        f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(destination).as_posix()}"
-        for p in sorted(destination.rglob("*"))
-        if p.is_file()
-        and not p.name.startswith(chr(126) + chr(36))
-        and p.name not in ("checksums.sha256", "gerar.py")
-    ]
-    (destination / "checksums.sha256").write_text("\n".join(checks) + "\n", encoding="utf-8")
+        for p in sorted(run_dir.iterdir()):
+            if p.is_file() and not p.name.startswith("~$"):
+                z.write(p, "goener-case/resultado/" + p.name)
+        z.write(destination / "documentacao_1_pagina.pdf", "goener-case/documentacao_1_pagina.pdf")
     return archive
 
 

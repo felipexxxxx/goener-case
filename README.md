@@ -14,7 +14,7 @@ Automação em Python: recebe uma pasta com PDFs, Excel e imagens, lê o saldo f
 
 O script instala as dependências na primeira execução. Nas seguintes, reaproveita o ambiente. A instalação e o download inicial dos modelos OCR precisam de internet. Com a IA desligada, a leitura dos documentos acontece localmente.
 
-O terminal mostra a pasta do resultado. `.local/outputs/latest.json` aponta para a última execução concluída. Cada execução preserva suas evidências. A pasta `entrega/` reúne uma única versão pronta para apresentar.
+O terminal mostra a pasta do resultado. `.local/outputs/latest.json` aponta para a última execução concluída. Cada execução preserva suas evidências. A pasta `entrega/` contém somente os três arquivos para envio: `goener_automacao.zip`, `consolidado.xlsx` e `documentacao_1_pagina.pdf`. O relatório, os logs e as evidências permanecem no resultado da execução e dentro do ZIP, em `resultado/`.
 
 | Arquivo gerado | Para que serve |
 | --- | --- |
@@ -64,8 +64,9 @@ goener/
   reporting.py      geração da planilha e do relatório
   pipeline.py       execução, cache, logs e linha de comando
   report.html       apresentação do relatório
+  entrega.py        empacotamento dos três arquivos para envio
 extratos/           entradas fictícias do case
-entrega/            uma única entrega e gerar.py para empacotá-la
+entrega/            apenas ZIP, planilha e documentação de uma página
 tests/             testes automatizados
 modelo.xlsx         modelo original fornecido
 config.toml         parâmetros da execução
@@ -115,9 +116,9 @@ O ajuste supervisionado deve usar exemplos classificados pela equipe e avaliaç�
 ### Testar e preparar a entrega
 
 ```powershell
-.\.venv\Scripts\python.exe -m ruff check goener tests entrega/gerar.py
+.\.venv\Scripts\python.exe -m ruff check goener tests
 .\.venv\Scripts\python.exe -m pytest --cov=goener --cov-report=term-missing
-.\.venv\Scripts\python.exe entrega/gerar.py
+.\.venv\Scripts\python.exe -m goener.entrega
 ```
 
 Validação local da estrutura simplificada: **60 testes passaram, com 90% de cobertura**, incluindo OCR dos documentos do case. O contrato Gemini também foi validado por chamada HTTP real no projeto gratuito desta máquina. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.

@@ -27,7 +27,7 @@ jobs:
       - name: Instalar projeto
         run: python -m pip install -e . --no-deps
       - name: Conferir codigo
-        run: python -m ruff check goener tests entrega/gerar.py
+        run: python -m ruff check goener tests
       - name: Testar regras e arquivos do case
         run: python -m pytest --cov=goener --cov-report=xml --junitxml=test-results.xml -q
       - name: Executar automacao de ponta a ponta
