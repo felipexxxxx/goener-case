@@ -60,7 +60,23 @@ Edite `config.toml` para trocar pasta, competência, limites e modo de IA. Os ca
 .\executar.ps1 -Validate      # executar os testes antes do lote
 ```
 
-No Linux: `sh executar.sh --period 2026-10`.
+### Rodar diretamente pelo Python nesta máquina
+
+Com o ambiente já instalado, abra o PowerShell na pasta do projeto:
+
+```powershell
+cd C:\Users\felip\OneDrive\Desktop\goener
+$env:GEMINI_API_KEY = [Environment]::GetEnvironmentVariable('GEMINI_API_KEY', 'User')
+.\.venv\Scripts\python.exe -m goener
+```
+
+A segunda linha carrega a chave já cadastrada no Windows, sem mostrá-la. `-m goener` executa a entrada Python do projeto (`goener/__main__.py`) e lê `config.toml`. Não execute `ai.py` ou `pipeline.py` isoladamente: são módulos internos. Para usar somente as regras locais:
+
+```powershell
+.\.venv\Scripts\python.exe -m goener --ai-mode off
+```
+
+Em uma instalação nova, use primeiro `executar.ps1`, que prepara o ambiente. No Linux: `sh executar.sh --period 2026-10`.
 
 ## Para manter
 
@@ -87,7 +103,26 @@ requirements-lock.txt  versões fixadas das dependências
 
 ### Fluxo e escolhas técnicas
 
-Entrada → limites e hash → leitura direta ou OCR → conciliação e competência → duplicidades → IA opcional → Excel, relatório e logs → conferência dos arquivos gerados → publicação.
+```mermaid
+flowchart TD
+    A[Arquivos na pasta extratos] --> B[Limites, hash e leitura local: PDF, Excel ou OCR]
+    B --> C[Validar saldo, conta, competência, conciliação e duplicidade]
+    C --> D{Precisa de IA pelo escopo?}
+    D -- Não ou IA desligada --> J[Aplicar regras financeiras]
+    D -- Sim --> E[Agrupar até 5 documentos, cada um com ID próprio]
+    E --> F{Resposta válida em cache?}
+    F -- Sim --> H[Validar JSON e associar cada resultado ao documento]
+    F -- Não --> G[HTTP Gemini: 3.8 → 3.1 Lite → 3.5 Lite]
+    G -- Resposta válida --> H
+    G -- Serviço indisponível --> I[Registrar indisponibilidade e reter saldo no automático]
+    H --> J
+    I --> J
+    J --> K[Consultivo: registrar orientação; automático: aplicar seleção e retenção]
+    K --> L[Gerar Excel, HTML, logs e evidências com todas as linhas]
+    L --> M[Validar e publicar os resultados]
+```
+
+O fluxo termina sem aprovação manual entre etapas. O escopo padrão envia apenas exceções. A IA complementa as regras; não remove bloqueios obrigatórios nem altera os documentos originais.
 
 - `Decimal` preserva centavos e aceita saldos negativos.
 - A conciliação compara saldo inicial + movimentações com o saldo final declarado.
@@ -132,9 +167,9 @@ A IA nunca sobrescreve banco, conta, período ou saldo do consolidado. No consul
 
 Gemini usa HTTPS `generateContent`, esquema JSON e chave no cabeçalho. Também é aceita `GOOGLE_API_KEY`. OpenAI usa a Responses API: altere o provedor para `openai`, escolha o modelo e configure `OPENAI_API_KEY`. Não há troca automática entre provedores. No Gemini, até três tentativas atendem HTTP 429/5xx, timeout e falha de rede, com espera crescente, variação aleatória e `Retry-After` numérico limitado a um dia e o `RetryInfo` do provedor. Erros permanentes não são repetidos. Bloqueio, cota esgotada, resposta parcial ou JSON inválido retêm o saldo no modo automático.
 
-Parâmetros editáveis: `ai_thinking_level = "low"` (Gemini 3; também aceita medium/high), `ai_timeout_seconds = 60`, `ai_max_attempts = 3` e `ai_batch_timeout_seconds = 300`. O timeout de rede é por operação; não é uma garantia rígida de duração total. O orçamento impede novas tentativas após o prazo e reduz o timeout ao tempo restante. Após três análises externas falharem seguidamente, as restantes ficam indisponíveis sem novas chamadas. O arquivo STOP é verificado antes dos próximos arquivos e tentativas.
+Parâmetros editáveis: `ai_thinking_level = "low"` (Gemini 3; também aceita medium/high), `ai_timeout_seconds = 60`, `ai_max_attempts = 3` e `ai_batch_timeout_seconds = 300`. O timeout de rede é por operação; não é uma garantia rígida de duração total. O orçamento impede novas tentativas após o prazo e reduz o timeout ao tempo restante. No modo individual, três análises externas com falha seguida abrem o circuito. No modo agrupado, cada grupo compartilha o resultado da chamada, respeitando orçamento e bloqueios de cota persistidos. O arquivo STOP é verificado antes dos próximos arquivos e tentativas.
 
-Os eventos `AI_SKIPPED`, `AI_STARTED`, `AI_THROTTLED`, `AI_CACHE_HIT`, `AI_ATTEMPT` e `AI_FINISHED` registram arquivo, duração, tentativa, código HTTP, status seguro do provedor e resultado. Corpos HTTP, documentos e chaves não são copiados para os logs. As evidências registram versão das instruções, hash do contexto, tipo/completude da fonte, resposta validada e discrepâncias. `ai_summary` no resumo separa tentativas HTTP, decisões válidas, arquivos indisponíveis e diferenças encontradas. Sucesso HTTP não equivale a uma análise aprovada.
+Os eventos `AI_BATCH_STARTED`, `AI_BATCH_FINISHED`, `AI_SKIPPED`, `AI_STARTED`, `AI_THROTTLED`, `AI_CACHE_HIT`, `AI_ATTEMPT` e `AI_FINISHED` registram arquivo, duração, tentativa, código HTTP, status seguro do provedor e resultado. Corpos HTTP, documentos e chaves não são copiados para os logs. As evidências registram versão das instruções, hash do contexto, tipo/completude da fonte, resposta validada e discrepâncias. `ai_summary` no resumo separa tentativas HTTP, decisões válidas, arquivos indisponíveis e diferenças encontradas. Sucesso HTTP não equivale a uma análise aprovada.
 
 Não salve chaves no código ou nos logs. A assinatura Google AI de estudante e o faturamento da API são separados. Verifique se o projeto está no Free Tier e tem cota. O programa não ativa faturamento. O experimento de navegador ChatGPT foi retirado para reduzir dependências e porque exigia confirmação humana.
 
@@ -150,21 +185,29 @@ O ajuste supervisionado deve usar exemplos classificados pela equipe e avaliaç�
 
 O painel do projeto Free Tier mostrou para Gemini 3.8 Flash: 5 RPM, 20 RPD e 250 mil TPM. Os picos observados foram 7 RPM e 33 RPD, ultrapassando os limites. Os testes e retries anteriores contribuíram para esse consumo; repetir em poucos segundos não recupera a cota diária. Uma chamada de diagnóstico também retornou 503 com mensagem explícita de alta demanda do modelo.
 
-O modelo passou a ser `gemini-3.1-flash-lite`: o painel atribuiu 15 RPM, 500 RPD e 250 mil TPM a esse modelo no mesmo projeto gratuito. Ele suporta PDF, imagem e JSON estruturado. O raciocínio low reduz latência nessa conferência delimitada; as contas financeiras continuam no Python. Nenhum faturamento foi habilitado e não há rotação de contas, chaves ou projetos.
+Na validação individual foi usado `gemini-3.1-flash-lite`: o painel atribuiu 15 RPM, 500 RPD e 250 mil TPM a esse modelo no mesmo projeto gratuito. Ele suporta PDF, imagem e JSON estruturado. O raciocínio low reduz latência nessa conferência delimitada; as contas financeiras continuam no Python. Nenhum faturamento foi habilitado e não há rotação de contas, chaves ou projetos.
 
 O arquivo local `gemini.sqlite3` guarda análises válidas, tentativas e bloqueios. A resposta é reutilizada por até 30 dias somente quando modelo, instruções, esquema, conteúdo da requisição e documentos forem iguais. Uma troca de período, evidências, instruções ou modelo invalida a chave. Respostas inválidas não entram no cache. A política consultiva/automática é reaplicada no momento de usar a resposta. `--no-cache` força uma nova análise, respeitando os limites.
 
 Os limites locais são 12 RPM e 450 RPD, deixando margem abaixo da cota observada. Cada tentativa é contada antes do envio, inclusive retries. A reserva e o espaçamento persistem entre execuções; reiniciar o robô não zera os contadores. Erro de cota diária interrompe novas tentativas e registra o horário da próxima janela em vez de insistir. Os limites por dia usam a meia-noite do Pacífico, conforme a API. Esses contadores não enxergam consumo por outros programas; o retorno do Google continua sendo a autoridade e também é tratado.
 
-A disponibilidade externa não é garantida. Quando uma análise não puder ser concluída, o consolidado é entregue com a retenção e a ressalva correspondentes. Em uma nova execução, extrações e análises válidas são reaproveitadas; somente o que ainda necessita de análise demanda novas chamadas. Isso mantém a geração automática sem inventar aprovação ou corrigir o saldo de um extrato por inferência.
+A disponibilidade externa não é garantida. Quando uma análise não puder ser concluída, o consolidado é entregue com a retenção e a ressalva correspondentes. Em uma nova execução, extrações e análises válidas são reaproveitadas; os grupos que ainda necessitam de análise demandam novas chamadas. Isso mantém a geração automática sem inventar aprovação ou corrigir o saldo de um extrato por inferência.
 
 **Validação real após a correção:** com Gemini 3.1 Flash-Lite e o modo automático padrão, as cinco exceções do lote receberam respostas JSON válidas, usando os documentos originais. Foram seis tentativas HTTP (um timeout seguido de recuperação), com zero análises indisponíveis no resultado final. O processamento levou 124,315 segundos nesta máquina, incluindo extração local. As leituras de saldo, conta e competência dos quatro extratos conferiram com os documentos; o comunicado foi reconhecido como não sendo extrato. A cópia foi excluída dos totais pela regra determinística mesmo com a recomendação de revisão da IA. Os 17 arquivos permaneceram registrados e o saldo incluído continuou em R$ 4.114.372,29.
 
 **Reexecução validada:** o mesmo lote reaproveitou as cinco análises válidas, com zero novas chamadas HTTP, zero análises indisponíveis e 0,225 segundo de processamento medido (instalação/inicialização do Python não entram nessa duração). Os 12 arquivos regulares continuaram dispensando IA. Os hashes dos 17 documentos de entrada permaneceram inalterados.
 
+### Vários documentos na mesma chamada
+
+O Gemini recebe por padrão **até cinco documentos em uma solicitação HTTP** (`ai_batch_size = 5`). Assim, as cinco exceções deste case cabem em um único pedido novo, se o serviço responder normalmente. Os 12 documentos sem pendências não são enviados. Cada documento e seu anexo têm um ID próprio; a resposta deve devolver exatamente um resultado por ID. O robô rejeita IDs desconhecidos, repetidos ou ausentes e evidências de outro documento.
+
+Este é um agrupamento no `generateContent` síncrono, sem serviço adicional ou fila assíncrona. Os grupos respeitam até 100 mil caracteres de contexto e 16 MiB de anexos serializados, além dos limites individuais. Se ultrapassar, o robô divide em mais solicitações; não recorta documentos. Configure `ai_batch_size = 1` para análises individuais; o máximo permitido é 10.
+
+**Uma chamada não significa consumo de um documento:** os tokens de todos os documentos e respostas continuam contando. Retentativas e failover podem gerar chamadas adicionais. O resumo conta cada tentativa HTTP compartilhada apenas uma vez, sem multiplicá-la pelo número de resultados. O cache pertence ao grupo completo: alterar um documento ou a composição do grupo exige nova análise desse grupo. Se o JSON do grupo for inválido, nenhuma decisão desse grupo é aplicada.
+
 ### Failover de modelos
 
-A ordem padrão é `gemini-3.8-flash` → `gemini-3.1-flash-lite` → `gemini-3.5-flash-lite`. Ela é definida por `ai_model` e `ai_fallback_models` em `config.toml`. Uma lista vazia desliga a alternância. Não há troca automática de provedor, conta, chave ou projeto.
+A ordem padrão é `gemini-3.8-flash` → `gemini-3.1-flash-lite` → `gemini-3.5-flash-lite`. Ela é definida por `ai_model` e `ai_fallback_models` em `config.toml`. O 3.1 vem antes do 3.5 porque foi validado nos cinco casos reais; o 3.5 foi testado inicialmente em um PDF. Essa ordem é operacional, não um ranking de qualidade: não foi feito um comparativo que demonstre que o 3.5 é pior. A ordem pode ser alterada após avaliar os mesmos documentos em ambos. Uma lista vazia desliga a alternância. Não há troca automática de provedor, conta, chave ou projeto.
 
 O principal é tentado primeiro, inclusive verificando o cache daquele modelo. Cota esgotada ou espera de cota superior a cinco segundos permite seguir para o próximo. Também há alternância para timeout, falha de rede, indisponibilidade HTTP 5xx e modelo não encontrado (404). Um modelo que falha por comunicação fica em pausa por 60 segundos; bloqueios de cota diária respeitam a janela diária. Cache válido continua podendo ser usado durante a pausa.
 
@@ -184,7 +227,7 @@ A prioridade é preservada: quando o principal voltar a ficar disponível, pode 
 .\.venv\Scripts\python.exe -m goener.entrega
 ```
 
-Validação local da estrutura simplificada: **89 testes passaram**, incluindo OCR dos documentos do case. A versão anterior teve chamadas HTTP reais válidas; a validação da versão multimodal é registrada abaixo, sem presumir homologação do lote inteiro. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
+Validação local da estrutura simplificada: **96 testes passaram**, incluindo OCR dos documentos do case. Os ensaios reais de leitura multimodal e failover estão registrados acima; não constituem garantia de disponibilidade futura. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
 
 A instalação manual usa apenas `requirements-lock.txt` e `pip install -e . --no-deps`. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado; não inclui chaves ou dados locais de execução. Nenhum agendamento foi criado nesta máquina.
 

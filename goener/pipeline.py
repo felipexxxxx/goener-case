@@ -17,7 +17,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from . import EXTRACTOR_VERSION, __version__
-from .ai import review
+from .ai import http_attempt_count, review
 from .core import Config, Result, Statement, classify_duplicates, load_config, validate
 from .readers import LocalOCR, extract
 from .reporting import status_counts, write_html, write_workbook
@@ -307,10 +307,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
                     "unavailable_files": sum(
                         r.ai.get("decision") == "indisponivel" for r in results
                     ),
-                    "http_attempts": sum(
-                        len(r.ai.get("attempts", r.ai.get("error", {}).get("attempts", [])))
-                        for r in results
-                    ),
+                    "http_attempts": http_attempt_count(results),
                     "source_disagreements": sum(
                         bool(r.ai.get("source_disagreements")) for r in results
                     ),

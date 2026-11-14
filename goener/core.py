@@ -410,6 +410,7 @@ class Config:
     retries: int = 2
     ai_mode: str = "automatico"
     ai_scope: str = "excecoes"
+    ai_batch_size: int = 5
     ai_provider: str = "gemini"
     ai_model: str = "gemini-3.8-flash"
     ai_fallback_models: list[str] = field(
@@ -449,6 +450,8 @@ def load_config(path: Path, **overrides) -> Config:
         raise ValueError("Modo de IA inválido")
     if result.ai_scope not in ("excecoes", "todos"):
         raise ValueError("Escopo de IA inválido")
+    if not isinstance(result.ai_batch_size, int) or not 1 <= result.ai_batch_size <= 10:
+        raise ValueError("Tamanho do lote de IA inválido")
     if result.ai_provider not in ("openai", "gemini"):
         raise ValueError("Provedor de IA inválido")
     if not isinstance(result.ai_fallback_models, list) or len(result.ai_fallback_models) > 4:

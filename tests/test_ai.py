@@ -637,3 +637,126 @@ def test_failover_preserves_provider_cooldown(config):
     request_gemini_failover({"issues": []}, config, requester=request)
     wait = state.reserve(config.ai_model, 5, 20)
     assert wait["category"] == "quota_rate" and wait["retry_at"] == until
+
+
+def batch_context():
+    return {
+        "documents": [
+            {"item_id": "original", "file_id": "same-sha", "issues": [{"code": "A"}]},
+            {"item_id": "copy", "file_id": "same-sha", "issues": [{"code": "B"}]},
+        ]
+    }
+
+
+def test_batch_validation_matches_identity_instead_of_array_order():
+    from goener.ai import validate_response
+
+    data = {
+        "results": [
+            {
+                "item_id": "copy",
+                "decision": "revisar",
+                "reason": "Conferir cópia",
+                "evidence_codes": ["B"],
+            },
+            {
+                "item_id": "original",
+                "decision": "revisar",
+                "reason": "Conferir original",
+                "evidence_codes": ["A"],
+            },
+        ]
+    }
+    result = validate_response(data, batch_context(), False)
+    assert result["results"][0]["item_id"] == "copy"
+    assert result["results"][1]["evidence_codes"] == ["A"]
+
+
+@pytest.mark.parametrize("bad", ["missing", "duplicate", "unknown", "wrong_evidence"])
+def test_batch_rejects_partial_mixed_or_unknown_results(bad):
+    from goener.ai import validate_response
+
+    rows = [
+        {
+            "item_id": "original",
+            "decision": "revisar",
+            "reason": "Conferir",
+            "evidence_codes": ["A"],
+        },
+        {"item_id": "copy", "decision": "revisar", "reason": "Conferir", "evidence_codes": ["B"]},
+    ]
+    if bad == "missing":
+        rows.pop()
+    elif bad == "duplicate":
+        rows[1] = dict(rows[0])
+    elif bad == "unknown":
+        rows[1]["item_id"] = "invented"
+    else:
+        rows[0]["evidence_codes"] = ["B"]
+    with pytest.raises(ValueError):
+        validate_response({"results": rows}, batch_context(), False)
+
+
+def test_grouped_review_makes_one_request_and_counts_it_once(config, monkeypatch):
+    from goener.ai import http_attempt_count
+
+    config.ai_mode = "automatico"
+    config.ai_document_mode = "dados"
+    config.ai_batch_size = 5
+    rows = [
+        Result(name, "same-sha", "PDF", Statement("Banco", name, "2026-10", closing=money(10)))
+        for name in ("original.pdf", "copia.pdf", "outro.pdf")
+    ]
+    for row in rows:
+        row.statement.issue("TEST", "Conferir")
+    calls = []
+
+    def request(context, cfg, **kwargs):
+        calls.append(context)
+        return {
+            "results": [
+                {
+                    "item_id": doc["item_id"],
+                    "decision": "revisar",
+                    "reason": doc["account"],
+                    "evidence_codes": ["TEST"],
+                }
+                for doc in reversed(context["documents"])
+            ],
+            "model": "test",
+            "attempts": [{"number": 1, "http_status": 200}],
+        }
+
+    monkeypatch.setattr("goener.ai.request_gemini_failover", request)
+    review(rows, config)
+    assert len(calls) == 1 and len(calls[0]["documents"]) == 3
+    assert len({doc["item_id"] for doc in calls[0]["documents"]}) == 3
+    assert [r.ai["reason"] for r in rows] == [r.filename for r in rows]
+    assert http_attempt_count(rows) == 1
+    assert all(r.ai["batch_size"] == 3 and r.statement.closing == money(10) for r in rows)
+
+
+def test_grouped_review_splits_at_configured_size(config, monkeypatch):
+    config.ai_mode = "consultivo"
+    config.ai_document_mode = "dados"
+    config.ai_batch_size = 2
+    rows = [Result(str(i), str(i), "PDF", Statement()) for i in range(3)]
+    calls = []
+
+    def request(context, cfg, **kwargs):
+        calls.append(len(context["documents"]))
+        return {
+            "results": [
+                {
+                    "item_id": doc["item_id"],
+                    "decision": "revisar",
+                    "reason": "Conferir",
+                    "evidence_codes": [],
+                }
+                for doc in context["documents"]
+            ]
+        }
+
+    monkeypatch.setattr("goener.ai.request_gemini_failover", request)
+    review(rows, config)
+    assert calls == [2, 1]

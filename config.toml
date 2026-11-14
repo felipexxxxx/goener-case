@@ -16,6 +16,7 @@ retries = 2
 stop_file = ".local/runtime/STOP"
 ai_mode = "automatico" # aplica retenções e exclusões no consolidado; não altera o extrato original
 ai_scope = "excecoes" # excecoes: somente revisar/falhou; todos: conferência adicional de todo o lote
+ai_batch_size = 5 # até 5 documentos por solicitação; 1 usa chamadas individuais
 ai_provider = "gemini" # gemini ou openai
 ai_model = "gemini-3.8-flash" # principal; para OpenAI: gpt-4.1-mini
 ai_fallback_models = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"] # ordem explícita; [] desliga failover

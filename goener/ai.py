@@ -280,6 +280,62 @@ def validate_source_check(value):
     return value
 
 
+def response_schema(context, has_source):
+    item = DOCUMENT_SCHEMA if has_source else SCHEMA
+    if "documents" not in context:
+        return item
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "results": {
+                "type": "array",
+                "items": {
+                    **item,
+                    "properties": {**item["properties"], "item_id": {"type": "string"}},
+                    "required": [*item["required"], "item_id"],
+                },
+            }
+        },
+        "required": ["results"],
+    }
+
+
+def validate_response(data, context, has_source):
+    if "documents" not in context:
+        required = DOCUMENT_SCHEMA["required"] if has_source else SCHEMA["required"]
+        if not isinstance(data, dict) or set(data) != set(required):
+            raise ValueError("Contrato inválido")
+        result = validate_decision(
+            {k: data[k] for k in SCHEMA["required"]}, {i["code"] for i in context["issues"]}
+        )
+        if has_source:
+            result["source_check"] = validate_source_check(data["source_check"])
+        return result
+    if (
+        not isinstance(data, dict)
+        or set(data) != {"results"}
+        or not isinstance(data["results"], list)
+    ):
+        raise ValueError("Contrato de lote inválido")
+    expected = {doc["item_id"]: doc for doc in context["documents"]}
+    seen, rows = set(), []
+    for entry in data["results"]:
+        if not isinstance(entry, dict):
+            raise ValueError("Item inválido")
+        item_id = entry.get("item_id")
+        if not isinstance(item_id, str) or item_id not in expected or item_id in seen:
+            raise ValueError("Identificador ausente, desconhecido ou repetido")
+        seen.add(item_id)
+        row = validate_response(
+            {k: v for k, v in entry.items() if k != "item_id"}, expected[item_id], has_source
+        )
+        rows.append({"item_id": item_id, **row})
+    if seen != set(expected):
+        raise ValueError("Lote incompleto")
+    return {"results": rows}
+
+
 def validate_decision(data, known_codes):
     if not isinstance(data, dict) or set(data) != set(SCHEMA["required"]):
         raise ValueError("Resposta fora do contrato JSON")
@@ -361,7 +417,7 @@ def request_gemini(
         raise AIError("context_too_large")
     generation = {
         "responseMimeType": "application/json",
-        "responseJsonSchema": DOCUMENT_SCHEMA if parts else SCHEMA,
+        "responseJsonSchema": response_schema(context, bool(parts)),
         "maxOutputTokens": 8192,
     }
     thinking = getattr(config, "ai_thinking_level", "high")
@@ -373,7 +429,17 @@ def request_gemini(
         thinking = "model_default"
     payload = {
         "systemInstruction": {
-            "parts": [{"text": INSTRUCTIONS + (DOCUMENT_INSTRUCTIONS if parts else "")}]
+            "parts": [
+                {
+                    "text": INSTRUCTIONS
+                    + (DOCUMENT_INSTRUCTIONS if parts else "")
+                    + (
+                        "\nLOTE: analise cada item_id isoladamente. Os documentos são rotulados pelo identificador. Não misture campos ou evidências entre arquivos. Retorne exatamente um resultado por item_id; páginas são relativas ao próprio documento."
+                        if "documents" in context
+                        else ""
+                    )
+                }
+            ]
         },
         "contents": [{"role": "user", "parts": [*parts, {"text": text}]}],
         "generationConfig": generation,
@@ -390,12 +456,8 @@ def request_gemini(
         if saved:
             result, created = saved
             try:
-                validate_decision(
-                    {k: result[k] for k in SCHEMA["required"]},
-                    {i["code"] for i in context["issues"]},
-                )
-                if parts:
-                    validate_source_check(result["source_check"])
+                required = response_schema(context, bool(parts))["required"]
+                validate_response({k: result[k] for k in required}, context, bool(parts))
             except (ValueError, KeyError, TypeError):
                 pass
             else:
@@ -519,14 +581,7 @@ def request_gemini(
     )
     try:
         data = json.loads(text)
-        required = DOCUMENT_SCHEMA["required"] if parts else SCHEMA["required"]
-        if not isinstance(data, dict) or set(data) != set(required):
-            raise ValueError()
-        decision = validate_decision(
-            {k: data[k] for k in SCHEMA["required"]}, {i["code"] for i in context["issues"]}
-        )
-        if parts:
-            decision["source_check"] = validate_source_check(data["source_check"])
+        decision = validate_response(data, context, bool(parts))
     except (ValueError, TypeError, KeyError):
         raise AIError("contract_invalid", attempts, **details) from None
     result = {
@@ -666,43 +721,191 @@ def source_disagreements(check, statement):
     return fields
 
 
+def analysis_context(r, config):
+    s = r.statement
+    extraction = s.to_dict()
+    extraction["evidence"] = {
+        key: value
+        for key, value in extraction["evidence"].items()
+        if key
+        in ("engine", "text", "closing", "reconciliation", "critical_confidence_min", "sheets")
+    }
+    context = {
+        "file_id": r.sha256,
+        "period": s.period,
+        "expected_period": config.period,
+        "bank": s.bank,
+        "account": s.account,
+        "opening": str(s.opening) if s.opening is not None else None,
+        "closing": str(s.closing) if s.closing is not None else None,
+        "duplicate": bool(r.duplicate_of),
+        "rules_status": r.status,
+        "reconciliation": s.evidence.get("reconciliation"),
+        "issues": [i.__dict__ for i in s.issues],
+        "local_extraction": extraction,
+        "premises": {
+            "currency": "BRL",
+            "one_row_per_file": True,
+            "preserve_original_balance": True,
+            "ocr_min_confidence": config.ocr_min_confidence,
+        },
+    }
+    return context
+
+
+def analyze_batches(results, config, log=None):
+    """Uma solicitação multimodal por grupo, com resultados associados por ID único."""
+    responses, sources, group = {}, {}, []
+    deadline = time.monotonic() + config.ai_batch_timeout_seconds
+
+    def contents(entries):
+        documents, parts = [], []
+        for r, context, source_parts in entries:
+            item_id = hashlib.sha256((r.filename + "\0" + r.sha256).encode()).hexdigest()
+            documents.append({**context, "item_id": item_id})
+            if source_parts:
+                parts.append(
+                    {
+                        "text": json.dumps(
+                            {"item_id": item_id, "filename": r.filename}, ensure_ascii=False
+                        )
+                    }
+                )
+                parts.extend(source_parts)
+        return {"documents": documents}, parts
+
+    def flush():
+        if not group:
+            return
+        context, parts = contents(group)
+        batch_id = hashlib.sha256(
+            json.dumps({"context": context, "parts": parts}, sort_keys=True).encode()
+        ).hexdigest()
+
+        def emit(event, **fields):
+            if log:
+                log.event(event, batch_id=batch_id, **fields)
+
+        started = time.monotonic()
+        emit("AI_BATCH_STARTED", files=[r.filename for r, _, _ in group], size=len(group))
+        try:
+            response = request_gemini_failover(
+                context, config, parts=parts, emit=emit, deadline=deadline
+            )
+            by_id = {row["item_id"]: row for row in response["results"]}
+            meta = {k: v for k, v in response.items() if k != "results"}
+            for (r, _, _), doc in zip(group, context["documents"], strict=True):
+                row = {k: v for k, v in by_id[doc["item_id"]].items() if k != "item_id"}
+                responses[r.filename] = {
+                    **meta,
+                    **row,
+                    "batch_id": batch_id,
+                    "batch_size": len(group),
+                    "batch_duration_ms": round((time.monotonic() - started) * 1000, 2),
+                }
+            emit(
+                "AI_BATCH_FINISHED",
+                outcome="completed",
+                size=len(group),
+                duration_ms=round((time.monotonic() - started) * 1000, 2),
+            )
+        except Exception as exc:
+            details = (
+                exc.details
+                if isinstance(exc, AIError)
+                else {"category": "analysis_error", "attempts": []}
+            )
+            for r, _, _ in group:
+                extra = {k: v for k, v in details.items() if k not in ("category", "attempts")}
+                responses[r.filename] = AIError(
+                    details["category"],
+                    details.get("attempts", []),
+                    **extra,
+                    batch_id=batch_id,
+                    batch_size=len(group),
+                )
+            emit(
+                "AI_BATCH_FINISHED",
+                outcome=details["category"],
+                size=len(group),
+                duration_ms=round((time.monotonic() - started) * 1000, 2),
+            )
+        group.clear()
+
+    for r in results:
+        if config.ai_scope == "excecoes" and r.status == "ok":
+            continue
+        try:
+            if config.stop_file.exists():
+                raise AIError("stopped")
+            context = analysis_context(r, config)
+            parts, source = (
+                prepare_source(r, config)
+                if config.ai_document_mode == "completo"
+                else ([], {"kind": "extracted_data", "complete": False})
+            )
+            sources[r.filename] = source
+            context["source"] = source
+            entry = (r, context, parts)
+            test_context, test_parts = contents([*group, entry])
+            too_large = (
+                len(json.dumps(test_context, ensure_ascii=False)) > 100000
+                or len(json.dumps(test_parts).encode()) > 16 * 1024 * 1024
+            )
+            if group and (len(group) >= config.ai_batch_size or too_large):
+                flush()
+                test_context, test_parts = contents([entry])
+            if (
+                len(json.dumps(test_context, ensure_ascii=False)) > 100000
+                or len(json.dumps(test_parts).encode()) > 16 * 1024 * 1024
+            ):
+                raise AIError("context_too_large")
+            group.append(entry)
+        except Exception as exc:
+            responses[r.filename] = (
+                exc if isinstance(exc, AIError) else AIError("source_preparation_error")
+            )
+    flush()
+    return responses, sources
+
+
+def http_attempt_count(results):
+    groups = {}
+    for r in results:
+        error = r.ai.get("error", {})
+        batch = r.ai.get("batch_id", error.get("batch_id")) or r.filename
+        groups[batch] = max(
+            groups.get(batch, 0), len(r.ai.get("attempts", error.get("attempts", [])))
+        )
+    return sum(groups.values())
+
+
 def review(results, config, requester=None, log=None):
     if config.ai_mode == "off":
         return
+    precomputed = None
+    if requester is None and config.ai_provider == "gemini" and config.ai_batch_size > 1:
+        precomputed, batch_sources = analyze_batches(results, config, log)
+
+        def batch_response(context, model):
+            value = precomputed[r.filename]
+            if isinstance(value, Exception):
+                raise value
+            return value
+
+        requester = batch_response
     deadline = time.monotonic() + config.ai_batch_timeout_seconds
     consecutive = 0
     for r in results:
         started = time.monotonic()
         rules_status = r.status
-        source = {"kind": "extracted_data", "complete": False}
+        source = (
+            batch_sources.get(r.filename, {"kind": "extracted_data", "complete": False})
+            if precomputed is not None
+            else {"kind": "extracted_data", "complete": False}
+        )
         s = r.statement
-        extraction = s.to_dict()
-        extraction["evidence"] = {
-            key: value
-            for key, value in extraction["evidence"].items()
-            if key
-            in ("engine", "text", "closing", "reconciliation", "critical_confidence_min", "sheets")
-        }
-        context = {
-            "file_id": r.sha256,
-            "period": s.period,
-            "expected_period": config.period,
-            "bank": s.bank,
-            "account": s.account,
-            "opening": str(s.opening) if s.opening is not None else None,
-            "closing": str(s.closing) if s.closing is not None else None,
-            "duplicate": bool(r.duplicate_of),
-            "rules_status": rules_status,
-            "reconciliation": s.evidence.get("reconciliation"),
-            "issues": [i.__dict__ for i in s.issues],
-            "local_extraction": extraction,
-            "premises": {
-                "currency": "BRL",
-                "one_row_per_file": True,
-                "preserve_original_balance": True,
-                "ocr_min_confidence": config.ocr_min_confidence,
-            },
-        }
+        context = analysis_context(r, config)
 
         def emit(event, file=r.filename, **fields):
             if log:
@@ -723,10 +926,14 @@ def review(results, config, requester=None, log=None):
             if config.stop_file.exists() or any(i.code == "CANCELADO_STOP" for i in s.issues):
                 raise AIError("stopped")
             if (
-                requester is not None or config.ai_provider != "gemini"
+                precomputed is None and (requester is not None or config.ai_provider != "gemini")
             ) and time.monotonic() >= deadline:
                 raise AIError("batch_deadline")
-            if (requester is not None or config.ai_provider != "gemini") and consecutive >= 3:
+            if (
+                precomputed is None
+                and (requester is not None or config.ai_provider != "gemini")
+                and consecutive >= 3
+            ):
                 raise AIError("circuit_open")
             parts = []
             if (
