@@ -115,3 +115,11 @@ def test_workbook_changed_during_run_is_not_overwritten(config, monkeypatch):
     wb = load_workbook(config.output_dir / "consolidado.xlsx")
     assert wb["Revisões"]["F5"].value == "Corrigir e liberar"
     wb.close()
+
+
+def test_repeated_movements_are_both_highlighted_with_short_date(config):
+    name = "EXT_102026_LagoaAzul.pdf"
+    shutil.copyfile(ROOT / "extratos" / name, config.input_dir / name)
+    directory, _, _ = run(config)
+    evidence = json.loads((directory / "evidencias.json").read_text(encoding="utf-8"))[0]
+    assert evidence["highlight"]["marks"] == 3

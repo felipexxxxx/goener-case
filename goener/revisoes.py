@@ -301,7 +301,7 @@ def _targets(r):
                 matches = [
                     line
                     for line in s.evidence.get("text", "").splitlines()
-                    if day in line
+                    if re.match(re.escape(day[:5]) + r"(?:/\d{4})?\s", line)
                     and amount in line
                     and normalized(t.description) in normalized(line)
                     and (not t.reference or t.reference in line)
@@ -335,6 +335,7 @@ def _annotated_pdf(source, destination, r, ocr):
                 width, height = float(page.width), float(page.height)
                 picture = page.to_image(resolution=110).original
                 words = page.extract_words(x_tolerance=2)
+                native_text = bool(words)
                 if not words:
                     words = ocr.words(picture, number)
                     sx, sy = width / picture.width, height / picture.height
@@ -376,6 +377,21 @@ def _annotated_pdf(source, destination, r, ocr):
                     for line in group_words(words, number)
                     if normalized(target) in normalized(line.text)
                 ]
+                closing = r.statement.evidence.get("closing", {})
+                if (
+                    explanation == "Saldo final declarado no documento."
+                    and closing.get("top") is not None
+                ):
+                    if page is None:
+                        matches = [
+                            line for line in matches if abs(line.top - closing["top"] * scale) < 5
+                        ]
+                    elif native_text:
+                        matches = [
+                            line
+                            for line in matches
+                            if number == closing.get("page") and abs(line.top - closing["top"]) < 4
+                        ]
                 for line in matches:
                     marked += 1
                     index = len(notes) + 1
