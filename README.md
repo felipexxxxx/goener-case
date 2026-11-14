@@ -44,6 +44,8 @@ A planilha mantém as oito colunas do modelo, filtro e cabeçalho congelado. Sta
 
 O relatório abre na fila de atenção e mostra o motivo antes de expandir o arquivo. Há filtros para recomendações concluídas e indisponibilidades da IA. Dentro de cada item: regras → IA → onde conferir → próximo passo. O botão abre o documento de origem; em PDF, inclui a página quando identificada. A origem da indicação fica explícita: extração local ou sugestão da IA. Quando a localização não é conhecida, o relatório pede conferência do documento completo, sem inventar página.
 
+Os extratos originais não são alterados. A coluna Observação e o HTML informam a medida aplicada: incluir saldo, reter valor, excluir cópia do total, excluir competência diferente ou registrar documento sem saldo. A geração termina com todas as linhas e ressalvas, sem esperar aprovação humana. Revisão financeira posterior é necessária somente para resolver informações que a fonte não permite determinar, como solicitar o extrato correto ou confirmar uma divergência bancária.
+
 O formato original não é alterado para satisfazer a IA. Um alerta consultivo pode exigir atenção mesmo quando as regras passaram, mas não muda automaticamente o total. As indicações geradas pelo modelo precisam ser confirmadas no original. Os links de origem do relatório são ajustados no ZIP para os arquivos do case que acompanham o pacote.
 
 ### Configuração e comandos
@@ -102,10 +104,10 @@ Códigos de saída: `0` fluxo publicado; `1` configuração/infraestrutura; `2` 
 
 ### IA opcional
 
-O padrão é `ai_mode = "consultivo"` e `ai_scope = "excecoes"`. O Python lê todos os documentos, valida campos, competência, duplicidade e conciliação. Só os que ficam como revisar/falhou seguem para o Gemini. Os regulares são concluídos pelas regras, com registro de IA dispensada. A IA exige `GEMINI_API_KEY` no ambiente; sem chave ou serviço disponível, as pendências continuam identificadas, sem impedir a publicação do lote. A configuração inicial da chave ocorre na implantação, sem login ou confirmação durante os lotes.
+O padrão é `ai_mode = "automatico"` e `ai_scope = "excecoes"`. O Python lê todos os documentos, valida campos, competência, duplicidade e conciliação. Só os que ficam como revisar/falhou seguem para o Gemini. Os regulares são concluídos pelas regras, com registro de IA dispensada. A IA exige `GEMINI_API_KEY` no ambiente; sem chave ou serviço disponível, as pendências continuam identificadas, sem impedir a publicação do lote. A configuração inicial da chave ocorre na implantação, sem login ou confirmação durante os lotes.
 
 ```powershell
-.\executar.ps1                              # consultivo somente nas exceções
+.\executar.ps1                              # automático somente nas exceções
 .\executar.ps1 -AiMode off                  # apenas regras locais
 .\executar.ps1 -AiMode consultivo -AiScope todos  # conferência adicional de todos
 .\executar.ps1 -AiMode automatico            # decisão aplicada às exceções, sem superar bloqueios
@@ -128,21 +130,33 @@ Os limites são explícitos: até 8 MB por original, limite de páginas/pixels d
 
 A IA nunca sobrescreve banco, conta, período ou saldo do consolidado. No consultivo, diferenças da leitura independente ficam na observação e nas evidências, preservando a seleção pelas regras. No automático, uma diferença ou falta de evidência bloqueia a inclusão mesmo que o modelo recomende considerar.
 
-Gemini usa HTTPS `generateContent`, esquema JSON e chave no cabeçalho. Também é aceita `GOOGLE_API_KEY`. OpenAI usa a Responses API: altere o provedor para `openai`, escolha o modelo e configure `OPENAI_API_KEY`. Não há troca automática entre provedores. No Gemini, até três tentativas atendem HTTP 429/5xx, timeout e falha de rede, com espera crescente, variação aleatória e `Retry-After` numérico limitado a 30 segundos. Erros permanentes não são repetidos. Bloqueio, cota esgotada, resposta parcial ou JSON inválido retêm o saldo no modo automático.
+Gemini usa HTTPS `generateContent`, esquema JSON e chave no cabeçalho. Também é aceita `GOOGLE_API_KEY`. OpenAI usa a Responses API: altere o provedor para `openai`, escolha o modelo e configure `OPENAI_API_KEY`. Não há troca automática entre provedores. No Gemini, até três tentativas atendem HTTP 429/5xx, timeout e falha de rede, com espera crescente, variação aleatória e `Retry-After` numérico limitado a um dia e o `RetryInfo` do provedor. Erros permanentes não são repetidos. Bloqueio, cota esgotada, resposta parcial ou JSON inválido retêm o saldo no modo automático.
 
-Parâmetros editáveis: `ai_thinking_level = "high"` (Gemini 3; também aceita medium/low), `ai_timeout_seconds = 60`, `ai_max_attempts = 3` e `ai_batch_timeout_seconds = 300`. O timeout de rede é por operação; não é uma garantia rígida de duração total. O orçamento impede novas tentativas após o prazo e reduz o timeout ao tempo restante. Após três análises externas falharem seguidamente, as restantes ficam indisponíveis sem novas chamadas. O arquivo STOP é verificado antes dos próximos arquivos e tentativas.
+Parâmetros editáveis: `ai_thinking_level = "low"` (Gemini 3; também aceita medium/high), `ai_timeout_seconds = 60`, `ai_max_attempts = 3` e `ai_batch_timeout_seconds = 300`. O timeout de rede é por operação; não é uma garantia rígida de duração total. O orçamento impede novas tentativas após o prazo e reduz o timeout ao tempo restante. Após três análises externas falharem seguidamente, as restantes ficam indisponíveis sem novas chamadas. O arquivo STOP é verificado antes dos próximos arquivos e tentativas.
 
-Os eventos `AI_SKIPPED`, `AI_STARTED`, `AI_ATTEMPT` e `AI_FINISHED` registram arquivo, duração, tentativa, código HTTP, status seguro do provedor e resultado. Corpos HTTP, documentos e chaves não são copiados para os logs. As evidências registram versão das instruções, hash do contexto, tipo/completude da fonte, resposta validada e discrepâncias. `ai_summary` no resumo separa tentativas HTTP, decisões válidas, arquivos indisponíveis e diferenças encontradas. Sucesso HTTP não equivale a uma análise aprovada.
+Os eventos `AI_SKIPPED`, `AI_STARTED`, `AI_THROTTLED`, `AI_CACHE_HIT`, `AI_ATTEMPT` e `AI_FINISHED` registram arquivo, duração, tentativa, código HTTP, status seguro do provedor e resultado. Corpos HTTP, documentos e chaves não são copiados para os logs. As evidências registram versão das instruções, hash do contexto, tipo/completude da fonte, resposta validada e discrepâncias. `ai_summary` no resumo separa tentativas HTTP, decisões válidas, arquivos indisponíveis e diferenças encontradas. Sucesso HTTP não equivale a uma análise aprovada.
 
 Não salve chaves no código ou nos logs. A assinatura Google AI de estudante e o faturamento da API são separados. Verifique se o projeto está no Free Tier e tem cota. O programa não ativa faturamento. O experimento de navegador ChatGPT foi retirado para reduzir dependências e porque exigia confirmação humana.
 
-**Histórico da versão anterior (antes da melhoria multimodal):** o lote consultivo de 17 arquivos levou 603,661 segundos; 2 análises retornaram decisões válidas e 15 ficaram indisponíveis (8 timeouts e 7 erros classificados como `ValueError`). Os totais pelas regras foram preservados. Portanto, a conectividade e o contrato tiveram respostas reais válidas, mas a IA externa **ainda não está homologada para decidir o lote inteiro**. Naquela versão, ela ficava desligada por padrão. A configuração atual é consultiva apenas nas exceções, por solicitação do responsável pelo case. Os detalhes deste ensaio estão no histórico local da execução `20261114T103109Z_a649ee0e`; os tipos de erro registrados não permitem atribuir todos os casos a uma causa específica.
+**Histórico da versão anterior (antes da melhoria multimodal):** o lote consultivo de 17 arquivos levou 603,661 segundos; 2 análises retornaram decisões válidas e 15 ficaram indisponíveis (8 timeouts e 7 erros classificados como `ValueError`). Os totais pelas regras foram preservados. Portanto, a conectividade e o contrato tiveram respostas reais válidas, mas a IA externa **ainda não está homologada para decidir o lote inteiro**. Naquela versão, ela ficava desligada por padrão. A configuração atual aplica medidas automáticas apenas nas exceções, por solicitação do responsável pelo case. Os detalhes deste ensaio estão no histórico local da execução `20261114T103109Z_a649ee0e`; os tipos de erro registrados não permitem atribuir todos os casos a uma causa específica.
 
 **Ensaio multimodal desta versão:** três documentos do case (Excel, PDF e PNG), em modo consultivo, foram processados em 127,685 segundos, incluindo a extração local. Para essa rodada foram usados 30 segundos por operação, duas tentativas e orçamento de 120 segundos para IA. Nenhum retornou uma decisão válida: ocorreram HTTP 503 (`UNAVAILABLE`), HTTP 429 (`RESOURCE_EXHAUSTED`) e timeouts, agora discriminados por tentativa. A validação de payload, integridade, todas as abas e bloqueios foi feita por testes automatizados; a leitura multimodal real ainda não está homologada. A evidência local está em `.local/validacao_multimodal/20261114T141520Z_1981ae30/`. Nenhuma nova cobrança foi habilitada.
 
 **Ensaio do roteamento seletivo:** o lote de 17 documentos passou pelas regras; 12 dispensaram a IA e 5 foram classificados como exceção. Houve 3 tentativas HTTP, todas com 429 (`RESOURCE_EXHAUSTED`); o controle de falhas pausou os dois arquivos restantes. O resultado financeiro permaneceu em 12 ok, 4 revisar e 1 falhou. O ensaio usou uma tentativa, 15 segundos por operação e 60 segundos de orçamento para IA, sem alterar os parâmetros padrão de operação. Nenhuma recomendação foi apresentada como concluída quando o serviço não respondeu.
 
-O ajuste supervisionado deve usar exemplos classificados pela equipe e avaliação em casos separados. Ajustar instruções não é treinar os pesos do modelo. A gestão define quando os resultados permitem passar do consultivo para o automático.
+O ajuste supervisionado deve usar exemplos classificados pela equipe e avaliação em casos separados. Ajustar instruções não é treinar os pesos do modelo. O modo consultivo continua disponível para avaliar novas políticas. As ações automáticas atuais são limitadas à seleção e retenção dos valores no consolidado; ampliar a política exige avaliação dos casos e critérios definidos com a gestão.
+
+### Causa dos erros de API e controle de consumo
+
+O painel do projeto Free Tier mostrou para Gemini 3.8 Flash: 5 RPM, 20 RPD e 250 mil TPM. Os picos observados foram 7 RPM e 33 RPD, ultrapassando os limites. Os testes e retries anteriores contribuíram para esse consumo; repetir em poucos segundos não recupera a cota diária. Uma chamada de diagnóstico também retornou 503 com mensagem explícita de alta demanda do modelo.
+
+O modelo passou a ser `gemini-3.1-flash-lite`: o painel atribuiu 15 RPM, 500 RPD e 250 mil TPM a esse modelo no mesmo projeto gratuito. Ele suporta PDF, imagem e JSON estruturado. O raciocínio low reduz latência nessa conferência delimitada; as contas financeiras continuam no Python. Nenhum faturamento foi habilitado e não há rotação de contas, chaves ou projetos.
+
+O arquivo local `gemini.sqlite3` guarda análises válidas, tentativas e bloqueios. A resposta é reutilizada por até 30 dias somente quando modelo, instruções, esquema, conteúdo da requisição e documentos forem iguais. Uma troca de período, evidências, instruções ou modelo invalida a chave. Respostas inválidas não entram no cache. A política consultiva/automática é reaplicada no momento de usar a resposta. `--no-cache` força uma nova análise, respeitando os limites.
+
+Os limites locais são 12 RPM e 450 RPD, deixando margem abaixo da cota observada. Cada tentativa é contada antes do envio, inclusive retries. A reserva e o espaçamento persistem entre execuções; reiniciar o robô não zera os contadores. Erro de cota diária interrompe novas tentativas e registra o horário da próxima janela em vez de insistir. Os limites por dia usam a meia-noite do Pacífico, conforme a API. Esses contadores não enxergam consumo por outros programas; o retorno do Google continua sendo a autoridade e também é tratado.
+
+A disponibilidade externa não é garantida. Quando uma análise não puder ser concluída, o consolidado é entregue com a retenção e a ressalva correspondentes. Em uma nova execução, extrações e análises válidas são reaproveitadas; somente o que ainda necessita de análise demanda novas chamadas. Isso mantém a geração automática sem inventar aprovação ou corrigir o saldo de um extrato por inferência.
 
 ### Testar e preparar a entrega
 
@@ -152,7 +166,7 @@ O ajuste supervisionado deve usar exemplos classificados pela equipe e avaliaç�
 .\.venv\Scripts\python.exe -m goener.entrega
 ```
 
-Validação local da estrutura simplificada: **75 testes passaram, com 83% de cobertura**, incluindo OCR dos documentos do case. A versão anterior teve chamadas HTTP reais válidas; a validação da versão multimodal é registrada abaixo, sem presumir homologação do lote inteiro. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
+Validação local da estrutura simplificada: **79 testes passaram**, incluindo OCR dos documentos do case. A versão anterior teve chamadas HTTP reais válidas; a validação da versão multimodal é registrada abaixo, sem presumir homologação do lote inteiro. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
 
 A instalação manual usa apenas `requirements-lock.txt` e `pip install -e . --no-deps`. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado; não inclui chaves ou dados locais de execução. Nenhum agendamento foi criado nesta máquina.
 
@@ -184,3 +198,6 @@ O projeto atende aos layouts fornecidos. Não autentica extratos nem substitui a
 
 - [Gemini: documentos, imagens e limites da leitura de Excel](https://aistudio.google.com/docs/document-processing?generate-content=true)
 - [Gemini: parâmetros de raciocínio](https://ai.google.dev/api/generate-content)
+
+- [Gemini 3.1 Flash-Lite: entradas multimodais e JSON](https://aistudio.google.com/docs/models/gemini-3.1-flash-lite)
+- [Gemini: cotas e reinício diário](https://ai.google.dev/gemini-api/docs/rate-limits)

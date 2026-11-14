@@ -259,6 +259,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
                     file=r.filename,
                     status=r.status,
                     codes=[i.code for i in r.statement.issues],
+                    applied_action=r.applied_action,
                     duplicate_of=r.duplicate_of,
                 )
             statuses = status_counts(results)
@@ -296,6 +297,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
                 "configuration": config.to_dict(),
                 "ai_mode": config.ai_mode,
                 "ai_summary": {
+                    "cached_decisions": sum(bool(r.ai.get("cached")) for r in results),
                     "rules_only_files": sum(r.ai.get("routing") == "rules_passed" for r in results),
                     "valid_decisions": sum(
                         r.ai.get("decision") in ("considerar", "nao_considerar", "revisar")

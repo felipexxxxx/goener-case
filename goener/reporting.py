@@ -137,8 +137,10 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
 
     labels = {
         "ok": "Sem pendências",
-        "revisar": "Confira este arquivo",
-        "falhou": "Não foi possível ler",
+        "revisar": "Saldo retido"
+        if summary.get("ai_mode") == "automatico"
+        else "Confira este arquivo",
+        "falhou": "Sem dados válidos",
     }
     actions = {
         "ARQUIVO_DUPLICADO": "Use o arquivo original. Esta cópia permanece registrada, mas não entra na soma.",
@@ -168,7 +170,7 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
                 (actions[i.code] for i in s.issues if i.code in actions),
                 "Confira a diferença apontada pela IA no original."
                 if r.ai.get("source_disagreements")
-                else "Você pode considerar este arquivo conforme a política do fechamento."
+                else "Nenhuma providência adicional indicada para este arquivo."
                 if r.status == "ok"
                 else "Confira os dados no documento de origem.",
             )
@@ -196,7 +198,11 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         if r.ai.get("policy_block") and r.ai["policy_block"] not in ai_message:
             ai_message += " Bloqueio obrigatório: " + plain(r.ai["policy_block"])
         if r.ai.get("source_disagreements"):
-            ai_message += " O modo consultivo preserva os totais das regras; valide esta diferença antes do fechamento."
+            ai_message += (
+                " O modo consultivo preserva os totais das regras; valide esta diferença antes do fechamento."
+                if summary.get("ai_mode") == "consultivo"
+                else " A diferença foi registrada e o arquivo permanece fora do total."
+            )
         meta = html.escape(
             " · ".join(
                 v for v in (s.bank, "Conta " + s.account if s.account else "", s.period) if v
@@ -225,7 +231,8 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
             f"<section><h3>2. Recomendação da IA</h3><p>{html.escape(ai_message)}</p></section></div>"
             f'<div class="reference"><h3>3. Onde conferir</h3><p><b>{html.escape(ref["where"])}</b></p><span class="caption">{html.escape(ref["origin"])}</span>{quote_block}'
             f'<a class="btn secondary" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener">Abrir documento de origem ↗</a></div>'
-            f'<div class="explain"><b>4. Próximo passo</b><br>{html.escape(action)}</div></div></details>'
+            f'<div class="explain"><b>4. Medida aplicada automaticamente</b><br>{html.escape(r.applied_action)}'
+            f'<p class="caption">Ressalva para acompanhamento: {html.escape(action)}</p></div></div></details>'
         )
     cfg = summary.get("configuration", {})
     minutes = cfg.get("manual_minutes_per_file", 8)

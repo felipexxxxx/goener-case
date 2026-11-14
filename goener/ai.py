@@ -9,9 +9,13 @@ import json
 import os
 import random
 import re
+import sqlite3
 import time
+from contextlib import contextmanager
+from datetime import datetime, timedelta
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
 
 from .core import money, normalized
 
@@ -75,6 +79,108 @@ class AIError(ValueError):
     def __init__(self, category, attempts=None, **details):
         super().__init__(category)
         self.details = {"category": category, "attempts": attempts or [], **details}
+
+
+class GeminiState:
+    """Cache e limites locais persistentes; a cota do Google continua sendo a autoridade."""
+
+    def __init__(self, runtime):
+        runtime.mkdir(parents=True, exist_ok=True)
+        self.path = runtime / "gemini.sqlite3"
+        with self.connection() as db:
+            db.executescript("""
+                CREATE TABLE IF NOT EXISTS responses (key TEXT PRIMARY KEY, created REAL, body TEXT);
+                CREATE TABLE IF NOT EXISTS requests (model TEXT, at REAL);
+                CREATE INDEX IF NOT EXISTS request_time ON requests(model,at);
+                CREATE TABLE IF NOT EXISTS cooldown (model TEXT PRIMARY KEY, until REAL, reason TEXT);
+            """)
+
+    @contextmanager
+    def connection(self):
+        db = sqlite3.connect(self.path, timeout=5)
+        try:
+            with db:
+                yield db
+        finally:
+            db.close()
+
+    def cached(self, key):
+        with self.connection() as db:
+            row = db.execute("SELECT created,body FROM responses WHERE key=?", (key,)).fetchone()
+        if row and row[0] > time.time() - 30 * 86400:
+            try:
+                return json.loads(row[1]), row[0]
+            except ValueError:
+                pass
+        return None
+
+    def save(self, key, response):
+        with self.connection() as db:
+            db.execute("DELETE FROM responses WHERE created<?", (time.time() - 30 * 86400,))
+            db.execute(
+                "INSERT OR REPLACE INTO responses VALUES(?,?,?)",
+                (key, time.time(), json.dumps(response)),
+            )
+
+    @staticmethod
+    def day_bounds(now):
+        day = datetime.fromtimestamp(now, ZoneInfo("America/Los_Angeles")).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        return day.timestamp(), (day + timedelta(days=1)).timestamp()
+
+    def block(self, model, until, reason):
+        with self.connection() as db:
+            db.execute("INSERT OR REPLACE INTO cooldown VALUES(?,?,?)", (model, until, reason))
+
+    def reserve(self, model, rpm, rpd, now=None):
+        now = time.time() if now is None else now
+        start, reset = self.day_bounds(now)
+        # Limites observados no projeto; podem cair, por isso o HTTP 429 também é tratado.
+        cap = {"gemini-3.8-flash": (5, 20), "gemini-3.1-flash-lite": (15, 500)}.get(
+            model, (rpm, rpd)
+        )
+        rpm, rpd = min(rpm, cap[0]), min(rpd, cap[1])
+        with self.connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            block = db.execute(
+                "SELECT until,reason FROM cooldown WHERE model=?", (model,)
+            ).fetchone()
+            if block and block[0] > now:
+                return {"wait": block[0] - now, "category": block[1], "retry_at": block[0]}
+            count, last = db.execute(
+                "SELECT count(*),max(at) FROM requests WHERE model=? AND at>=?", (model, start)
+            ).fetchone()
+            if count >= rpd:
+                return {"wait": reset - now, "category": "quota_daily", "retry_at": reset}
+            wait = (last + 60 / rpm + 0.2 - now) if last is not None else 0
+            if wait > 0:
+                return {"wait": wait, "category": "quota_rate", "retry_at": now + wait}
+            db.execute("INSERT INTO requests VALUES(?,?)", (model, now))
+            db.execute("DELETE FROM requests WHERE at<?", (now - 3 * 86400,))
+        return None
+
+
+def quota_details(error):
+    """Extrai só campos de cota e espera, sem registrar mensagem ou corpo HTTP."""
+    quotas, wait = [], 0.0
+    for detail in error.get("details", []):
+        for violation in detail.get("violations", []):
+            quotas.append(
+                {
+                    k: violation[k]
+                    for k in ("quotaMetric", "quotaId", "quotaValue")
+                    if k in violation and isinstance(violation[k], (str, int, float))
+                }
+            )
+        delay = detail.get("retryDelay", "")
+        if isinstance(delay, str) and re.fullmatch(r"\d+(?:\.\d+)?s", delay):
+            wait = max(wait, min(float(delay[:-1]), 86400))
+    identifiers = " ".join(str(q.get("quotaId", "")) for q in quotas).lower()
+    kind = "quota_daily" if "perday" in identifiers else "quota_rate"
+    if any(str(q.get("quotaValue")) == "0" for q in quotas):
+        kind = "quota_daily"
+    return quotas, wait, kind
 
 
 def prepare_source(result, config):
@@ -228,7 +334,15 @@ def request_decision(context, model, opener=urlopen):
 
 
 def request_gemini(
-    context, model, opener=urlopen, *, parts=(), config=None, emit=None, deadline=None
+    context,
+    model,
+    opener=urlopen,
+    *,
+    parts=(),
+    config=None,
+    emit=None,
+    deadline=None,
+    network_allowed=True,
 ):
     """HTTP com tentativas limitadas, diagnóstico por tentativa e orçamento de lote."""
     emit = emit or (lambda *a, **k: None)
@@ -264,6 +378,32 @@ def request_gemini(
         data=json.dumps(payload).encode(),
         headers={"x-goog-api-key": key, "Content-Type": "application/json"},
     )
+    state = GeminiState(config.runtime_dir) if config else None
+    cache_key = hashlib.sha256(model.encode() + req.data).hexdigest()
+    if state and config.cache_enabled:
+        saved = state.cached(cache_key)
+        if saved:
+            result, created = saved
+            try:
+                validate_decision(
+                    {k: result[k] for k in SCHEMA["required"]},
+                    {i["code"] for i in context["issues"]},
+                )
+                if parts:
+                    validate_source_check(result["source_check"])
+            except (ValueError, KeyError, TypeError):
+                pass
+            else:
+                emit("AI_CACHE_HIT", response_id=result.get("response_id"))
+                return {
+                    **result,
+                    "cached": True,
+                    "cache_created_at": created,
+                    "original_attempts": result.get("attempts", []),
+                    "attempts": [],
+                }
+    if not network_allowed:
+        raise AIError("circuit_open")
     attempts = []
     for number in range(1, getattr(config, "ai_max_attempts", 3) + 1):
         if config and config.stop_file.exists():
@@ -271,8 +411,22 @@ def request_gemini(
         remaining = deadline - time.monotonic() if deadline is not None else float("inf")
         if remaining <= 0:
             raise AIError("batch_deadline", attempts)
+        if state:
+            while wait := state.reserve(
+                model, config.ai_requests_per_minute, config.ai_requests_per_day
+            ):
+                if wait["category"] == "quota_daily" or (
+                    deadline is not None and time.monotonic() + wait["wait"] >= deadline
+                ):
+                    raise AIError(wait["category"], attempts, retry_at=wait["retry_at"])
+                emit("AI_THROTTLED", wait_seconds=round(wait["wait"], 2), reason=wait["category"])
+                time.sleep(min(wait["wait"], 5))
+                if config.stop_file.exists():
+                    raise AIError("stopped", attempts)
+            remaining = deadline - time.monotonic() if deadline is not None else float("inf")
         started = time.monotonic()
         status, category, retry_after, provider_status = None, None, 0, None
+        quotas, quota_kind = [], None
         try:
             with opener(
                 req, timeout=min(getattr(config, "ai_timeout_seconds", 60), remaining)
@@ -283,9 +437,13 @@ def request_gemini(
             status = exc.code
             category = "http_error"
             header = exc.headers.get("Retry-After", "") if exc.headers else ""
-            retry_after = min(float(header), 30) if header.isdigit() else 0
+            retry_after = min(float(header), 86400) if header.isdigit() else 0
             try:
-                error_status = json.loads(exc.read(16384)).get("error", {}).get("status", "")
+                error_body = json.loads(exc.read(16384)).get("error", {})
+                error_status = error_body.get("status", "")
+                if status == 429:
+                    quotas, provider_wait, quota_kind = quota_details(error_body)
+                    retry_after = max(retry_after, provider_wait, 60)
                 if isinstance(error_status, str) and re.fullmatch(r"[A-Z_]{1,40}", error_status):
                     provider_status = error_status
             except (ValueError, OSError, AttributeError):
@@ -308,15 +466,33 @@ def request_gemini(
             "duration_ms": round((time.monotonic() - started) * 1000, 2),
         }
         attempts.append(entry)
+        if quotas:
+            entry["quotas"] = quotas
         emit("AI_ATTEMPT", **entry)
         if category is None:
             break
+        if status == 429 and quota_kind == "quota_daily":
+            _, reset = GeminiState.day_bounds(time.time())
+            if state:
+                state.block(model, reset, "quota_daily")
+            raise AIError(
+                "quota_daily", attempts, http_status=status, retry_at=reset, quotas=quotas
+            )
+        if status == 429:
+            retry_after = max(retry_after, 60)
+            if state:
+                state.block(model, time.time() + retry_after, "quota_rate")
         retryable = status in (429, 500, 502, 503, 504) or category in ("timeout", "network_error")
         if not retryable or number == getattr(config, "ai_max_attempts", 3):
             raise AIError(category, attempts, http_status=status)
         delay = max(retry_after, 2**number + random.uniform(0, 1))
         if deadline is not None and time.monotonic() + delay >= deadline:
-            raise AIError("batch_deadline", attempts, http_status=status)
+            raise AIError(
+                "quota_rate" if status == 429 else "batch_deadline",
+                attempts,
+                http_status=status,
+                retry_at=time.time() + delay,
+            )
         time.sleep(delay)
     if not isinstance(body, dict):
         raise AIError("http_body_invalid", attempts)
@@ -346,13 +522,17 @@ def request_gemini(
             decision["source_check"] = validate_source_check(data["source_check"])
     except (ValueError, TypeError, KeyError):
         raise AIError("contract_invalid", attempts, **details) from None
-    return {
+    result = {
         **decision,
         **details,
         "model": body.get("modelVersion", model),
         "attempts": attempts,
         "thinking_level": thinking,
+        "cached": False,
     }
+    if state and config.cache_enabled:
+        state.save(cache_key, result)
+    return result
 
 
 def source_disagreements(check, statement):
@@ -433,9 +613,11 @@ def review(results, config, requester=None, log=None):
         try:
             if config.stop_file.exists() or any(i.code == "CANCELADO_STOP" for i in s.issues):
                 raise AIError("stopped")
-            if time.monotonic() >= deadline:
+            if (
+                requester is not None or config.ai_provider != "gemini"
+            ) and time.monotonic() >= deadline:
                 raise AIError("batch_deadline")
-            if consecutive >= 3:
+            if (requester is not None or config.ai_provider != "gemini") and consecutive >= 3:
                 raise AIError("circuit_open")
             parts = []
             if (
@@ -462,6 +644,7 @@ def review(results, config, requester=None, log=None):
                     config=config,
                     emit=emit,
                     deadline=deadline,
+                    network_allowed=consecutive < 3,
                 )
             else:
                 response = request_decision(context, config.ai_model)
@@ -533,6 +716,8 @@ def review(results, config, requester=None, log=None):
                 "source_changed": "O original mudou após a extração; a análise foi bloqueada.",
                 "key_missing": "A chave de acesso à IA não está configurada.",
                 "stopped": "A análise por IA foi interrompida pelo controle de parada.",
+                "quota_daily": "A cota diária da IA foi atingida. A análise fica pendente para a próxima janela disponível.",
+                "quota_rate": "A cota de chamadas da IA exige uma espera maior. A análise fica pendente para retomada.",
             }
             r.ai = {
                 "decision": "indisponivel",

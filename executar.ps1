@@ -11,6 +11,9 @@ param(
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot
 try {
+    if (-not $env:GEMINI_API_KEY) {
+        $env:GEMINI_API_KEY = [Environment]::GetEnvironmentVariable('GEMINI_API_KEY', 'User')
+    }
     $venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
     if (-not (Test-Path -LiteralPath $venvPython)) {
         & $Python -c "import sys; assert (3,11) <= sys.version_info[:2] < (3,14), 'Use Python 3.11, 3.12 ou 3.13'"

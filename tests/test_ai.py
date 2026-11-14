@@ -254,6 +254,7 @@ def test_gemini_document_contract_and_high_reasoning(config, monkeypatch):
     from goener.ai import DOCUMENT_SCHEMA, request_gemini
 
     monkeypatch.setenv("GEMINI_API_KEY", "test-only")
+    config.ai_thinking_level = "high"
     parts = [{"inlineData": {"mimeType": "application/pdf", "data": "cGRm"}}]
     response = {
         "decision": "considerar",
@@ -426,3 +427,107 @@ def test_rules_route_cannot_release_later_business_failure(config):
     r.ai = {"routing": "rules_passed"}
     r.statement.issue("DIVERGENCIA", "Saldo diverge")
     assert not r.included("automatico", config.period)
+
+
+def test_valid_response_cache_avoids_network_and_invalidates_on_context(config, monkeypatch):
+    from goener.ai import request_gemini
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only")
+    clock = [1720000000.0]
+    monkeypatch.setattr("goener.ai.time.time", lambda: clock[0])
+    calls = []
+
+    def opener(req, timeout):
+        calls.append(req)
+        decision = {"decision": "revisar", "reason": "Conferir", "evidence_codes": []}
+        return io.StringIO(
+            json.dumps(
+                {
+                    "responseId": "real-test-id",
+                    "candidates": [
+                        {
+                            "finishReason": "STOP",
+                            "content": {"parts": [{"text": json.dumps(decision)}]},
+                        }
+                    ],
+                }
+            )
+        )
+
+    context = {"issues": [], "period": "2026-10"}
+    first = request_gemini(context, config.ai_model, opener, config=config)
+    second = request_gemini(context, config.ai_model, opener, config=config, network_allowed=False)
+    assert len(calls) == 1 and not first["cached"] and second["cached"]
+    assert second["attempts"] == [] and len(second["original_attempts"]) == 1
+    clock[0] += 30
+    third = request_gemini({**context, "period": "2026-09"}, config.ai_model, opener, config=config)
+    assert not third["cached"] and len(calls) == 2
+
+
+def test_persistent_quota_limits_do_not_consume_attempt_while_waiting(tmp_path):
+    from goener.ai import GeminiState
+
+    state = GeminiState(tmp_path)
+    now = 1720000000.0
+    assert state.reserve("model", 5, 2, now) is None
+    wait = state.reserve("model", 5, 2, now + 1)
+    assert wait["category"] == "quota_rate" and wait["wait"] > 10
+    # Nova instância, mesmo estado: fechar/reabrir o robô não zera a cota.
+    state = GeminiState(tmp_path)
+    assert state.reserve("model", 5, 2, now + 20) is None
+    blocked = state.reserve("model", 5, 2, now + 40)
+    assert blocked["category"] == "quota_daily"
+    assert state.reserve("model", 5, 2, blocked["retry_at"] + 1) is None
+
+
+def test_daily_provider_quota_is_not_retried_and_body_is_not_logged(monkeypatch):
+    from urllib.error import HTTPError
+
+    from goener.ai import AIError, request_gemini
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only")
+    calls = []
+    error = {
+        "error": {
+            "message": "private server message test-only",
+            "status": "RESOURCE_EXHAUSTED",
+            "details": [
+                {
+                    "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                    "violations": [
+                        {
+                            "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+                            "quotaMetric": "generate_content_free_tier_requests",
+                            "quotaValue": "20",
+                        }
+                    ],
+                },
+                {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "45s"},
+            ],
+        }
+    }
+
+    def opener(req, timeout):
+        calls.append(req)
+        raise HTTPError(req.full_url, 429, "quota", {}, io.BytesIO(json.dumps(error).encode()))
+
+    with pytest.raises(AIError) as caught:
+        request_gemini({"issues": []}, "test", opener)
+    assert len(calls) == 1 and caught.value.details["category"] == "quota_daily"
+    assert "private server message" not in json.dumps(caught.value.details)
+    assert caught.value.details["http_status"] == 429
+
+
+def test_automatic_actions_preserve_source_balance_and_exclude_copy():
+    r = Result(
+        "copy",
+        "sha",
+        "PDF",
+        Statement("Banco", "1", "2026-10", closing=money(10)),
+        duplicate_of="original",
+    )
+    r.statement.issue("ARQUIVO_DUPLICADO", "Cópia")
+    r.ai = {"mode": "automatico", "decision": "considerar"}
+    assert "excluída" in r.applied_action and not r.included("automatico", "2026-10")
+    assert r.statement.closing == money(10)
+    assert "Medida aplicada:" in r.observation

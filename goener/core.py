@@ -158,7 +158,21 @@ class Result:
                 "message", ""
             ):
                 notes.append("Bloqueio obrigatório: " + self.ai["policy_block"])
+        notes.append("Medida aplicada: " + self.applied_action)
         return human_text("\n".join(n for n in notes if n))
+
+    @property
+    def applied_action(self) -> str:
+        codes = {issue.code for issue in self.statement.issues}
+        if self.duplicate_of:
+            return "Cópia registrada e excluída dos totais."
+        if "FORA_COMPETENCIA" in codes:
+            return "Saldo excluído do fechamento por competência diferente."
+        if self.statement.closing is None:
+            return "Documento registrado sem saldo identificado e excluído dos totais."
+        if self.included(self.ai.get("mode", "off"), self.statement.period):
+            return "Saldo incluído no fechamento conforme as validações aplicáveis."
+        return "Saldo original preservado e retido fora dos totais; ressalva registrada."
 
     @property
     def review_reference(self) -> dict:
@@ -267,6 +281,7 @@ class Result:
             "cached": self.cached,
             "duplicate_of": self.duplicate_of,
             "ai": self.ai,
+            "applied_action": self.applied_action,
             "statement": self.statement.to_dict(),
         }
 
@@ -387,12 +402,14 @@ class Config:
     max_pdf_pages: int = 20
     max_image_pixels: int = 30_000_000
     retries: int = 2
-    ai_mode: str = "consultivo"
+    ai_mode: str = "automatico"
     ai_scope: str = "excecoes"
     ai_provider: str = "gemini"
-    ai_model: str = "gemini-3.8-flash"
+    ai_model: str = "gemini-3.1-flash-lite"
     ai_document_mode: str = "completo"
-    ai_thinking_level: str = "high"
+    ai_thinking_level: str = "low"
+    ai_requests_per_minute: int = 12
+    ai_requests_per_day: int = 450
     ai_timeout_seconds: int = 60
     ai_max_attempts: int = 3
     ai_batch_timeout_seconds: int = 300
@@ -429,6 +446,8 @@ def load_config(path: Path, **overrides) -> Config:
         raise ValueError("Modo de documento da IA inválido")
     if result.ai_thinking_level not in ("low", "medium", "high"):
         raise ValueError("Nível de raciocínio da IA inválido")
+    if not 1 <= result.ai_requests_per_minute <= 60 or not 1 <= result.ai_requests_per_day <= 10000:
+        raise ValueError("Limites locais de cota inválidos")
     if not (
         1 <= result.ai_timeout_seconds <= 120
         and 1 <= result.ai_max_attempts <= 3
