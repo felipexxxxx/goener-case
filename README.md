@@ -97,14 +97,11 @@ flowchart LR
 
 ```text
 src/goener/
-  cli.py          # argumentos e códigos de saída
   config.py       # configuração e competência
-  domain.py       # valores monetários e contratos de dados
+  models.py       # contratos, moeda, conciliação e duplicidades
   readers.py      # leitores de Excel, PDF e imagem
-  validation.py   # conciliação e duplicidades
-  runtime.py      # lock, cache, hash e log
+  pipeline.py     # fluxo, terminal, checkpoint, lock e log
   reporting.py    # planilha no modelo e relatório local
-  pipeline.py     # coordenação do fluxo completo
 extratos/         # entradas fictícias do case
 templates/        # modelo original
 tests/            # testes de regras, leitores e operação

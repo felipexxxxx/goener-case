@@ -5,10 +5,9 @@ from pathlib import Path
 import pytest
 from openpyxl import load_workbook
 
-from goener.domain import Result, Statement, money
-from goener.pipeline import run
+from goener.models import Result, Statement, money
+from goener.pipeline import RunLock, file_hash, run
 from goener.reporting import HEADERS, write_workbook
-from goener.runtime import RunLock, file_hash
 
 ROOT = Path(__file__).resolve().parents[1]
 

@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from goener.cli import main
 from goener.config import load_config, previous_month
+from goener.pipeline import main
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -30,7 +30,7 @@ def test_cli_forwards_operational_switches(monkeypatch, tmp_path, capsys):
             2,
         )
 
-    monkeypatch.setattr("goener.cli.run", fake_run)
+    monkeypatch.setattr("goener.pipeline.run", fake_run)
     assert (
         main(
             [

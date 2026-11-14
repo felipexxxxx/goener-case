@@ -10,7 +10,7 @@ from pathlib import Path
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
-from .domain import Result
+from .models import Result
 
 HEADERS = [
     "Arquivo",

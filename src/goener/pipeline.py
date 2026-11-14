@@ -1,24 +1,125 @@
 from __future__ import annotations
 
+import argparse
+import hashlib
 import importlib.metadata
 import json
 import os
 import platform
 import shutil
+import sqlite3
 import subprocess
+import sys
 import time
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
-from . import __version__
-from .config import Config
-from .domain import Result, Statement
+from . import EXTRACTOR_VERSION, __version__
+from .config import Config, load_config
+from .models import Result, Statement, classify_duplicates, validate
 from .readers import LocalOCR, extract
 from .reporting import status_counts, write_html, write_workbook
-from .runtime import Cache, RunLock, RunLog, atomic_json, file_hash
-from .validation import classify_duplicates, validate
+
+
+def atomic_json(path: Path, data: dict | list) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(temporary, path)
+
+
+def file_hash(path: Path) -> str:
+    hasher = hashlib.sha256()
+    with path.open("rb") as f:
+        for block in iter(lambda: f.read(1024 * 1024), b""):
+            hasher.update(block)
+    return hasher.hexdigest()
+
+
+class RunLock:
+    def __init__(self, path: Path):
+        self.path = path
+
+    def __enter__(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            descriptor = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError as exc:
+            raise RuntimeError(
+                f"Execução bloqueada por {self.path}. Confira PID e processo antes de remover um lock abandonado."
+            ) from exc
+        with os.fdopen(descriptor, "w", encoding="utf-8") as f:
+            json.dump({"pid": os.getpid(), "started_at": datetime.now(UTC).isoformat()}, f)
+        return self
+
+    def __exit__(self, *_):
+        self.path.unlink(missing_ok=True)
+
+
+class RunLog:
+    def __init__(self, root: Path, run_id: str):
+        root.mkdir(parents=True, exist_ok=True)
+        self.json_path = root / f"{run_id}.jsonl"
+        self.text_path = root / f"{run_id}.log"
+        self.run_id = run_id
+
+    def event(self, event: str, **fields):
+        record = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "run_id": self.run_id,
+            "event": event,
+            **fields,
+        }
+        with self.json_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            f.flush()
+        detail = " ".join(f"{k}={json.dumps(v, ensure_ascii=False)}" for k, v in fields.items())
+        with self.text_path.open("a", encoding="utf-8") as f:
+            f.write(f"{record['timestamp']} {event} {detail}\n")
+
+
+class Cache:
+    def __init__(self, path: Path, config: Config):
+        source = b"".join(
+            Path(__file__).with_name(n).read_bytes() for n in ("readers.py", "models.py")
+        )
+        options = json.dumps(
+            {
+                "version": EXTRACTOR_VERSION,
+                "ocr": config.ocr_enabled,
+                "min_confidence": config.ocr_min_confidence,
+                "pages": config.max_pdf_pages,
+                "pixels": config.max_image_pixels,
+                "mb": config.max_file_mb,
+            },
+            sort_keys=True,
+        ).encode()
+        self.fingerprint = hashlib.sha256(source + options).hexdigest()
+        self.db = sqlite3.connect(path)
+        self.db.execute("PRAGMA journal_mode=WAL")
+        self.db.execute("PRAGMA synchronous=FULL")
+        self.db.execute(
+            "CREATE TABLE IF NOT EXISTS extraction (key TEXT PRIMARY KEY, payload TEXT NOT NULL)"
+        )
+
+    def key(self, sha256: str, suffix: str) -> str:
+        return f"{sha256}:{suffix}:{self.fingerprint}"
+
+    def get(self, key: str) -> Statement | None:
+        row = self.db.execute("SELECT payload FROM extraction WHERE key=?", (key,)).fetchone()
+        return Statement.from_dict(json.loads(row[0])) if row else None
+
+    def put(self, key: str, statement: Statement) -> None:
+        payload = json.dumps(statement.to_dict(), ensure_ascii=False)
+        self.db.execute("INSERT OR REPLACE INTO extraction VALUES (?,?)", (key, payload))
+        self.db.commit()
+
+    def close(self):
+        self.db.close()
 
 
 def git_revision() -> str:
@@ -239,3 +340,65 @@ def run(config: Config) -> tuple[Path, dict, int]:
         finally:
             if cache:
                 cache.close()
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Consolida saldos bancários com rastreabilidade e conciliação local."
+    )
+    parser.add_argument("--config", type=Path, default=Path("config.toml"))
+    parser.add_argument(
+        "--period", help="Competência AAAA-MM; sem configuração, mês anterior em São Paulo"
+    )
+    parser.add_argument("--input", dest="input_dir", help="Pasta de entrada (relativa ao config)")
+    parser.add_argument("--output", dest="output_dir", help="Pasta de saída (relativa ao config)")
+    parser.add_argument(
+        "--no-ocr", action="store_true", help="Desliga OCR; imagens ficam registradas como falha"
+    )
+    parser.add_argument(
+        "--no-cache", action="store_true", help="Reextrai os dados sem usar o checkpoint"
+    )
+    parser.add_argument(
+        "--strict", action="store_true", help="Retorna código 2 quando houver revisar/falhou"
+    )
+    parser.add_argument("--version", action="version", version=__version__)
+    args = parser.parse_args(argv)
+    try:
+        config = load_config(
+            args.config,
+            period=args.period,
+            input_dir=args.input_dir,
+            output_dir=args.output_dir,
+            ocr_enabled=False if args.no_ocr else None,
+            cache_enabled=False if args.no_cache else None,
+            strict=True if args.strict else None,
+        )
+        directory, summary, code = run(config)
+        print(
+            json.dumps(
+                {
+                    "output": str(directory),
+                    **{
+                        k: summary[k]
+                        for k in (
+                            "files",
+                            "statuses",
+                            "duplicates",
+                            "cache_hits",
+                            "duration_seconds",
+                            "exit_code",
+                        )
+                    },
+                },
+                ensure_ascii=True,
+                indent=2,
+            )
+        )
+        return code
+    except (Exception, KeyboardInterrupt) as exc:
+        print(f"ERRO: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 130 if isinstance(exc, KeyboardInterrupt) else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

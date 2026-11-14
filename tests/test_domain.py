@@ -2,8 +2,15 @@ from decimal import Decimal
 
 import pytest
 
-from goener.domain import Result, Statement, Transaction, amounts, money
-from goener.validation import classify_duplicates, validate
+from goener.models import (
+    Result,
+    Statement,
+    Transaction,
+    amounts,
+    classify_duplicates,
+    money,
+    validate,
+)
 
 
 @pytest.mark.parametrize(

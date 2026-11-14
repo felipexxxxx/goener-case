@@ -19,3 +19,13 @@ SQLite guarda extrações por hash do conteúdo e versão do extrator. A valida�
 ## Operação
 
 O lote isola erros de documentos. Erro de entrada, configuração, lock ou publicação impede declarar conclusão. STOP solicita interrupção entre arquivos; os restantes ficam registrados como cancelados. Retries atendem apenas falhas transitórias de leitura, nunca erros de interpretação.
+
+## Etapa de IA proposta (ainda não implementada)
+
+A integração será feita por HTTP com a Responses API, com instruções versionadas e resposta em JSON validado. O contexto incluirá os dados extraídos, as regras aplicáveis e as divergências; o documento será tratado como dado, sem autoridade para mudar essas instruções.
+
+Dois modos foram definidos com o responsável pelo case: consultivo, que registra recomendação e justificativa sem alterar os totais; e automático, que aplica a decisão dentro de uma política aprovada pela gestão. A evidência deve separar resultado das regras, recomendação da IA, decisão aplicada e eventual revisão humana. O modelo não poderá corrigir saldos ou executar código livremente. Falha de API, recusa ou resposta inválida manterá a pendência para revisão.
+
+O desenvolvimento supervisionado começará com exemplos classificados pela equipe, avaliação em casos separados e registro das divergências. Ajustar instruções e exemplos não equivale a treinar os pesos do modelo. Uma eventual etapa de fine-tuning depende de dados suficientes e avaliação específica. A passagem para o modo automático será discutida com a gestão após medir erros e critérios de aceitação.
+
+O pipeline atual continua sequencial. Paralelismo é uma evolução possível por arquivo, com limite de trabalhadores e escrita centralizada da planilha e do checkpoint; ainda não foi implementado nem medido.

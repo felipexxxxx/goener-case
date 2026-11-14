@@ -11,7 +11,7 @@ from openpyxl import load_workbook
 from PIL import Image
 
 from .config import Config
-from .domain import MONEY, Statement, Transaction, amounts, money, normalized
+from .models import MONEY, Statement, Transaction, amounts, money, normalized
 
 
 @dataclass

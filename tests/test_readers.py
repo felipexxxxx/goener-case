@@ -4,9 +4,8 @@ import pytest
 from openpyxl import Workbook
 
 from goener.config import load_config
-from goener.domain import Statement, money
+from goener.models import Statement, money, validate
 from goener.readers import LocalOCR, extract, metadata
-from goener.validation import validate
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {
