@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from goener.models import (
+from goener.core import (
     Result,
     Statement,
     Transaction,

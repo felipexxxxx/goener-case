@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from openpyxl import load_workbook
 
-from goener.models import Result, Statement, money
+from goener.core import Result, Statement, money
 from goener.pipeline import RunLock, file_hash, run
 from goener.reporting import HEADERS, write_workbook
 

@@ -10,8 +10,7 @@ import pdfplumber
 from openpyxl import load_workbook
 from PIL import Image
 
-from .config import Config
-from .models import MONEY, Statement, Transaction, amounts, money, normalized
+from .core import MONEY, Config, Statement, Transaction, amounts, money, normalized
 
 
 @dataclass

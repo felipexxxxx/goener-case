@@ -17,6 +17,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Falha ao criar o ambiente virtual." }
     }
     $lockHash = (Get-FileHash -LiteralPath requirements-lock.txt -Algorithm SHA256).Hash
+    $lockHash += (Get-FileHash -LiteralPath pyproject.toml -Algorithm SHA256).Hash
     $setupMarker = Join-Path $PSScriptRoot ".venv\goener-setup.sha256"
     $installedHash = if (Test-Path -LiteralPath $setupMarker) { (Get-Content -LiteralPath $setupMarker -Raw).Trim() } else { "" }
     if ($installedHash -ne $lockHash) {

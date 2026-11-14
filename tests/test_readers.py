@@ -3,8 +3,7 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from goener.config import load_config
-from goener.models import Statement, money, validate
+from goener.core import Statement, load_config, money, validate
 from goener.readers import LocalOCR, extract, metadata
 
 ROOT = Path(__file__).resolve().parents[1]

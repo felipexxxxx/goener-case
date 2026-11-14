@@ -17,3 +17,5 @@ entrega/*.zip
 entrega/**/*.zip
 
 ~$*.xlsx
+
+.local/

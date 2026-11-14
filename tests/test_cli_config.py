@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from goener.config import load_config, previous_month
+from goener.core import load_config, previous_month
 from goener.pipeline import main
 
 ROOT = Path(__file__).resolve().parents[1]

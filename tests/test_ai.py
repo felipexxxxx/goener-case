@@ -5,13 +5,12 @@ import pytest
 
 from goener.ai import (
     SCHEMA,
-    request_browser,
     request_decision,
     request_gemini,
     review,
     validate_decision,
 )
-from goener.models import Result, Statement, money
+from goener.core import Result, Statement, money
 
 
 def test_http_payload_and_schema(monkeypatch):
@@ -97,11 +96,6 @@ def test_missing_key_and_api_failure(config, monkeypatch):
     review([r], config)
     assert r.ai["decision"] == "indisponivel"
     assert not r.included(config.ai_mode, config.period)
-
-
-def test_browser_requires_prepared_profile_before_loading_selenium(config):
-    with pytest.raises(ValueError, match="sessão"):
-        request_browser({"issues": []}, config)
 
 
 def test_gemini_http_contract(monkeypatch):

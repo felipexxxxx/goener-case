@@ -9,89 +9,6 @@ import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-
-def browser_driver(config, visible=False):
-    from selenium import webdriver
-
-    profile = config.runtime_dir / "chatgpt-profile"
-    profile.mkdir(parents=True, exist_ok=True)
-    options = webdriver.ChromeOptions()
-    options.add_argument("--user-data-dir=" + str(profile.resolve()))
-    options.add_argument("--window-size=1440,1000")
-    if not visible:
-        options.add_argument("--headless=new")
-    driver = webdriver.Chrome(options=options)
-    driver.set_page_load_timeout(45)
-    return driver
-
-
-def request_browser(context, config):
-    """Transporte experimental: só usa perfil preparado e High visível na interface."""
-    if not (config.runtime_dir / "chatgpt-ready").exists():
-        raise ValueError("Prepare e valide a sessão do navegador antes de ativar este transporte")
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.common.keys import Keys
-    from selenium.webdriver.support.ui import WebDriverWait
-
-    driver = browser_driver(config)
-    try:
-        driver.get("https://chatgpt.com/")
-        wait = WebDriverWait(driver, 60)
-        editor = wait.until(
-            lambda d: next(
-                (
-                    e
-                    for e in d.find_elements(By.CSS_SELECTOR, '[contenteditable="true"]')
-                    if e.is_displayed()
-                ),
-                False,
-            )
-        )
-        high = [
-            b
-            for b in driver.find_elements(By.TAG_NAME, "button")
-            if b.is_displayed() and b.text.strip().casefold() in ("high", "alto")
-        ]
-        if not high:
-            raise ValueError("Modo High não confirmado na interface; nenhuma mensagem enviada")
-        prompt = (
-            INSTRUCTIONS
-            + "\nContrato JSON:\n"
-            + json.dumps(SCHEMA, ensure_ascii=False)
-            + "\nDados do teste:\n"
-            + json.dumps(context, ensure_ascii=False)
-        )
-        editor.send_keys(prompt)
-        editor.send_keys(Keys.ENTER)
-
-        def completed(d):
-            if any(
-                e.is_displayed()
-                for e in d.find_elements(By.CSS_SELECTOR, '[data-testid="stop-button"]')
-            ):
-                return False
-            replies = d.find_elements(By.CSS_SELECTOR, '[data-message-author-role="assistant"]')
-            if not replies:
-                return False
-            text = replies[-1].text.strip()
-            if text.startswith("```"):
-                text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-            try:
-                return validate_decision(json.loads(text), {i["code"] for i in context["issues"]})
-            except (ValueError, TypeError):
-                return False
-
-        decision = WebDriverWait(driver, 180).until(completed)
-        return {
-            **decision,
-            "transport": "chatgpt_browser",
-            "response_id": driver.current_url,
-            "model": "High observado na interface",
-        }
-    finally:
-        driver.quit()
-
-
 SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -220,12 +137,7 @@ def review(results, config, requester=None):
     if config.ai_mode == "off":
         return
     requester = (
-        requester
-        or {
-            "openai": request_decision,
-            "gemini": request_gemini,
-            "chatgpt": lambda context, model: request_browser(context, config),
-        }[config.ai_provider]
+        requester or {"openai": request_decision, "gemini": request_gemini}[config.ai_provider]
     )
     for r in results:
         s = r.statement
@@ -250,10 +162,7 @@ def review(results, config, requester=None):
                 "mode": config.ai_mode,
                 "provider": config.ai_provider,
                 "rules_status": rules_status,
-                "model": response.get(
-                    "model",
-                    config.ai_model if config.ai_provider != "chatgpt" else "não confirmado",
-                ),
+                "model": response.get("model", config.ai_model),
                 "prompt_version": "1",
                 "message": "Recomendação da IA: " + response["reason"],
             }
@@ -269,7 +178,7 @@ def review(results, config, requester=None):
                 "decision": "indisponivel",
                 "mode": config.ai_mode,
                 "provider": config.ai_provider,
-                "model": config.ai_model if config.ai_provider != "chatgpt" else "não confirmado",
+                "model": config.ai_model,
                 "error_type": type(exc).__name__,
                 "rules_status": rules_status,
                 "message": "A análise por IA não foi concluída. Confira este arquivo antes de decidir.",

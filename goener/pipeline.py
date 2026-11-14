@@ -18,8 +18,7 @@ from pathlib import Path
 
 from . import EXTRACTOR_VERSION, __version__
 from .ai import review
-from .config import Config, load_config
-from .models import Result, Statement, classify_duplicates, validate
+from .core import Config, Result, Statement, classify_duplicates, load_config, validate
 from .readers import LocalOCR, extract
 from .reporting import status_counts, write_html, write_workbook
 
@@ -86,7 +85,7 @@ class RunLog:
 class Cache:
     def __init__(self, path: Path, config: Config):
         source = b"".join(
-            Path(__file__).with_name(n).read_bytes() for n in ("readers.py", "models.py")
+            Path(__file__).with_name(n).read_bytes() for n in ("readers.py", "core.py")
         )
         options = json.dumps(
             {

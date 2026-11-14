@@ -107,14 +107,12 @@ def one_page(path: Path, summary: dict) -> None:
 def build(run_dir: Path, destination: Path) -> Path:
     summary = json.loads((run_dir / "resumo.json").read_text(encoding="utf-8"))
     destination.mkdir(parents=True, exist_ok=True)
-    result_dir = destination / "resultado"
+    result_dir = destination
     result_dir.mkdir(exist_ok=True)
     for p in run_dir.iterdir():
         if p.is_file() and not p.name.startswith(chr(126) + chr(36)):
             shutil.copy2(p, result_dir / p.name)
     one_page(destination / "documentacao_1_pagina.pdf", summary)
-    instructions = "# Arquivos para envio\n\n1. Automação exportada: `goener_automacao.zip`.\n2. Planilha gerada: `resultado/consolidado.xlsx`.\n3. Documentação de uma página: `documentacao_1_pagina.pdf`.\n\nO ZIP inclui código, entradas fictícias, modelo, testes, documentação e o resultado desta execução. Não contém ambiente virtual nem checkpoints locais. Para rodar, veja o README.\n\nRepositório: https://github.com/felipexxxxx/goener-case\n"
-    (destination / "LEIA_PRIMEIRO.md").write_text(instructions, encoding="utf-8")
     names = (
         subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True)
         .stdout.decode()
@@ -123,14 +121,14 @@ def build(run_dir: Path, destination: Path) -> Path:
     archive = destination / "goener_automacao.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
         for name in names:
-            if name and not name.startswith("entrega/"):
+            if name and (not name.startswith("entrega/") or name == "entrega/gerar.py"):
                 z.write(ROOT / name, "goener-case/" + name)
         for p in destination.rglob("*"):
             if (
                 p.is_file()
                 and not p.name.startswith(chr(126) + chr(36))
                 and p != archive
-                and p.name != "checksums.sha256"
+                and p.name not in ("checksums.sha256", "gerar.py")
             ):
                 z.write(p, "goener-case/entrega/" + p.relative_to(destination).as_posix())
     checks = [
@@ -138,7 +136,7 @@ def build(run_dir: Path, destination: Path) -> Path:
         for p in sorted(destination.rglob("*"))
         if p.is_file()
         and not p.name.startswith(chr(126) + chr(36))
-        and p.name != "checksums.sha256"
+        and p.name not in ("checksums.sha256", "gerar.py")
     ]
     (destination / "checksums.sha256").write_text("\n".join(checks) + "\n", encoding="utf-8")
     return archive
@@ -147,11 +145,11 @@ def build(run_dir: Path, destination: Path) -> Path:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--run", type=Path, help="Pasta de execução publicada; padrão: outputs/latest.json"
+        "--run", type=Path, help="Pasta publicada; padrão: .local/outputs/latest.json"
     )
     parser.add_argument("--destination", type=Path, default=ROOT / "entrega")
     args = parser.parse_args()
     selected = args.run or Path(
-        json.loads((ROOT / "outputs/latest.json").read_text(encoding="utf-8"))["directory"]
+        json.loads((ROOT / ".local/outputs/latest.json").read_text(encoding="utf-8"))["directory"]
     )
     print(build(selected, args.destination))
