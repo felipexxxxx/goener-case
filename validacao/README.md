@@ -73,3 +73,5 @@ A atualização por Python também foi executada usando o fonte extraído, com o
 124 testes passaram. O modelo de tempo foi corrigido para separar extratos únicos da competência de arquivos que exigem apenas triagem inicial. Neste lote: 14 extratos (5 PDF, 5 Excel e 4 imagens) e três triagens. Referência de consolidação: 10 min declarados; triagem: hipótese de 1 min. Cenários são análise de sensibilidade, sem nível de confiança estatístico atribuído. Uma referência manual não sustenta IC de 95%.
 
 `tempo.json` preserva contagens, hipóteses, tempo medido e projeções mensal/anual. Foram testados volumes/frequências diferentes, separação de duplicidade/outro período/comunicado, preservação de ganho negativo e ausência de IC fabricado. O HTML continua sem análise de tempo. As projeções antigas ficam como histórico, substituídas pela metodologia versão 3 nos novos resultados.
+
+O EXE 1.9.1 também concluiu `--update-reviews` na primeira tentativa deste ensaio, com modelo de tempo versão 3 e zero chamadas externas. Fonte/EXE/documentação foram reempacotados juntos após a alteração.

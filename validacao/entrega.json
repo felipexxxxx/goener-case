@@ -30,5 +30,7 @@
   },
   "scope": "Pacote extraído em pasta separada, na mesma máquina Windows; não é uma VM limpa.",
   "generated_pdf_visual_review": true,
-  "packager_test": "1 passed"
+  "packager_test": "1 passed",
+  "tested_version": "1.9.0",
+  "historical_note": "Benchmark de primeira execução antes da alteração do modelo de tempo. O EXE 1.9.1 tem validação própria em tempo.json."
 }

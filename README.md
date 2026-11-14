@@ -432,7 +432,9 @@ O ZIP foi extraído em uma pasta separada e seu EXE executado com `--ai-mode off
 
 ### O que foi validado e o que ainda exige homologação
 
-**122 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; a última prova do EXE reutilizou cinco análises, sem nova chamada externa.
+A versão 1.9.1 foi executada pelo EXE com `--update-reviews`: modelo de tempo versão 3, 14 extratos únicos, três triagens, projeções mensal/anual e nenhuma chamada HTTP nova. As validações anteriores de interface e pacote permanecem históricas; a evidência atual de tempo está em `validacao/tempo.json`.
+
+**124 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; a última prova do EXE reutilizou cinco análises, sem nova chamada externa.
 
 O EXE 1.9.0 concluiu `--update-reviews` e iniciou `--panel` nesta máquina. O formulário completo foi testado em cópia isolada, preservando a base entregue. Não é teste em VM Windows limpa nem em todos os cenários possíveis. Regras são gerais, mas novos layouts, volumes e políticas de máquina exigem homologação.
 

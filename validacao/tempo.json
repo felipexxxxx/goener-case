@@ -1,7 +1,7 @@
 {
   "version": "1.9.1",
   "tests_passed": 124,
-  "source_run": "20261114T215636Z_20117797",
+  "source_run": "20261114T220112Z_0a0a6772",
   "estimate": {
     "version": "3",
     "manual_entry_minutes": 8.0,
@@ -28,32 +28,32 @@
     "annual_months_assumption": 12,
     "formula": "N_extratos_unicos_do_mes * t_consolidacao + N_triagem * t_triagem - tempo_do_robo",
     "projected_manual_seconds": 8580.0,
-    "measured_robot_seconds": 0.913,
-    "projected_difference_seconds": 8579.087,
+    "measured_robot_seconds": 0.811,
+    "projected_difference_seconds": 8579.189,
     "scenarios": {
       "lower": {
         "statement_minutes": 8.0,
         "triage_minutes": 0.5,
         "manual_seconds_per_batch": 6810.0,
-        "difference_seconds_per_batch": 6809.087,
-        "monthly_hours": 1.891413,
-        "annual_hours": 22.696957
+        "difference_seconds_per_batch": 6809.189,
+        "monthly_hours": 1.891441,
+        "annual_hours": 22.697297
       },
       "central": {
         "statement_minutes": 10.0,
         "triage_minutes": 1.0,
         "manual_seconds_per_batch": 8580.0,
-        "difference_seconds_per_batch": 8579.087,
-        "monthly_hours": 2.38308,
-        "annual_hours": 28.596957
+        "difference_seconds_per_batch": 8579.189,
+        "monthly_hours": 2.383108,
+        "annual_hours": 28.597297
       },
       "upper": {
         "statement_minutes": 12.0,
         "triage_minutes": 2.0,
         "manual_seconds_per_batch": 10440.0,
-        "difference_seconds_per_batch": 10439.087,
-        "monthly_hours": 2.899746,
-        "annual_hours": 34.796957
+        "difference_seconds_per_batch": 10439.189,
+        "monthly_hours": 2.899775,
+        "annual_hours": 34.797297
       }
     },
     "uncertainty": {
@@ -71,5 +71,20 @@
   },
   "methodology_source": "https://www.itl.nist.gov/div898/handbook/eda/section3/eda352.htm",
   "pdf_one_page_visually_verified": true,
-  "exe_validation": "pending"
+  "exe_validation": {
+    "version": "1.9.1",
+    "sha256": "66fa2e38ca88e73d4f73fa7bf3dfd4f8d4e501bd4a490fe1f24263848d8cdaff",
+    "attempts": [
+      {
+        "number": 1,
+        "exit_code": 0
+      }
+    ],
+    "passed": true,
+    "run_id": "20261114T220112Z_0a0a6772",
+    "time_model": "3",
+    "current_statements": 14,
+    "triage": 3,
+    "http_attempts": 0
+  }
 }
