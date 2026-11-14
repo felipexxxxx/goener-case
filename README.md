@@ -118,6 +118,8 @@ O ajuste supervisionado deve usar exemplos classificados pela equipe e avaliaç�
 .\.venv\Scripts\python.exe entrega/gerar.py
 ```
 
+Validação local da estrutura simplificada: **60 testes passaram, com 90% de cobertura**, incluindo OCR dos documentos do case. O contrato Gemini também foi validado por chamada HTTP real no projeto gratuito desta máquina. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
+
 A instalação manual usa apenas `requirements-lock.txt` e `pip install -e . --no-deps`. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado; não inclui chaves ou dados locais de execução. Nenhum agendamento foi criado nesta máquina.
 
 ### Ganho estimado em horas
