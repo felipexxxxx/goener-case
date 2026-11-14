@@ -1,0 +1,13 @@
+{
+  "output": "C:\\Users\\felip\\OneDrive\\Desktop\\goener\\.local\\validacao_exe\\.local\\outputs\\20261114T195215Z_0177d55c",
+  "files": 17,
+  "statuses": {
+    "ok": 12,
+    "falhou": 1,
+    "revisar": 4
+  },
+  "duplicates": 1,
+  "cache_hits": 0,
+  "duration_seconds": 30.29,
+  "exit_code": 0
+}

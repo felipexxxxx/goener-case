@@ -1,0 +1,118 @@
+[
+  {
+    "file": "aviso_agencia_horizonte.pdf",
+    "sha256": "4ffc339d5a75a358f0864e2d4f66506ca118a55220021f5c6f8b3990e000625b",
+    "format": "PDF",
+    "status": "falhou",
+    "duration_ms": 29.44,
+    "cached": false,
+    "duplicate_of": null,
+    "ai": {
+      "decision": "nao_considerar",
+      "reason": "O documento é um comunicado de agência e não um extrato bancário.",
+      "evidence_codes": [
+        "ERRO_EXTRACAO"
+      ],
+      "source_check": {
+        "bank": "Banco Horizonte",
+        "account": null,
+        "period": null,
+        "closing": null,
+        "readable": true,
+        "location": "página 1",
+        "quote": "Este comunicado não é um extrato bancário."
+      },
+      "response_id": "W7z4apygEY6i5NoPsaHEwAo",
+      "usage": {
+        "promptTokenCount": 1993,
+        "candidatesTokenCount": 99,
+        "totalTokenCount": 2736,
+        "promptTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1092
+          },
+          {
+            "modality": "TEXT",
+            "tokenCount": 901
+          }
+        ],
+        "thoughtsTokenCount": 644,
+        "serviceTier": "standard"
+      },
+      "model": "gemini-3.5-flash-lite",
+      "attempts": [
+        {
+          "number": 1,
+          "http_status": 200,
+          "category": "received",
+          "provider_status": null,
+          "duration_ms": 3250.0,
+          "model": "gemini-3.5-flash-lite"
+        }
+      ],
+      "thinking_level": "high",
+      "cached": false,
+      "requested_model": "gemini-3.8-flash",
+      "selected_model": "gemini-3.5-flash-lite",
+      "models_tried": [
+        {
+          "model": "gemini-3.8-flash",
+          "outcome": "quota_daily",
+          "http_status": null,
+          "retry_at": 1794729600.0,
+          "quotas": [],
+          "attempts": []
+        },
+        {
+          "model": "gemini-3.5-flash-lite",
+          "outcome": "completed",
+          "attempts": [
+            {
+              "number": 1,
+              "http_status": 200,
+              "category": "received",
+              "provider_status": null,
+              "duration_ms": 3250.0,
+              "model": "gemini-3.5-flash-lite"
+            }
+          ]
+        }
+      ],
+      "failover_used": true,
+      "mode": "consultivo",
+      "provider": "gemini",
+      "rules_status": "falhou",
+      "prompt_version": "2",
+      "source": {
+        "sha256": "4ffc339d5a75a358f0864e2d4f66506ca118a55220021f5c6f8b3990e000625b",
+        "bytes": 44804,
+        "complete": true,
+        "pages": 1,
+        "kind": "original",
+        "mime_type": "application/pdf"
+      },
+      "context_sha256": "76b5dbdd1240b326a15c834624bbc1a420aabdee040c3c67d82a1da07ac2c218",
+      "message": "Recomendação da IA: O documento é um comunicado de agência e não um extrato bancário.",
+      "duration_ms": 3282.0,
+      "scope": "excecoes"
+    },
+    "applied_action": "Documento registrado sem saldo identificado e excluído dos totais.",
+    "statement": {
+      "bank": "",
+      "account": "",
+      "period": "",
+      "opening": null,
+      "closing": null,
+      "transactions": [],
+      "issues": [
+        {
+          "code": "ERRO_EXTRACAO",
+          "message": "ValueError: Documento é um comunicado; não é um extrato bancário",
+          "severity": "falhou"
+        }
+      ],
+      "evidence": {}
+    }
+  }
+]

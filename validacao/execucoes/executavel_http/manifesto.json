@@ -1,0 +1,16 @@
+{
+  "run_id": "20261114T195402Z_7b99657f",
+  "algorithm": "SHA-256",
+  "inputs": {
+    "aviso_agencia_horizonte.pdf": "4ffc339d5a75a358f0864e2d4f66506ca118a55220021f5c6f8b3990e000625b"
+  },
+  "template_sha256": "7438b9a9c59025faf79ae9f89a7123c6d59feb097ed62708744e3e21ced52692",
+  "artifacts": {
+    "consolidado.xlsx": "25d194502242e1103d0bb117415302c99fc722514f9813df6ba757610c942ca2",
+    "evidencias.json": "f8904d333864232aa5566a0e93d79cea186d77070c7bd601938f343ed0c31f3f",
+    "execucao.jsonl": "d6b23afe95748697838068d7e0decb986a6ff0765065140437acc3cf1337b89c",
+    "execucao.log": "2091a4cd9fae36d9817162b724f8b5e578d9bec4f6b071a355a94f138dae07b4",
+    "relatorio.html": "ec94fac6016e1f9fa36a34de118924821f2029d4bc5112f06347529c044ae148",
+    "resumo.json": "f7e3c8fb9b96a3052c6493b0125358d9ec35fed2116ebe20e5bec3b29a2a67cb"
+  }
+}

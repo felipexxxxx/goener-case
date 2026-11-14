@@ -1,0 +1,93 @@
+{
+  "executable_sha256": "fb517339a6cd396a1c44d8a502188ca19f5a530f0c283f3888b478faee6f7d7c",
+  "executable_bytes": 152953448,
+  "conditions": {
+    "python_installed_on_host": true,
+    "python_on_subprocess_path": false,
+    "source_package_in_test_folder": false,
+    "outside_working_directory": true,
+    "network_blocked_by_proxy": "Somente nos ensaios executavel_sem_ia e executavel_ia_cache; executavel_http usa internet.",
+    "clean_windows_vm": false
+  },
+  "runs": [
+    {
+      "label": "executavel_sem_ia",
+      "args": [
+        "--ai-mode",
+        "off",
+        "--no-cache"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 39.752,
+      "run_id": "20261114T195215Z_0177d55c",
+      "processing_seconds": 30.29,
+      "git_commit": "1ceaa6cb0d9755b1856dd6d1df023369d3bf9019",
+      "statuses": {
+        "ok": 12,
+        "falhou": 1,
+        "revisar": 4
+      },
+      "cache_hits": 0,
+      "ai_summary": {
+        "failover_files": 0,
+        "cached_decisions": 0,
+        "rules_only_files": 0,
+        "valid_decisions": 0,
+        "unavailable_files": 0,
+        "http_attempts": 0,
+        "source_disagreements": 0
+      }
+    },
+    {
+      "label": "executavel_ia_cache",
+      "args": [],
+      "exit_code": 0,
+      "wall_seconds": 4.569,
+      "run_id": "20261114T195250Z_a7b4e911",
+      "processing_seconds": 0.218,
+      "git_commit": "1ceaa6cb0d9755b1856dd6d1df023369d3bf9019",
+      "statuses": {
+        "ok": 12,
+        "falhou": 1,
+        "revisar": 4
+      },
+      "cache_hits": 16,
+      "ai_summary": {
+        "failover_files": 5,
+        "cached_decisions": 5,
+        "rules_only_files": 12,
+        "valid_decisions": 5,
+        "unavailable_files": 0,
+        "http_attempts": 0,
+        "source_disagreements": 0
+      }
+    },
+    {
+      "label": "executavel_http",
+      "args": [
+        "--input",
+        "entrada_http",
+        "--output",
+        ".local/prova_http",
+        "--ai-mode",
+        "consultivo",
+        "--no-cache"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 7.501,
+      "run_id": "20261114T195402Z_7b99657f",
+      "processing_seconds": 3.339,
+      "git_commit": "1ceaa6cb0d9755b1856dd6d1df023369d3bf9019",
+      "ai_summary": {
+        "failover_files": 1,
+        "cached_decisions": 0,
+        "rules_only_files": 0,
+        "valid_decisions": 1,
+        "unavailable_files": 0,
+        "http_attempts": 1,
+        "source_disagreements": 0
+      },
+      "credential_source": ".env externo; sem chave herdada no ambiente"
+    }
+  ]
+}
