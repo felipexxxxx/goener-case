@@ -252,6 +252,8 @@ A prioridade é preservada: quando o principal voltar a ficar disponível, pode 
 
 Os logs registram o código HTTP e o status seguro do provedor (por exemplo, `RESOURCE_EXHAUSTED` ou `UNAVAILABLE`). Para 429, o código distingue cota diária de limitação de frequência quando o provedor informa os detalhes; registra métrica, limite e horário de nova tentativa quando disponíveis. Sem detalhes suficientes, não afirma que a cota diária acabou. A sequência não volta ao 3.8 na mesma análise: se os três falharem por disponibilidade/cota, o fluxo local conclui com a IA indisponível e as ressalvas correspondentes.
 
+**Validação da nova ordem 3.8 → 3.5 → 3.1:** no lote real, o bloqueio diário já registrado pulou o 3.8; o 3.5 Flash-Lite analisou as cinco exceções em uma única tentativa HTTP, com cinco decisões válidas, zero indisponíveis e zero divergências nos campos comparáveis. Foram preservadas as 17 linhas e os estados 12 ok, 4 revisar e 1 falhou. Os testes também cobrem a falha dos dois primeiros e a resposta do 3.1, sem retornar ao principal na mesma sequência.
+
 ### Testar e preparar a entrega
 
 ```powershell
