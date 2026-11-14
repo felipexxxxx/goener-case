@@ -123,6 +123,10 @@ class Cache:
 
 
 def git_revision() -> str:
+    if getattr(sys, "frozen", False):
+        return json.loads(Path(__file__).with_name("build_info.json").read_text(encoding="utf-8"))[
+            "git_commit"
+        ]
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],

@@ -4,13 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "goener-case"
-version = "1.6.0"
+version = "1.7.0"
 description = "Consolidação auditável de extratos bancários em PDF, Excel e imagem"
 requires-python = ">=3.11,<3.14"
 dependencies = [
   "openpyxl==3.1.5", "pdfplumber==0.11.10", "Pillow==13.0.0",
   "rapidocr==3.10.0", "onnxruntime==1.32.0", "tzdata==2026.6", "python-dotenv==1.2.4",
 ]
+
+[project.optional-dependencies]
+build = ["pyinstaller==6.22.3", "pyinstaller-hooks-contrib==2026.10", "altgraph==0.17.5", "pefile==2024.8.26", "pywin32-ctypes==0.2.3"]
 
 [project.scripts]
 goener = "goener.pipeline:main"
@@ -25,7 +28,7 @@ goener = ["report.html"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 cache_dir = ".local/pytest"
-testpaths = ["tests"]
+testpaths = ["validacao/tests"]
 markers = ["integration: arquivos reais do case", "ocr: inferência local de OCR"]
 
 [tool.ruff]

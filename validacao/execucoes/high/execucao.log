@@ -1,0 +1,95 @@
+2026-11-14T19:08:08.623646+00:00 RUN_STARTED version="1.6.0" period="2026-10" files=17
+2026-11-14T19:08:08.628374+00:00 FILE_STARTED file="app_ipe_amarelo_1011.png"
+2026-11-14T19:08:18.148990+00:00 FILE_EXTRACTED file="app_ipe_amarelo_1011.png" sha256="07a6056c7b2000a0eec6b6f748f2ea94e3194c559e6fd5f6b7b3c936c4f0985f" cache=false duration_ms=9520.63
+2026-11-14T19:08:18.149991+00:00 FILE_STARTED file="app_riacho_fundo_1011.png"
+2026-11-14T19:08:23.482753+00:00 FILE_EXTRACTED file="app_riacho_fundo_1011.png" sha256="1833d4b6e091d6ca016cddfd1014da2ee3e169ffa3561dc80ccb77c83ac564b6" cache=false duration_ms=5332.71
+2026-11-14T19:08:23.482753+00:00 FILE_STARTED file="app_umburana_1011.png"
+2026-11-14T19:08:29.655273+00:00 FILE_EXTRACTED file="app_umburana_1011.png" sha256="63699729c673eca9e58b6594fc94dd69ac988d8c88396d2350a428f50e752376" cache=false duration_ms=6171.59
+2026-11-14T19:08:29.656274+00:00 FILE_STARTED file="aviso_agencia_horizonte.pdf"
+2026-11-14T19:08:29.671273+00:00 FILE_EXTRACTION_FAILED file="aviso_agencia_horizonte.pdf" attempt=1 error="ValueError"
+2026-11-14T19:08:29.672273+00:00 FILE_EXTRACTED file="aviso_agencia_horizonte.pdf" sha256="4ffc339d5a75a358f0864e2d4f66506ca118a55220021f5c6f8b3990e000625b" cache=false duration_ms=16.13
+2026-11-14T19:08:29.672273+00:00 FILE_STARTED file="cajueiro_solar_extrato_10-2026.xlsx"
+2026-11-14T19:08:29.683273+00:00 FILE_EXTRACTED file="cajueiro_solar_extrato_10-2026.xlsx" sha256="32a27cb93d97900686dfce4abf5c3364a1985c38690c50dea47ed623b2ee1410" cache=false duration_ms=11.04
+2026-11-14T19:08:29.684272+00:00 FILE_STARTED file="captura_facheiro_out.png"
+2026-11-14T19:08:35.733017+00:00 FILE_EXTRACTED file="captura_facheiro_out.png" sha256="a86f76240e5c5b69da12fcd1a67727f951b1de6714a944a27d50645f97e2a908" cache=false duration_ms=6049.14
+2026-11-14T19:08:35.734013+00:00 FILE_STARTED file="CARNAUBA_I_outubro.pdf"
+2026-11-14T19:08:35.799014+00:00 FILE_EXTRACTED file="CARNAUBA_I_outubro.pdf" sha256="e9d59f1c25d121d41b30a35cfc284a9337cf6eeb3a08a580a0292198631d90f1" cache=false duration_ms=65.24
+2026-11-14T19:08:35.800013+00:00 FILE_STARTED file="EXT_102026_LagoaAzul (1).pdf"
+2026-11-14T19:08:35.881790+00:00 FILE_EXTRACTED file="EXT_102026_LagoaAzul (1).pdf" sha256="397a0777665523a5b16ae622303e07fe0582da0a8e605931773b811082c09c1c" cache=false duration_ms=82.98
+2026-11-14T19:08:35.883793+00:00 FILE_STARTED file="EXT_102026_LagoaAzul.pdf"
+2026-11-14T19:08:35.885800+00:00 FILE_EXTRACTED file="EXT_102026_LagoaAzul.pdf" sha256="397a0777665523a5b16ae622303e07fe0582da0a8e605931773b811082c09c1c" cache=true duration_ms=2.52
+2026-11-14T19:08:35.885800+00:00 FILE_STARTED file="EXT_CHAPADA_VERDE_102026.pdf"
+2026-11-14T19:08:35.942766+00:00 FILE_EXTRACTED file="EXT_CHAPADA_VERDE_102026.pdf" sha256="1fc14faaa141f43d7db5ada92334825761d83de66e611551b83442aa804b369b" cache=false duration_ms=55.97
+2026-11-14T19:08:35.942766+00:00 FILE_STARTED file="extrato_barauna_ii_out2026.pdf"
+2026-11-14T19:08:36.004096+00:00 FILE_EXTRACTED file="extrato_barauna_ii_out2026.pdf" sha256="4b7f3b0891ec7f2b32920bfcba6e7396986012041076f21f302e715183576042" cache=false duration_ms=61.81
+2026-11-14T19:08:36.006103+00:00 FILE_STARTED file="extrato_mororo_iii_10-2026.xlsx"
+2026-11-14T19:08:36.016300+00:00 FILE_EXTRACTED file="extrato_mororo_iii_10-2026.xlsx" sha256="9342d01c688822660482fae256c6caba774c9f8f919eae7a32335d575c889020" cache=false duration_ms=10.34
+2026-11-14T19:08:36.016300+00:00 FILE_STARTED file="extrato_sol_do_sertao_I_out2026.pdf"
+2026-11-14T19:08:36.080052+00:00 FILE_EXTRACTED file="extrato_sol_do_sertao_I_out2026.pdf" sha256="4994ffb60fcf511c8f84670ae099bd3b27025995ae69aea4436647eafe3c074e" cache=false duration_ms=62.69
+2026-11-14T19:08:36.080052+00:00 FILE_STARTED file="JANDAIRA_extrato_outubro.xlsx"
+2026-11-14T19:08:36.091499+00:00 FILE_EXTRACTED file="JANDAIRA_extrato_outubro.xlsx" sha256="a12fbe51429ba09ed8545f411d93babfdbea3af52b1923f26540151878439f58" cache=false duration_ms=11.28
+2026-11-14T19:08:36.092526+00:00 FILE_STARTED file="JATOBA_II_extrato_outubro.xlsx"
+2026-11-14T19:08:36.104348+00:00 FILE_EXTRACTED file="JATOBA_II_extrato_outubro.xlsx" sha256="f6dd63b1032914dbf395a8a1fa704b843967334b6174ca340408213cb96f4fb8" cache=false duration_ms=11.97
+2026-11-14T19:08:36.105350+00:00 FILE_STARTED file="pau_ferro_out26.xlsx"
+2026-11-14T19:08:36.115180+00:00 FILE_EXTRACTED file="pau_ferro_out26.xlsx" sha256="967d1d5ff157a42287d16e88dcbe7478e31c0cc3d5f0ba7a9d8009744f5d4467" cache=false duration_ms=10.2
+2026-11-14T19:08:36.116687+00:00 FILE_STARTED file="print_serra_dourada_II.png"
+2026-11-14T19:08:40.435763+00:00 FILE_EXTRACTED file="print_serra_dourada_II.png" sha256="a085155bbbccc9ddbe4531e1741f874880a764de263290b022b7e661097ef71f" cache=false duration_ms=4319.44
+2026-11-14T19:08:40.436764+00:00 AI_SKIPPED file="app_ipe_amarelo_1011.png" reason="rules_passed"
+2026-11-14T19:08:40.438764+00:00 AI_SKIPPED file="app_riacho_fundo_1011.png" reason="rules_passed"
+2026-11-14T19:08:40.440764+00:00 AI_SKIPPED file="app_umburana_1011.png" reason="rules_passed"
+2026-11-14T19:08:40.442764+00:00 AI_STARTED file="aviso_agencia_horizonte.pdf" provider="gemini" model="gemini-3.8-flash" document_kind="original" prompt_version="2"
+2026-11-14T19:08:40.447764+00:00 AI_FAILOVER file="aviso_agencia_horizonte.pdf" from_model="gemini-3.8-flash" to_model="gemini-3.5-flash-lite" reason="quota_daily" http_status=null retry_at=1794729600.0 provider_status=null
+2026-11-14T19:08:44.393278+00:00 AI_ATTEMPT file="aviso_agencia_horizonte.pdf" model="gemini-3.5-flash-lite" number=1 http_status=200 category="received" provider_status=null duration_ms=3937.0
+2026-11-14T19:08:44.405282+00:00 AI_MODEL_SELECTED file="aviso_agencia_horizonte.pdf" requested_model="gemini-3.8-flash" selected_model="gemini-3.5-flash-lite" cached=false
+2026-11-14T19:08:44.406282+00:00 AI_FINISHED file="aviso_agencia_horizonte.pdf" decision="nao_considerar" duration_ms=3969.0 category=null http_status=null source_disagreements=[]
+2026-11-14T19:08:44.407281+00:00 AI_SKIPPED file="cajueiro_solar_extrato_10-2026.xlsx" reason="rules_passed"
+2026-11-14T19:08:44.408281+00:00 AI_SKIPPED file="captura_facheiro_out.png" reason="rules_passed"
+2026-11-14T19:08:44.409279+00:00 AI_SKIPPED file="CARNAUBA_I_outubro.pdf" reason="rules_passed"
+2026-11-14T19:08:44.412279+00:00 AI_STARTED file="EXT_102026_LagoaAzul (1).pdf" provider="gemini" model="gemini-3.8-flash" document_kind="original" prompt_version="2"
+2026-11-14T19:08:44.414279+00:00 AI_FAILOVER file="EXT_102026_LagoaAzul (1).pdf" from_model="gemini-3.8-flash" to_model="gemini-3.5-flash-lite" reason="quota_daily" http_status=null retry_at=1794729600.0 provider_status=null
+2026-11-14T19:08:44.416282+00:00 AI_THROTTLED file="EXT_102026_LagoaAzul (1).pdf" model="gemini-3.5-flash-lite" wait_seconds=1.23 reason="quota_rate"
+2026-11-14T19:08:50.105513+00:00 AI_ATTEMPT file="EXT_102026_LagoaAzul (1).pdf" model="gemini-3.5-flash-lite" number=1 http_status=200 category="received" provider_status=null duration_ms=4437.0
+2026-11-14T19:08:50.116636+00:00 AI_MODEL_SELECTED file="EXT_102026_LagoaAzul (1).pdf" requested_model="gemini-3.8-flash" selected_model="gemini-3.5-flash-lite" cached=false
+2026-11-14T19:08:50.118383+00:00 AI_FINISHED file="EXT_102026_LagoaAzul (1).pdf" decision="nao_considerar" duration_ms=5703.0 category=null http_status=null source_disagreements=[]
+2026-11-14T19:08:50.120388+00:00 AI_STARTED file="EXT_102026_LagoaAzul.pdf" provider="gemini" model="gemini-3.8-flash" document_kind="original" prompt_version="2"
+2026-11-14T19:08:50.122392+00:00 AI_FAILOVER file="EXT_102026_LagoaAzul.pdf" from_model="gemini-3.8-flash" to_model="gemini-3.5-flash-lite" reason="quota_daily" http_status=null retry_at=1794729600.0 provider_status=null
+2026-11-14T19:08:50.125384+00:00 AI_THROTTLED file="EXT_102026_LagoaAzul.pdf" model="gemini-3.5-flash-lite" wait_seconds=0.73 reason="quota_rate"
+2026-11-14T19:08:54.184388+00:00 AI_ATTEMPT file="EXT_102026_LagoaAzul.pdf" model="gemini-3.5-flash-lite" number=1 http_status=200 category="received" provider_status=null duration_ms=3328.0
+2026-11-14T19:08:54.197304+00:00 AI_MODEL_SELECTED file="EXT_102026_LagoaAzul.pdf" requested_model="gemini-3.8-flash" selected_model="gemini-3.5-flash-lite" cached=false
+2026-11-14T19:08:54.198305+00:00 AI_FINISHED file="EXT_102026_LagoaAzul.pdf" decision="revisar" duration_ms=4078.0 category=null http_status=null source_disagreements=[]
+2026-11-14T19:08:54.199306+00:00 AI_SKIPPED file="EXT_CHAPADA_VERDE_102026.pdf" reason="rules_passed"
+2026-11-14T19:08:54.200304+00:00 AI_SKIPPED file="extrato_barauna_ii_out2026.pdf" reason="rules_passed"
+2026-11-14T19:08:54.200658+00:00 AI_SKIPPED file="extrato_mororo_iii_10-2026.xlsx" reason="rules_passed"
+2026-11-14T19:08:54.202857+00:00 AI_STARTED file="extrato_sol_do_sertao_I_out2026.pdf" provider="gemini" model="gemini-3.8-flash" document_kind="original" prompt_version="2"
+2026-11-14T19:08:54.205857+00:00 AI_FAILOVER file="extrato_sol_do_sertao_I_out2026.pdf" from_model="gemini-3.8-flash" to_model="gemini-3.5-flash-lite" reason="quota_daily" http_status=null retry_at=1794729600.0 provider_status=null
+2026-11-14T19:08:54.208086+00:00 AI_THROTTLED file="extrato_sol_do_sertao_I_out2026.pdf" model="gemini-3.5-flash-lite" wait_seconds=1.84 reason="quota_rate"
+2026-11-14T19:08:59.306293+00:00 AI_ATTEMPT file="extrato_sol_do_sertao_I_out2026.pdf" model="gemini-3.5-flash-lite" number=1 http_status=200 category="received" provider_status=null duration_ms=3235.0
+2026-11-14T19:08:59.318291+00:00 AI_MODEL_SELECTED file="extrato_sol_do_sertao_I_out2026.pdf" requested_model="gemini-3.8-flash" selected_model="gemini-3.5-flash-lite" cached=false
+2026-11-14T19:08:59.319295+00:00 AI_FINISHED file="extrato_sol_do_sertao_I_out2026.pdf" decision="revisar" duration_ms=5109.0 category=null http_status=null source_disagreements=[]
+2026-11-14T19:08:59.320293+00:00 AI_SKIPPED file="JANDAIRA_extrato_outubro.xlsx" reason="rules_passed"
+2026-11-14T19:08:59.320293+00:00 AI_SKIPPED file="JATOBA_II_extrato_outubro.xlsx" reason="rules_passed"
+2026-11-14T19:08:59.321292+00:00 AI_SKIPPED file="pau_ferro_out26.xlsx" reason="rules_passed"
+2026-11-14T19:08:59.327291+00:00 AI_STARTED file="print_serra_dourada_II.png" provider="gemini" model="gemini-3.8-flash" document_kind="original" prompt_version="2"
+2026-11-14T19:08:59.330293+00:00 AI_FAILOVER file="print_serra_dourada_II.png" from_model="gemini-3.8-flash" to_model="gemini-3.5-flash-lite" reason="quota_daily" http_status=null retry_at=1794729600.0 provider_status=null
+2026-11-14T19:08:59.333291+00:00 AI_THROTTLED file="print_serra_dourada_II.png" model="gemini-3.5-flash-lite" wait_seconds=1.92 reason="quota_rate"
+2026-11-14T19:09:06.657835+00:00 AI_ATTEMPT file="print_serra_dourada_II.png" model="gemini-3.5-flash-lite" number=1 http_status=200 category="received" provider_status=null duration_ms=5391.0
+2026-11-14T19:09:06.668835+00:00 AI_MODEL_SELECTED file="print_serra_dourada_II.png" requested_model="gemini-3.8-flash" selected_model="gemini-3.5-flash-lite" cached=false
+2026-11-14T19:09:06.669835+00:00 AI_FINISHED file="print_serra_dourada_II.png" decision="revisar" duration_ms=7360.0 category=null http_status=null source_disagreements=[]
+2026-11-14T19:09:06.670836+00:00 FILE_FINISHED file="app_ipe_amarelo_1011.png" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.670836+00:00 FILE_FINISHED file="app_riacho_fundo_1011.png" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.671835+00:00 FILE_FINISHED file="app_umburana_1011.png" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.671835+00:00 FILE_FINISHED file="aviso_agencia_horizonte.pdf" status="falhou" codes=["ERRO_EXTRACAO", "IA_RETIDO"] applied_action="Documento registrado sem saldo identificado e excluído dos totais." duplicate_of=null
+2026-11-14T19:09:06.672837+00:00 FILE_FINISHED file="cajueiro_solar_extrato_10-2026.xlsx" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.672837+00:00 FILE_FINISHED file="captura_facheiro_out.png" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.673836+00:00 FILE_FINISHED file="CARNAUBA_I_outubro.pdf" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.673836+00:00 FILE_FINISHED file="EXT_102026_LagoaAzul (1).pdf" status="revisar" codes=["LANCAMENTO_REPETIDO", "ARQUIVO_DUPLICADO", "IA_RETIDO"] applied_action="Cópia registrada e excluída dos totais." duplicate_of="EXT_102026_LagoaAzul.pdf"
+2026-11-14T19:09:06.674835+00:00 FILE_FINISHED file="EXT_102026_LagoaAzul.pdf" status="revisar" codes=["LANCAMENTO_REPETIDO", "IA_RETIDO"] applied_action="Saldo original preservado e retido fora dos totais; ressalva registrada." duplicate_of=null
+2026-11-14T19:09:06.674835+00:00 FILE_FINISHED file="EXT_CHAPADA_VERDE_102026.pdf" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.675836+00:00 FILE_FINISHED file="extrato_barauna_ii_out2026.pdf" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.675836+00:00 FILE_FINISHED file="extrato_mororo_iii_10-2026.xlsx" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.676836+00:00 FILE_FINISHED file="extrato_sol_do_sertao_I_out2026.pdf" status="revisar" codes=["DIVERGENCIA_SALDO_FINAL", "CONCILIACAO_NAO_FECHA", "IA_RETIDO"] applied_action="Saldo original preservado e retido fora dos totais; ressalva registrada." duplicate_of=null
+2026-11-14T19:09:06.676836+00:00 FILE_FINISHED file="JANDAIRA_extrato_outubro.xlsx" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.677835+00:00 FILE_FINISHED file="JATOBA_II_extrato_outubro.xlsx" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.677835+00:00 FILE_FINISHED file="pau_ferro_out26.xlsx" status="ok" codes=[] applied_action="Saldo incluído no fechamento conforme as validações aplicáveis." duplicate_of=null
+2026-11-14T19:09:06.678836+00:00 FILE_FINISHED file="print_serra_dourada_II.png" status="revisar" codes=["FORA_COMPETENCIA", "IA_RETIDO"] applied_action="Saldo excluído do fechamento por competência diferente." duplicate_of=null
+2026-11-14T19:09:06.783837+00:00 ARTIFACTS_VALIDATED rows=17 statuses="{\"falhou\": 1, \"ok\": 12, \"revisar\": 4}"

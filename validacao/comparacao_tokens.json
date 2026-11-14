@@ -1,0 +1,127 @@
+[
+  {
+    "file": "aviso_agencia_horizonte.pdf",
+    "model": "gemini-3.5-flash-lite",
+    "thinking_level": "high",
+    "low_total": 2127,
+    "high_total": 2724,
+    "high_thoughts": 593,
+    "high_usage": {
+      "promptTokenCount": 1993,
+      "candidatesTokenCount": 138,
+      "totalTokenCount": 2724,
+      "promptTokensDetails": [
+        {
+          "modality": "IMAGE",
+          "tokenCount": 1092
+        },
+        {
+          "modality": "TEXT",
+          "tokenCount": 901
+        }
+      ],
+      "thoughtsTokenCount": 593,
+      "serviceTier": "standard"
+    }
+  },
+  {
+    "file": "EXT_102026_LagoaAzul (1).pdf",
+    "model": "gemini-3.5-flash-lite",
+    "thinking_level": "high",
+    "low_total": 5440,
+    "high_total": 6693,
+    "high_thoughts": 1244,
+    "high_usage": {
+      "promptTokenCount": 5254,
+      "candidatesTokenCount": 195,
+      "totalTokenCount": 6693,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 4162
+        },
+        {
+          "modality": "IMAGE",
+          "tokenCount": 1092
+        }
+      ],
+      "thoughtsTokenCount": 1244,
+      "serviceTier": "standard"
+    }
+  },
+  {
+    "file": "EXT_102026_LagoaAzul.pdf",
+    "model": "gemini-3.5-flash-lite",
+    "thinking_level": "high",
+    "low_total": 5296,
+    "high_total": 6175,
+    "high_thoughts": 867,
+    "high_usage": {
+      "promptTokenCount": 5124,
+      "candidatesTokenCount": 184,
+      "totalTokenCount": 6175,
+      "promptTokensDetails": [
+        {
+          "modality": "IMAGE",
+          "tokenCount": 1092
+        },
+        {
+          "modality": "TEXT",
+          "tokenCount": 4032
+        }
+      ],
+      "thoughtsTokenCount": 867,
+      "serviceTier": "standard"
+    }
+  },
+  {
+    "file": "extrato_sol_do_sertao_I_out2026.pdf",
+    "model": "gemini-3.5-flash-lite",
+    "thinking_level": "high",
+    "low_total": 5673,
+    "high_total": 6291,
+    "high_thoughts": 613,
+    "high_usage": {
+      "promptTokenCount": 5485,
+      "candidatesTokenCount": 193,
+      "totalTokenCount": 6291,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 4393
+        },
+        {
+          "modality": "IMAGE",
+          "tokenCount": 1092
+        }
+      ],
+      "thoughtsTokenCount": 613,
+      "serviceTier": "standard"
+    }
+  },
+  {
+    "file": "print_serra_dourada_II.png",
+    "model": "gemini-3.5-flash-lite",
+    "thinking_level": "high",
+    "low_total": 4846,
+    "high_total": 6028,
+    "high_thoughts": 1201,
+    "high_usage": {
+      "promptTokenCount": 4656,
+      "candidatesTokenCount": 171,
+      "totalTokenCount": 6028,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 3556
+        },
+        {
+          "modality": "IMAGE",
+          "tokenCount": 1100
+        }
+      ],
+      "thoughtsTokenCount": 1201,
+      "serviceTier": "standard"
+    }
+  }
+]

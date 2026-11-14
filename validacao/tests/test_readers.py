@@ -6,7 +6,7 @@ from openpyxl import Workbook
 from goener.core import Statement, load_config, money, validate
 from goener.readers import LocalOCR, extract, metadata
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 EXPECTED = {
     "cajueiro_solar_extrato_10-2026.xlsx": ("18844-6", "175138.64", 19),
     "extrato_mororo_iii_10-2026.xlsx": ("62091-6", "435596.81", 19),

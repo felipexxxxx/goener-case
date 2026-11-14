@@ -5,7 +5,7 @@ import pytest
 from goener.core import load_config, previous_month
 from goener.pipeline import main
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_cli_reports_configuration_error(tmp_path, capsys):

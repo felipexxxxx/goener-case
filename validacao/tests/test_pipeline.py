@@ -10,7 +10,7 @@ from goener.core import Result, Statement, money
 from goener.pipeline import RunLock, file_hash, run
 from goener.reporting import HEADERS, write_workbook
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def source(config, name="pau_ferro_out26.xlsx", destination=None):

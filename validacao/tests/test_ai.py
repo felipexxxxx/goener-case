@@ -182,7 +182,7 @@ def source_result(config, name):
     from pathlib import Path
 
     path = config.input_dir / name
-    shutil.copy2(Path(__file__).resolve().parents[1] / "extratos" / name, path)
+    shutil.copy2(Path(__file__).resolve().parents[2] / "extratos" / name, path)
     return Result(name, hashlib.sha256(path.read_bytes()).hexdigest(), path.suffix, Statement())
 
 
