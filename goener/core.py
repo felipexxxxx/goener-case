@@ -288,6 +288,11 @@ class Config:
     ai_mode: str = "off"
     ai_provider: str = "openai"
     ai_model: str = "gpt-4.1-mini"
+    ai_document_mode: str = "completo"
+    ai_thinking_level: str = "high"
+    ai_timeout_seconds: int = 60
+    ai_max_attempts: int = 3
+    ai_batch_timeout_seconds: int = 300
     manual_minutes_per_file: float = 8.0
     review_minutes_per_file: float = 3.0
 
@@ -315,6 +320,16 @@ def load_config(path: Path, **overrides) -> Config:
         raise ValueError("Modo de IA inválido")
     if result.ai_provider not in ("openai", "gemini"):
         raise ValueError("Provedor de IA inválido")
+    if result.ai_document_mode not in ("dados", "completo"):
+        raise ValueError("Modo de documento da IA inválido")
+    if result.ai_thinking_level not in ("low", "medium", "high"):
+        raise ValueError("Nível de raciocínio da IA inválido")
+    if not (
+        1 <= result.ai_timeout_seconds <= 120
+        and 1 <= result.ai_max_attempts <= 3
+        and 1 <= result.ai_batch_timeout_seconds <= 900
+    ):
+        raise ValueError("Limites de execução da IA inválidos")
     if result.manual_minutes_per_file <= 0 or result.review_minutes_per_file < 0:
         raise ValueError("Premissas de tempo inválidas")
     for p in (result.output_dir, result.runtime_dir):

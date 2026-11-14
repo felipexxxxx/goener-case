@@ -32,7 +32,9 @@ def one_page(path: Path, summary: dict) -> None:
     c.drawString(17 * mm, height - 17 * mm, "Consolidação de saldos bancários")
     c.setFont("Helvetica", 10)
     c.drawString(
-        17 * mm, height - 25 * mm, "Case Goener  |  Felipe de Paula Lins e Silva  |  versão 1.1.0"
+        17 * mm,
+        height - 25 * mm,
+        "Case Goener  |  Felipe de Paula Lins e Silva  |  versão " + summary["version"],
     )
     y = height - 45 * mm
     body_style = ParagraphStyle(

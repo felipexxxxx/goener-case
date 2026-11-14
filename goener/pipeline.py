@@ -251,7 +251,8 @@ def run(config: Config) -> tuple[Path, dict, int]:
                     continue
                 results.append(process_file(path, config, ocr, cache, log))
             classify_duplicates(results)
-            review(results, config)
+            review(results, config, log=log)
+            stopped = stopped or config.stop_file.exists()
             for r in results:
                 log.event(
                     "FILE_FINISHED",
@@ -294,6 +295,22 @@ def run(config: Config) -> tuple[Path, dict, int]:
                 },
                 "configuration": config.to_dict(),
                 "ai_mode": config.ai_mode,
+                "ai_summary": {
+                    "valid_decisions": sum(
+                        r.ai.get("decision") in ("considerar", "nao_considerar", "revisar")
+                        for r in results
+                    ),
+                    "unavailable_files": sum(
+                        r.ai.get("decision") == "indisponivel" for r in results
+                    ),
+                    "http_attempts": sum(
+                        len(r.ai.get("attempts", r.ai.get("error", {}).get("attempts", [])))
+                        for r in results
+                    ),
+                    "source_disagreements": sum(
+                        bool(r.ai.get("source_disagreements")) for r in results
+                    ),
+                },
                 "included_files": sum(r.included(config.ai_mode, config.period) for r in results),
             }
             stage = config.output_dir / f".{run_id}.pending"

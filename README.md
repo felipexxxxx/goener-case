@@ -103,13 +103,32 @@ Códigos de saída: `0` fluxo publicado; `1` configuração/infraestrutura; `2` 
 
 **Consultivo:** registra recomendação e justificativa, preservando os totais pelas regras. **Automático:** a IA pode reter o saldo; para incluí-lo, ele também precisa passar nas verificações obrigatórias. Duplicidade, competência incorreta, campos ausentes e divergências não são liberados pela IA.
 
-O contrato JSON contém apenas `decision` (`considerar`, `nao_considerar` ou `revisar`), `reason` e `evidence_codes`. Campos extras e evidências inventadas são rejeitados localmente. A chamada recebe dados estruturados mínimos e nenhuma ferramenta para executar ações. Textos de origem são tratados como dados, nunca como instruções. A IA não altera o saldo extraído.
+O contrato básico contém `decision` (`considerar`, `nao_considerar` ou `revisar`), `reason` e `evidence_codes`. No modo completo do Gemini, o JSON também exige `source_check`: banco, conta, competência, saldo, legibilidade, localização e um trecho de evidência do original. O Python valida o contrato e compara essa leitura com a extração local. Campos extras e códigos de evidência inventados são rejeitados. Uma citação gerada pela IA não comprova, sozinha, que a leitura está correta.
 
-Gemini usa HTTPS `generateContent`, esquema JSON e chave no cabeçalho. Também é aceita `GOOGLE_API_KEY`. OpenAI usa a Responses API: altere o provedor para `openai`, escolha o modelo e configure `OPENAI_API_KEY`. Não há troca automática entre provedores. Até três tentativas atendem erros HTTP transitórios; bloqueio, cota esgotada, resposta parcial ou JSON inválido retêm o saldo no modo automático.
+O Gemini recebe as premissas do fechamento, exemplos de decisão, o resultado das regras, todas as movimentações extraídas, texto/OCR, confiança crítica e evidência do saldo disponíveis. As coordenadas de todos os tokens OCR ficam na auditoria local, sem repetir essa matriz inteira na requisição. As instruções ficam versionadas em `goener/ai.py` (`PROMPT_VERSION = "2"`), sem agente persistente ou treinamento dos pesos. Não há ferramentas para executar código ou seguir links. Documentos, fórmulas e OCR são tratados como dados não confiáveis.
+
+| `ai_document_mode` | O que é enviado ao Gemini |
+| --- | --- |
+| `completo` | PDF original inteiro ou imagem original; para Excel, células preenchidas de todas as abas, com aba e coordenada. Inclui a extração local para comparação. |
+| `dados` | Somente dados, movimentações e evidências extraídos pelo Python/OCR. Não exige uma leitura independente do original. |
+
+O modo completo evita depender da primeira aba que o serviço lê ao receber Excel nativamente. Fórmulas seguem como texto e nunca são executadas pelo robô. Gráficos, imagens incorporadas e formatação do Excel não são enviados nessa conversão. PDFs e imagens seguem por `inlineData`, sem criar arquivos remotos pela Files API. Ao ativar a IA, o conteúdo escolhido é transmitido ao provedor.
+
+Os limites são explícitos: até 8 MB por original, limite de páginas/pixels do projeto, até 30 mil células examinadas no Excel e 100 mil caracteres por contexto/texto de planilha. Se exceder, a análise fica indisponível; não há corte silencioso nem indicação falsa de documento completo. Antes de enviar, o hash deve coincidir com a extração; links simbólicos e caminhos fora da entrada são bloqueados.
+
+A IA nunca sobrescreve banco, conta, período ou saldo do consolidado. No consultivo, diferenças da leitura independente ficam na observação e nas evidências, preservando a seleção pelas regras. No automático, uma diferença ou falta de evidência bloqueia a inclusão mesmo que o modelo recomende considerar.
+
+Gemini usa HTTPS `generateContent`, esquema JSON e chave no cabeçalho. Também é aceita `GOOGLE_API_KEY`. OpenAI usa a Responses API: altere o provedor para `openai`, escolha o modelo e configure `OPENAI_API_KEY`. Não há troca automática entre provedores. No Gemini, até três tentativas atendem HTTP 429/5xx, timeout e falha de rede, com espera crescente, variação aleatória e `Retry-After` numérico limitado a 30 segundos. Erros permanentes não são repetidos. Bloqueio, cota esgotada, resposta parcial ou JSON inválido retêm o saldo no modo automático.
+
+Parâmetros editáveis: `ai_thinking_level = "high"` (Gemini 3; também aceita medium/low), `ai_timeout_seconds = 60`, `ai_max_attempts = 3` e `ai_batch_timeout_seconds = 300`. O timeout de rede é por operação; não é uma garantia rígida de duração total. O orçamento impede novas tentativas após o prazo e reduz o timeout ao tempo restante. Após três análises externas falharem seguidamente, as restantes ficam indisponíveis sem novas chamadas. O arquivo STOP é verificado antes dos próximos arquivos e tentativas.
+
+Os eventos `AI_STARTED`, `AI_ATTEMPT` e `AI_FINISHED` registram arquivo, duração, tentativa, código HTTP, status seguro do provedor e resultado. Corpos HTTP, documentos e chaves não são copiados para os logs. As evidências registram versão das instruções, hash do contexto, tipo/completude da fonte, resposta validada e discrepâncias. `ai_summary` no resumo separa tentativas HTTP, decisões válidas, arquivos indisponíveis e diferenças encontradas. Sucesso HTTP não equivale a uma análise aprovada.
 
 Não salve chaves no código ou nos logs. A assinatura Google AI de estudante e o faturamento da API são separados. Verifique se o projeto está no Free Tier e tem cota. O programa não ativa faturamento. O experimento de navegador ChatGPT foi retirado para reduzir dependências e porque exigia confirmação humana.
 
-**Resultado do ensaio real:** o lote consultivo de 17 arquivos levou 603,661 segundos; 2 análises retornaram decisões válidas e 15 ficaram indisponíveis (8 timeouts e 7 erros classificados como `ValueError`). Os totais pelas regras foram preservados. Portanto, a conectividade e o contrato tiveram respostas reais válidas, mas a IA externa **ainda não está homologada para decidir o lote inteiro**. Ela permanece desligada por padrão. Os detalhes deste ensaio estão no histórico local da execução `20261114T103109Z_a649ee0e`; os tipos de erro registrados não permitem atribuir todos os casos a uma causa específica.
+**Histórico da versão anterior (antes da melhoria multimodal):** o lote consultivo de 17 arquivos levou 603,661 segundos; 2 análises retornaram decisões válidas e 15 ficaram indisponíveis (8 timeouts e 7 erros classificados como `ValueError`). Os totais pelas regras foram preservados. Portanto, a conectividade e o contrato tiveram respostas reais válidas, mas a IA externa **ainda não está homologada para decidir o lote inteiro**. Ela permanece desligada por padrão. Os detalhes deste ensaio estão no histórico local da execução `20261114T103109Z_a649ee0e`; os tipos de erro registrados não permitem atribuir todos os casos a uma causa específica.
+
+**Ensaio multimodal desta versão:** três documentos do case (Excel, PDF e PNG), em modo consultivo, foram processados em 127,685 segundos, incluindo a extração local. Para essa rodada foram usados 30 segundos por operação, duas tentativas e orçamento de 120 segundos para IA. Nenhum retornou uma decisão válida: ocorreram HTTP 503 (`UNAVAILABLE`), HTTP 429 (`RESOURCE_EXHAUSTED`) e timeouts, agora discriminados por tentativa. A validação de payload, integridade, todas as abas e bloqueios foi feita por testes automatizados; a leitura multimodal real ainda não está homologada. A evidência local está em `.local/validacao_multimodal/20261114T141520Z_1981ae30/`. Nenhuma nova cobrança foi habilitada.
 
 O ajuste supervisionado deve usar exemplos classificados pela equipe e avaliação em casos separados. Ajustar instruções não é treinar os pesos do modelo. A gestão define quando os resultados permitem passar do consultivo para o automático.
 
@@ -121,7 +140,7 @@ O ajuste supervisionado deve usar exemplos classificados pela equipe e avaliaç�
 .\.venv\Scripts\python.exe -m goener.entrega
 ```
 
-Validação local da estrutura simplificada: **60 testes passaram, com 90% de cobertura**, incluindo OCR dos documentos do case. O contrato Gemini também foi validado por chamada HTTP real no projeto gratuito desta máquina. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
+Validação local da estrutura simplificada: **70 testes passaram, com 83% de cobertura**, incluindo OCR dos documentos do case. A versão anterior teve chamadas HTTP reais válidas; a validação da versão multimodal é registrada abaixo, sem presumir homologação do lote inteiro. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
 
 A instalação manual usa apenas `requirements-lock.txt` e `pip install -e . --no-deps`. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado; não inclui chaves ou dados locais de execução. Nenhum agendamento foi criado nesta máquina.
 
@@ -150,3 +169,6 @@ O projeto atende aos layouts fornecidos. Não autentica extratos nem substitui a
 - [Gemini: contrato HTTP](https://ai.google.dev/api/generate-content)
 - [Google AI: assinatura e API](https://aistudio.google.com/docs/google-ai-plans)
 - [Gemini: cotas e faturamento](https://ai.google.dev/gemini-api/docs/billing)
+
+- [Gemini: documentos, imagens e limites da leitura de Excel](https://aistudio.google.com/docs/document-processing?generate-content=true)
+- [Gemini: parâmetros de raciocínio](https://ai.google.dev/api/generate-content)
