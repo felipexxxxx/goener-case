@@ -419,7 +419,7 @@ class Config:
         default_factory=lambda: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
     )
     ai_document_mode: str = "completo"
-    ai_thinking_level: str = "low"
+    ai_thinking_level: str = "high"
     ai_requests_per_minute: int = 12
     ai_requests_per_day: int = 450
     ai_timeout_seconds: int = 60

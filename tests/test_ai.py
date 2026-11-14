@@ -250,7 +250,10 @@ def valid_source_check(closing="10.00"):
     }
 
 
-def test_gemini_document_contract_and_high_reasoning(config, monkeypatch):
+@pytest.mark.parametrize(
+    "model", ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+)
+def test_gemini_document_contract_and_high_reasoning(config, monkeypatch, model):
     from goener.ai import DOCUMENT_SCHEMA, request_gemini
 
     monkeypatch.setenv("GEMINI_API_KEY", "test-only")
@@ -281,7 +284,7 @@ def test_gemini_document_contract_and_high_reasoning(config, monkeypatch):
             )
         )
 
-    result = request_gemini({"issues": []}, "gemini-3.8-flash", opener, parts=parts, config=config)
+    result = request_gemini({"issues": []}, model, opener, parts=parts, config=config)
     assert result["source_check"]["closing"] == "10.00"
     assert result["attempts"][0]["http_status"] == 200
 

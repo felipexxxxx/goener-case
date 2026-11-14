@@ -163,13 +163,65 @@ O Gemini recebe as premissas do fechamento, exemplos de decisão, o resultado da
 
 O modo completo evita depender da primeira aba que o serviço lê ao receber Excel nativamente. Fórmulas seguem como texto e nunca são executadas pelo robô. Gráficos, imagens incorporadas e formatação do Excel não são enviados nessa conversão. PDFs e imagens seguem por `inlineData`, sem criar arquivos remotos pela Files API. Ao ativar a IA, o conteúdo escolhido é transmitido ao provedor.
 
+### OCR, Base64 e leitura multimodal
+
+São três etapas diferentes. O RapidOCR faz a leitura local de imagens e páginas de PDF sem texto utilizável. Usa PP-OCRv4 Mobile com ONNX Runtime em CPU; retorna texto, confiança e posição dos trechos. Assim, o robô consegue registrar baixa confiança e apontar a origem da leitura. PDFs com texto selecionável são lidos diretamente pelo pdfplumber; Excel é lido pelo openpyxl. Não há instalação de executável Tesseract. Não foi feito um benchmark para afirmar que RapidOCR é sempre mais rápido ou preciso que Tesseract.
+
+No modo completo, o Python também envia o PDF ou a imagem original ao Gemini. Os bytes são codificados em **Base64** no campo `inlineData`, dentro do corpo JSON do POST HTTPS. O campo `mimeType` informa `application/pdf`, `image/png` ou `image/jpeg`. O serviço reconstrói o arquivo a partir dessa codificação. Base64 é um formato de transporte: não é OCR, criptografia, compactação nem um recurso que, sozinho, faz a IA compreender o conteúdo.
+
+O modelo **multimodal** é que consegue analisar texto e elementos visuais. Ele recebe o documento original junto com os resultados locais e as premissas. Assim, pode comparar uma leitura do original com a extração do Python, em vez de depender apenas do OCR. Essa conferência não garante acerto nem altera os originais.
+
+### Como o Excel chega ao Gemini: exemplo simples
+
+Imagine a aba `Extrato` com estas células (o saldo é numérico no Excel, apenas exibido com vírgula):
+
+| Linha | Coluna A | Coluna B |
+| --- | --- | --- |
+| 1 | Banco | Banco Aurora |
+| 2 | Saldo final | 1.234,56 |
+
+A parte textual enviada nessa solicitação contém:
+
+```json
+{
+  "source_workbook": [
+    {
+      "sheet": "Extrato",
+      "visibility": "visible",
+      "cells": [
+        {"cell": "A1", "value": "Banco"},
+        {"cell": "B1", "value": "Banco Aurora"},
+        {"cell": "A2", "value": "Saldo final"},
+        {"cell": "B2", "value": "1234.56"}
+      ]
+    }
+  ]
+}
+```
+
+É um mapa: nome da aba, endereço da célula e conteúdo. Na serialização atual, os conteúdos viram strings; isso não muda os números guardados no Excel de origem. O nome da célula permite indicar, por exemplo, “aba Extrato, célula B2”. Todas as abas e suas células preenchidas são incluídas, respeitando os limites abaixo. Fórmulas são enviadas literalmente como texto, sem execução. Essa representação não inclui gráficos, imagens incorporadas ou formatação. Junto desse mapa seguem o contexto das regras e os valores extraídos para comparação. Não se usa OCR para ler as células do Excel.
+
+### Dois controles independentes: enxergar e raciocinar
+
+| Controle | Configuração atual | O que significa |
+| --- | --- | --- |
+| Resolução da mídia | `MEDIA_RESOLUTION_HIGH` | Permite mais detalhes visuais para PDFs e imagens enviados ao Gemini. |
+| Raciocínio | `ai_thinking_level = "high"` | Solicita maior esforço de raciocínio ao modelo selecionado: 3.8, 3.5 ou 3.1. |
+| OCR local | PP-OCRv4 Mobile; confiança mínima 0,90 | Outra etapa, executada localmente. Não possui o nível low/high do Gemini. |
+
+A analogia é uma lupa e o tempo dedicado à conferência: resolução é o detalhe que se consegue enxergar; thinking é o esforço para analisar o que foi visto. As configurações são independentes. Antes desta mudança, a mídia já estava em HIGH e o raciocínio estava em LOW; agora ambos estão em HIGH.
+
+Segundo a [documentação de thinking](https://aistudio.google.com/docs/thinking), os três modelos suportam high, e tokens de raciocínio entram no consumo informado pela API. High pode usar mais tokens e levar mais tempo; não existe garantia de obter o mesmo consumo de low. A [resolução de mídia](https://aistudio.google.com/docs/media-resolution) também controla a alocação de tokens de entrada visual. A mudança para high foi autorizada aceitando maior consumo. O programa não ativa faturamento; no Free Tier continua sujeito às cotas, e em projeto pago valem as tarifas do provedor.
+
+As evidências guardam `thinking_level` e o `usageMetadata` retornado pela chamada em `ai.usage`, incluindo `promptTokenCount`, `candidatesTokenCount`, `thoughtsTokenCount` e `totalTokenCount` quando fornecidos. O total não deve ser reconstruído supondo que existam somente tokens visíveis. A troca low/high altera a chave de cache: uma resposta antiga em low não é reaproveitada como se fosse high. Um único teste não demonstra superioridade nem uma proporção fixa de consumo.
+
 Os limites são explícitos: até 8 MB por original, limite de páginas/pixels do projeto, até 30 mil células examinadas no Excel e 100 mil caracteres por contexto/texto de planilha. Se exceder, a análise fica indisponível; não há corte silencioso nem indicação falsa de documento completo. Antes de enviar, o hash deve coincidir com a extração; links simbólicos e caminhos fora da entrada são bloqueados.
 
 A IA nunca sobrescreve banco, conta, período ou saldo do consolidado. No consultivo, diferenças da leitura independente ficam na observação e nas evidências, preservando a seleção pelas regras. No automático, uma diferença ou falta de evidência bloqueia a inclusão mesmo que o modelo recomende considerar.
 
 Gemini usa HTTPS `generateContent`, esquema JSON e chave no cabeçalho. Também é aceita `GOOGLE_API_KEY`. OpenAI usa a Responses API: altere o provedor para `openai`, escolha o modelo e configure `OPENAI_API_KEY`. Não há troca automática entre provedores. No Gemini, até três tentativas por modelo atendem HTTP 500/502/503/504, timeout e falha de rede, com espera crescente e variação aleatória. Com failover ativo, 429 segue direto ao próximo modelo; sem alternativos, o retry respeita a cota e a espera. São considerados `Retry-After` numérico limitado a um dia e o `RetryInfo` do provedor. Erros permanentes não são repetidos. Bloqueio, cota esgotada, resposta parcial ou JSON inválido retêm o saldo no modo automático.
 
-Parâmetros editáveis: `ai_thinking_level = "low"` (Gemini 3; também aceita medium/high), `ai_timeout_seconds = 60`, `ai_max_attempts = 3` e `ai_batch_timeout_seconds = 300`. O timeout de rede é por operação; não é uma garantia rígida de duração total. O orçamento impede novas tentativas após o prazo e reduz o timeout ao tempo restante. No modo individual, três análises externas com falha seguida abrem o circuito. No modo agrupado, cada grupo compartilha o resultado da chamada, respeitando orçamento e bloqueios de cota persistidos. O arquivo STOP é verificado antes dos próximos arquivos e tentativas.
+Parâmetros editáveis: `ai_thinking_level = "high"` (compartilhado pelos três modelos; também aceita low/medium), `ai_timeout_seconds = 60`, `ai_max_attempts = 3` e `ai_batch_timeout_seconds = 300`. O timeout de rede é por operação; não é uma garantia rígida de duração total. O orçamento impede novas tentativas após o prazo e reduz o timeout ao tempo restante. No modo individual, três análises externas com falha seguida abrem o circuito. No modo agrupado, cada grupo compartilha o resultado da chamada, respeitando orçamento e bloqueios de cota persistidos. O arquivo STOP é verificado antes dos próximos arquivos e tentativas.
 
 Os eventos `AI_RETRY`, `AI_BATCH_STARTED`, `AI_BATCH_FINISHED`, `AI_SKIPPED`, `AI_STARTED`, `AI_THROTTLED`, `AI_CACHE_HIT`, `AI_ATTEMPT` e `AI_FINISHED` registram arquivo, duração, tentativa, código HTTP, status seguro do provedor e resultado. Corpos HTTP, documentos e chaves não são copiados para os logs. As evidências registram versão das instruções, hash do contexto, tipo/completude da fonte, resposta validada e discrepâncias. `ai_summary` no resumo separa tentativas HTTP, decisões válidas, arquivos indisponíveis e diferenças encontradas. Sucesso HTTP não equivale a uma análise aprovada.
 
@@ -187,7 +239,7 @@ O ajuste supervisionado deve usar exemplos classificados pela equipe e avaliaç�
 
 O painel do projeto Free Tier mostrou para Gemini 3.8 Flash: 5 RPM, 20 RPD e 250 mil TPM. Os picos observados foram 7 RPM e 33 RPD, ultrapassando os limites. Os testes e retries anteriores contribuíram para esse consumo; repetir em poucos segundos não recupera a cota diária. Uma chamada de diagnóstico também retornou 503 com mensagem explícita de alta demanda do modelo.
 
-Na validação individual foi usado `gemini-3.1-flash-lite`: o painel atribuiu 15 RPM, 500 RPD e 250 mil TPM a esse modelo no mesmo projeto gratuito. Ele suporta PDF, imagem e JSON estruturado. O raciocínio low reduz latência nessa conferência delimitada; as contas financeiras continuam no Python. Nenhum faturamento foi habilitado e não há rotação de contas, chaves ou projetos.
+Na validação individual foi usado `gemini-3.1-flash-lite`: o painel atribuiu 15 RPM, 500 RPD e 250 mil TPM a esse modelo no mesmo projeto gratuito. Ele suporta PDF, imagem e JSON estruturado. Naquela rodada foi usado raciocínio low para reduzir latência; a configuração atual usa high. As contas financeiras continuam no Python. Nenhum faturamento foi habilitado e não há rotação de contas, chaves ou projetos.
 
 O arquivo local `gemini.sqlite3` guarda análises válidas, tentativas e bloqueios. A resposta é reutilizada por até 30 dias somente quando modelo, instruções, esquema, conteúdo da requisição e documentos forem iguais. Uma troca de período, evidências, instruções ou modelo invalida a chave. Respostas inválidas não entram no cache. A política consultiva/automática é reaplicada no momento de usar a resposta. `--no-cache` força uma nova análise, respeitando os limites.
 
@@ -270,7 +322,7 @@ py -3.12 -m pytest --cov=goener --cov-report=term-missing
 py -3.12 -m goener.entrega
 ```
 
-Validação local da estrutura simplificada: **106 testes passaram**, incluindo OCR dos documentos do case. Os ensaios reais de leitura multimodal e failover estão registrados acima; não constituem garantia de disponibilidade futura. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
+Validação local da estrutura simplificada: **108 testes passaram**, incluindo OCR dos documentos do case. Os ensaios reais de leitura multimodal e failover estão registrados acima; não constituem garantia de disponibilidade futura. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
 
 A execução pela pasta do projeto precisa apenas de `py -3.12 -m pip install -r requirements-lock.txt`; não exige instalação editável do projeto. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado. Por padrão não inclui chave; `--include-env` é a opção explícita para o pacote privado. Dados locais de execução não são incluídos. Nenhum agendamento foi criado nesta máquina.
 
