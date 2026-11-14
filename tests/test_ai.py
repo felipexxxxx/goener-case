@@ -544,7 +544,7 @@ def test_model_failover_uses_configured_order_and_keeps_attempt_history(config, 
 
     def request(context, model, **kwargs):
         calls.append(model)
-        assert kwargs["config"].ai_max_attempts == 1
+        assert kwargs["config"].ai_max_attempts == config.ai_max_attempts
         if len(calls) <= failure_count:
             raise AIError("http_error", [{"number": 1, "http_status": 503}], http_status=503)
         return {
@@ -871,3 +871,167 @@ def test_individual_failover_keeps_three_completed_documents_and_routes_remainin
     ] * 2
     assert all(r.ai["reason"].endswith(str(i)) for i, r in enumerate(rows, 1))
     assert http_attempt_count(rows) == 6
+
+
+@pytest.mark.parametrize("status", [500, 503])
+def test_each_model_retries_transient_error_before_failover(config, monkeypatch, status):
+    from urllib.error import HTTPError
+
+    from goener.ai import request_gemini, request_gemini_failover
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only")
+    monkeypatch.setattr("goener.ai.time.sleep", lambda _: None)
+    # Isola as tentativas HTTP do limitador, já testado separadamente.
+    monkeypatch.setattr("goener.ai.GeminiState.reserve", lambda *a, **kw: None)
+    calls = []
+    events = []
+
+    def opener(req, timeout):
+        model = req.full_url.split("/models/")[1].split(":")[0]
+        calls.append(model)
+        if model != config.ai_fallback_models[-1]:
+            raise HTTPError(
+                req.full_url,
+                status,
+                "temporary",
+                {},
+                io.BytesIO(b'{"error":{"status":"UNAVAILABLE"}}'),
+            )
+        return io.StringIO(
+            json.dumps(
+                {
+                    "candidates": [
+                        {
+                            "finishReason": "STOP",
+                            "content": {
+                                "parts": [
+                                    {
+                                        "text": json.dumps(
+                                            {
+                                                "decision": "revisar",
+                                                "reason": "Conferir",
+                                                "evidence_codes": [],
+                                            }
+                                        )
+                                    }
+                                ]
+                            },
+                        }
+                    ]
+                }
+            )
+        )
+
+    def request(context, model, **kwargs):
+        return request_gemini(context, model, opener=opener, **kwargs)
+
+    result = request_gemini_failover(
+        {"issues": []}, config, requester=request, emit=lambda e, **f: events.append((e, f))
+    )
+    assert calls == [config.ai_model] * 3 + [config.ai_fallback_models[0]] * 3 + [
+        config.ai_fallback_models[1]
+    ]
+    assert len(result["attempts"]) == 7
+    assert sum(e == "AI_RETRY" for e, _ in events) == 4
+
+
+def test_failover_skips_rate_quota_without_retry_sleep(config, monkeypatch):
+    from urllib.error import HTTPError
+
+    from goener.ai import request_gemini, request_gemini_failover
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only")
+    sleeps = []
+    monkeypatch.setattr("goener.ai.time.sleep", sleeps.append)
+    calls = []
+
+    def opener(req, timeout):
+        model = req.full_url.split("/models/")[1].split(":")[0]
+        calls.append(model)
+        if model == config.ai_model:
+            raise HTTPError(
+                req.full_url,
+                429,
+                "quota",
+                {},
+                io.BytesIO(b'{"error":{"status":"RESOURCE_EXHAUSTED"}}'),
+            )
+        return io.StringIO(
+            json.dumps(
+                {
+                    "candidates": [
+                        {
+                            "finishReason": "STOP",
+                            "content": {
+                                "parts": [
+                                    {
+                                        "text": json.dumps(
+                                            {
+                                                "decision": "revisar",
+                                                "reason": "Conferir",
+                                                "evidence_codes": [],
+                                            }
+                                        )
+                                    }
+                                ]
+                            },
+                        }
+                    ]
+                }
+            )
+        )
+
+    def request(context, model, **kwargs):
+        return request_gemini(context, model, opener=opener, **kwargs)
+
+    result = request_gemini_failover({"issues": []}, config, requester=request)
+    assert calls == [config.ai_model, config.ai_fallback_models[0]] and sleeps == []
+    assert result["models_tried"][0]["outcome"] == "quota_rate"
+
+
+def test_transient_retry_can_wait_for_local_pacing_with_failover_enabled(config, monkeypatch):
+    from urllib.error import HTTPError
+
+    from goener.ai import request_gemini
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only")
+    sleeps = []
+    monkeypatch.setattr("goener.ai.time.sleep", sleeps.append)
+    reservations = iter([None, {"wait": 6, "category": "quota_rate", "retry_at": 1234567890}, None])
+    monkeypatch.setattr("goener.ai.GeminiState.reserve", lambda *a, **kw: next(reservations))
+    calls = []
+
+    def opener(req, timeout):
+        calls.append(1)
+        if len(calls) == 1:
+            raise HTTPError(req.full_url, 503, "temporary", {}, io.BytesIO(b"{}"))
+        return io.StringIO(
+            json.dumps(
+                {
+                    "candidates": [
+                        {
+                            "finishReason": "STOP",
+                            "content": {
+                                "parts": [
+                                    {
+                                        "text": json.dumps(
+                                            {
+                                                "decision": "revisar",
+                                                "reason": "Conferir",
+                                                "evidence_codes": [],
+                                            }
+                                        )
+                                    }
+                                ]
+                            },
+                        }
+                    ]
+                }
+            )
+        )
+
+    result = request_gemini(
+        {"issues": []}, config.ai_model, opener=opener, config=config, fail_fast=True
+    )
+    assert len(calls) == 2 and len(result["attempts"]) == 2
+    assert 5 in sleeps

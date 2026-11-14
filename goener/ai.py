@@ -484,7 +484,7 @@ def request_gemini(
             ):
                 if (
                     wait["category"] == "quota_daily"
-                    or (fail_fast and wait["wait"] > 5)
+                    or (fail_fast and number == 1 and wait["wait"] > 5)
                     or (deadline is not None and time.monotonic() + wait["wait"] >= deadline)
                 ):
                     raise AIError(wait["category"], attempts, retry_at=wait["retry_at"])
@@ -553,6 +553,14 @@ def request_gemini(
             retry_after = max(retry_after, 60)
             if state:
                 state.block(model, time.time() + retry_after, "quota_rate")
+            if fail_fast:
+                raise AIError(
+                    "quota_rate",
+                    attempts,
+                    http_status=status,
+                    retry_at=time.time() + retry_after,
+                    quotas=quotas,
+                )
         retryable = status in (429, 500, 502, 503, 504) or category in ("timeout", "network_error")
         if not retryable or number == getattr(config, "ai_max_attempts", 3):
             extra = (
@@ -567,6 +575,13 @@ def request_gemini(
                 http_status=status,
                 retry_at=time.time() + delay,
             )
+        emit(
+            "AI_RETRY",
+            next_attempt=number + 1,
+            wait_seconds=round(delay, 2),
+            reason=category,
+            http_status=status,
+        )
         time.sleep(delay)
     if not isinstance(body, dict):
         raise AIError("http_body_invalid", attempts)
@@ -614,9 +629,7 @@ def request_gemini_failover(
     )
     history, attempts = [], []
     for index, model in enumerate(models):
-        local = replace(
-            config, ai_model=model, ai_max_attempts=1 if len(models) > 1 else config.ai_max_attempts
-        )
+        local = replace(config, ai_model=model)
 
         def model_event(event, selected=model, **fields):
             emit(event, model=selected, **fields)
@@ -671,16 +684,21 @@ def request_gemini_failover(
                     "attempts": current,
                 }
             )
-            eligible = details["category"] in (
-                "quota_daily",
-                "quota_rate",
-                "timeout",
-                "network_error",
-                "model_cooldown",
-                "circuit_open",
-            ) or (
-                details["category"] == "http_error"
-                and details.get("http_status") in (404, 429, 500, 502, 503, 504)
+            eligible = (
+                details["category"]
+                in (
+                    "quota_daily",
+                    "quota_rate",
+                    "timeout",
+                    "network_error",
+                    "model_cooldown",
+                    "circuit_open",
+                )
+                or (details["category"] == "batch_deadline" and time.monotonic() < deadline)
+                or (
+                    details["category"] == "http_error"
+                    and details.get("http_status") in (404, 429, 500, 502, 503, 504)
+                )
             )
             if eligible and (
                 details["category"] in ("timeout", "network_error")
