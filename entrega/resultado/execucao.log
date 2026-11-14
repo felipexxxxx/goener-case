@@ -1,0 +1,54 @@
+2026-11-14T04:31:48.551268+00:00 RUN_STARTED version="1.0.0" period="2026-10" files=17
+2026-11-14T04:31:48.552776+00:00 FILE_STARTED file="app_ipe_amarelo_1011.png"
+2026-11-14T04:31:56.007815+00:00 FILE_EXTRACTED file="app_ipe_amarelo_1011.png" sha256="07a6056c7b2000a0eec6b6f748f2ea94e3194c559e6fd5f6b7b3c936c4f0985f" cache=false duration_ms=7455.75
+2026-11-14T04:31:56.009814+00:00 FILE_STARTED file="app_riacho_fundo_1011.png"
+2026-11-14T04:32:02.063675+00:00 FILE_EXTRACTED file="app_riacho_fundo_1011.png" sha256="1833d4b6e091d6ca016cddfd1014da2ee3e169ffa3561dc80ccb77c83ac564b6" cache=false duration_ms=6053.76
+2026-11-14T04:32:02.065678+00:00 FILE_STARTED file="app_umburana_1011.png"
+2026-11-14T04:32:09.077928+00:00 FILE_EXTRACTED file="app_umburana_1011.png" sha256="63699729c673eca9e58b6594fc94dd69ac988d8c88396d2350a428f50e752376" cache=false duration_ms=7012.93
+2026-11-14T04:32:09.079928+00:00 FILE_STARTED file="aviso_agencia_horizonte.pdf"
+2026-11-14T04:32:09.108028+00:00 FILE_EXTRACTION_FAILED file="aviso_agencia_horizonte.pdf" attempt=1 error="ValueError"
+2026-11-14T04:32:09.110029+00:00 FILE_EXTRACTED file="aviso_agencia_horizonte.pdf" sha256="4ffc339d5a75a358f0864e2d4f66506ca118a55220021f5c6f8b3990e000625b" cache=false duration_ms=30.26
+2026-11-14T04:32:09.111028+00:00 FILE_STARTED file="cajueiro_solar_extrato_10-2026.xlsx"
+2026-11-14T04:32:09.127070+00:00 FILE_EXTRACTED file="cajueiro_solar_extrato_10-2026.xlsx" sha256="32a27cb93d97900686dfce4abf5c3364a1985c38690c50dea47ed623b2ee1410" cache=false duration_ms=16.41
+2026-11-14T04:32:09.129072+00:00 FILE_STARTED file="captura_facheiro_out.png"
+2026-11-14T04:32:15.938412+00:00 FILE_EXTRACTED file="captura_facheiro_out.png" sha256="a86f76240e5c5b69da12fcd1a67727f951b1de6714a944a27d50645f97e2a908" cache=false duration_ms=6809.42
+2026-11-14T04:32:15.938412+00:00 FILE_STARTED file="CARNAUBA_I_outubro.pdf"
+2026-11-14T04:32:16.003527+00:00 FILE_EXTRACTED file="CARNAUBA_I_outubro.pdf" sha256="e9d59f1c25d121d41b30a35cfc284a9337cf6eeb3a08a580a0292198631d90f1" cache=false duration_ms=64.74
+2026-11-14T04:32:16.004533+00:00 FILE_STARTED file="EXT_102026_LagoaAzul (1).pdf"
+2026-11-14T04:32:16.061109+00:00 FILE_EXTRACTED file="EXT_102026_LagoaAzul (1).pdf" sha256="397a0777665523a5b16ae622303e07fe0582da0a8e605931773b811082c09c1c" cache=false duration_ms=56.29
+2026-11-14T04:32:16.061109+00:00 FILE_STARTED file="EXT_102026_LagoaAzul.pdf"
+2026-11-14T04:32:16.148251+00:00 FILE_EXTRACTED file="EXT_102026_LagoaAzul.pdf" sha256="397a0777665523a5b16ae622303e07fe0582da0a8e605931773b811082c09c1c" cache=false duration_ms=87.1
+2026-11-14T04:32:16.149250+00:00 FILE_STARTED file="EXT_CHAPADA_VERDE_102026.pdf"
+2026-11-14T04:32:16.203840+00:00 FILE_EXTRACTED file="EXT_CHAPADA_VERDE_102026.pdf" sha256="1fc14faaa141f43d7db5ada92334825761d83de66e611551b83442aa804b369b" cache=false duration_ms=54.05
+2026-11-14T04:32:16.204840+00:00 FILE_STARTED file="extrato_barauna_ii_out2026.pdf"
+2026-11-14T04:32:16.264937+00:00 FILE_EXTRACTED file="extrato_barauna_ii_out2026.pdf" sha256="4b7f3b0891ec7f2b32920bfcba6e7396986012041076f21f302e715183576042" cache=false duration_ms=60.41
+2026-11-14T04:32:16.265937+00:00 FILE_STARTED file="extrato_mororo_iii_10-2026.xlsx"
+2026-11-14T04:32:16.273444+00:00 FILE_EXTRACTED file="extrato_mororo_iii_10-2026.xlsx" sha256="9342d01c688822660482fae256c6caba774c9f8f919eae7a32335d575c889020" cache=false duration_ms=7.45
+2026-11-14T04:32:16.273444+00:00 FILE_STARTED file="extrato_sol_do_sertao_I_out2026.pdf"
+2026-11-14T04:32:16.336066+00:00 FILE_EXTRACTED file="extrato_sol_do_sertao_I_out2026.pdf" sha256="4994ffb60fcf511c8f84670ae099bd3b27025995ae69aea4436647eafe3c074e" cache=false duration_ms=62.38
+2026-11-14T04:32:16.337069+00:00 FILE_STARTED file="JANDAIRA_extrato_outubro.xlsx"
+2026-11-14T04:32:16.344582+00:00 FILE_EXTRACTED file="JANDAIRA_extrato_outubro.xlsx" sha256="a12fbe51429ba09ed8545f411d93babfdbea3af52b1923f26540151878439f58" cache=false duration_ms=8.02
+2026-11-14T04:32:16.345589+00:00 FILE_STARTED file="JATOBA_II_extrato_outubro.xlsx"
+2026-11-14T04:32:16.355100+00:00 FILE_EXTRACTED file="JATOBA_II_extrato_outubro.xlsx" sha256="f6dd63b1032914dbf395a8a1fa704b843967334b6174ca340408213cb96f4fb8" cache=false duration_ms=8.86
+2026-11-14T04:32:16.355100+00:00 FILE_STARTED file="pau_ferro_out26.xlsx"
+2026-11-14T04:32:16.362604+00:00 FILE_EXTRACTED file="pau_ferro_out26.xlsx" sha256="967d1d5ff157a42287d16e88dcbe7478e31c0cc3d5f0ba7a9d8009744f5d4467" cache=false duration_ms=6.83
+2026-11-14T04:32:16.362604+00:00 FILE_STARTED file="print_serra_dourada_II.png"
+2026-11-14T04:32:21.110628+00:00 FILE_EXTRACTED file="print_serra_dourada_II.png" sha256="a085155bbbccc9ddbe4531e1741f874880a764de263290b022b7e661097ef71f" cache=false duration_ms=4747.29
+2026-11-14T04:32:21.111356+00:00 FILE_FINISHED file="app_ipe_amarelo_1011.png" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.112156+00:00 FILE_FINISHED file="app_riacho_fundo_1011.png" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.112846+00:00 FILE_FINISHED file="app_umburana_1011.png" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.113397+00:00 FILE_FINISHED file="aviso_agencia_horizonte.pdf" status="falhou" codes=["ERRO_EXTRACAO"] duplicate_of=null
+2026-11-14T04:32:21.113935+00:00 FILE_FINISHED file="cajueiro_solar_extrato_10-2026.xlsx" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.113935+00:00 FILE_FINISHED file="captura_facheiro_out.png" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.115943+00:00 FILE_FINISHED file="CARNAUBA_I_outubro.pdf" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.116362+00:00 FILE_FINISHED file="EXT_102026_LagoaAzul (1).pdf" status="revisar" codes=["LANCAMENTO_REPETIDO", "ARQUIVO_DUPLICADO"] duplicate_of="EXT_102026_LagoaAzul.pdf"
+2026-11-14T04:32:21.117369+00:00 FILE_FINISHED file="EXT_102026_LagoaAzul.pdf" status="revisar" codes=["LANCAMENTO_REPETIDO"] duplicate_of=null
+2026-11-14T04:32:21.117369+00:00 FILE_FINISHED file="EXT_CHAPADA_VERDE_102026.pdf" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.118368+00:00 FILE_FINISHED file="extrato_barauna_ii_out2026.pdf" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.119095+00:00 FILE_FINISHED file="extrato_mororo_iii_10-2026.xlsx" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.120156+00:00 FILE_FINISHED file="extrato_sol_do_sertao_I_out2026.pdf" status="revisar" codes=["DIVERGENCIA_SALDO_FINAL", "CONCILIACAO_NAO_FECHA"] duplicate_of=null
+2026-11-14T04:32:21.120156+00:00 FILE_FINISHED file="JANDAIRA_extrato_outubro.xlsx" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.121157+00:00 FILE_FINISHED file="JATOBA_II_extrato_outubro.xlsx" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.121907+00:00 FILE_FINISHED file="pau_ferro_out26.xlsx" status="ok" codes=[] duplicate_of=null
+2026-11-14T04:32:21.122977+00:00 FILE_FINISHED file="print_serra_dourada_II.png" status="revisar" codes=["FORA_COMPETENCIA"] duplicate_of=null
+2026-11-14T04:32:21.219214+00:00 ARTIFACTS_VALIDATED rows=17 statuses="{\"falhou\": 1, \"ok\": 12, \"revisar\": 4}"
