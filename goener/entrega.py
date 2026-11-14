@@ -72,8 +72,32 @@ def one_page(path: Path, summary: dict) -> None:
         "Um executável Windows sem instalação de Python, ou um comando, lê a pasta de entrada, extrai banco, conta, competência e saldo final de PDF, Excel e imagem e preenche o modelo fornecido. A execução gera planilha, log, evidências por arquivo e relatório filtrável. Aplica retenções e exclusões nos totais, preserva uma linha por arquivo e entrega as ressalvas sem aguardar intervenção humana. Os extratos originais são preservados. O painel local permite registrar revisões e atualizar Excel e HTML juntos; cópias destacadas facilitam localizar divergências."
     )
     paragraph("Fluxo e controles", True)
+    gap, box_height = 9, 31
+    box_width = (width - 34 * mm - 4 * gap) / 5
+    labels = [
+        ("Pasta de", "entrada"),
+        ("Leitura", "PDF / OCR / Excel"),
+        ("Regras de", "conferência"),
+        ("IA nas", "exceções*"),
+        ("Excel, HTML", "e log"),
+    ]
+    for i, lines in enumerate(labels):
+        x = 17 * mm + i * (box_width + gap)
+        c.setFillColor(colors.HexColor("#EAF4F1"))
+        c.setStrokeColor(colors.HexColor("#BFD4CF"))
+        c.roundRect(x, y - box_height, box_width, box_height, 4, fill=1, stroke=1)
+        c.setFillColor(green)
+        c.setFont("Helvetica-Bold", 8)
+        c.drawCentredString(x + box_width / 2, y - 12, lines[0])
+        c.drawCentredString(x + box_width / 2, y - 23, lines[1])
+        if i < 4:
+            right = x + box_width
+            c.line(right + 1, y - box_height / 2, right + gap - 1, y - box_height / 2)
+            c.line(right + gap - 4, y - box_height / 2 + 2, right + gap - 1, y - box_height / 2)
+            c.line(right + gap - 4, y - box_height / 2 - 2, right + gap - 1, y - box_height / 2)
+    y -= box_height + 9
     paragraph(
-        "Entrada &rarr; hash e limites &rarr; leitura direta ou OCR &rarr; conciliação e competência &rarr; duplicidades &rarr; IA nas exceções &rarr; medidas no consolidado &rarr; validação e publicação. Há cache de extração e análises, controle de cotas, bloqueio de execução concorrente, retries, interruptor STOP e modo estrito. Cópias não entram na soma e inconsistências ficam retidas com ressalva."
+        "* Regulares dispensam IA. O Python compara saldo inicial + movimentos com o final declarado e confere os saldos entre lançamentos. Hash identifica cópias; competência, campos e OCR são validados. O Gemini recebe original/contexto e devolve JSON conferido pelo robô. Falha da API gera ressalva, sem impedir a publicação. Cache, retries, cotas, lock e STOP apoiam a operação."
     )
     paragraph("Resultado do lote fornecido", True)
     counts = summary["statuses"]
@@ -81,14 +105,14 @@ def one_page(path: Path, summary: dict) -> None:
     paragraph(
         f"<b>{summary['files']} arquivos</b>: {counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} para revisar e {counts.get('falhou', 0)} com falha. {timing}: <b>{summary['duration_seconds']:.2f} segundos</b> nesta máquina. A cópia de Lagoa Azul foi preservada e marcada por SHA-256. Também foram sinalizados um possível lançamento repetido, uma diferença de R$ 1.080,00 no saldo declarado de Sol do Sertão, um extrato de setembro e um comunicado sem dados de extrato."
     )
-    paragraph("Premissas e ganho estimado", True)
+    paragraph("Premissas e ganho mensal estimado", True)
     cfg = summary.get("configuration", {})
     entry = cfg.get("manual_minutes_per_file", 8)
     checking = cfg.get("manual_check_minutes_per_file", 2)
     manual = summary["files"] * (entry + checking) / 60
     difference = manual - summary["duration_seconds"] / 3600
     paragraph(
-        f"Referência manual informada pelo responsável, por amostragem de um arquivo: {entry:g} min para preencher + {checking:g} min para conferir os valores. Projeção para {summary['files']} arquivos: <b>{manual:.2f} h</b>. Processamento do robô nesta execução: <b>{summary['duration_seconds']:.2f} s</b>. Diferença projetada na consolidação: <b>{difference:.2f} h por lote</b>. A automação não auditou a cronometragem manual; uma amostra não representa todos os formatos. Não se estima revisão humana nem espera por terceiros. Cache não representa uma primeira execução. A referência de tempo fica no resumo JSON; não aparece no HTML."
+        f"Hipótese de <b>um lote mensal com {summary['files']} arquivos</b>. Amostragem informada pelo responsável: {entry:g} min para preencher + {checking:g} min para conferir. Conta: <b>{summary['files']} × ({entry:g} + {checking:g}) = {summary['files'] * (entry + checking):g} min/mês = {manual:.2f} h/mês</b>. Robô nesta execução: {summary['duration_seconds']:.2f} s. Redução projetada da consolidação: {manual:.2f} − {summary['duration_seconds']:.2f}/3.600 = <b>{difference:.2f} h/mês</b>. A amostra não foi auditada nem representa todos os formatos. Excluem-se revisão de exceções, espera pelo banco e implantação; cache não representa primeira execução. Sem economia em reais."
     )
     paragraph("Limites e próximos passos", True)
     paragraph(

@@ -59,3 +59,10 @@ O formulário foi testado no navegador em uma cópia separada de Sol do Sertão:
 Registros em `interface.json`, seção `reviews_panel`. O comando operacional rápido é `py -3.12 executar.py --update-reviews`; o painel é `py -3.12 executar.py --panel`. O teste funcional de HTTP está em `tests/test_painel.py`; ele usa servidor local e não consome API externa.
 
 O EXE 1.9.0 foi bloqueado na primeira tentativa (4551) e concluiu na repetição do mesmo comando, sem mudanças na proteção do Windows. O painel também foi iniciado pelo EXE e o formulário conferido no navegador. Os cinco destaques e seus hashes foram verificados. Logs e JSON da execução estão em `execucoes/painel_local/`; PDF, HTML e Excel gerados permanecem fora do Git.
+
+
+## Conferência final da entrega
+
+`entrega.json` registra o ensaio a partir do ZIP extraído em outra pasta. O EXE processou os 17 arquivos com IA desligada, sem caches distribuídos: 12 ok, 4 revisar, 1 falhou e R$ 4.114.372,29. Foram 38,124 segundos de processamento, além da inicialização. O único reaproveitamento ocorreu dentro do próprio lote, por causa da cópia idêntica. Planilha com oito colunas, fórmulas, revisões e hashes das saídas foram conferidos.
+
+A atualização por Python também foi executada usando o fonte extraído, com os mesmos resultados e zero chamadas HTTP. O teste de empacotamento passou. README, fontes, EXE e documento foram comparados com o conteúdo do ZIP; o PDF foi renderizado e conferido em uma página. A validação não representa máquina sem Python instalado nem política Windows universal. Nenhum novo teste externo de IA foi feito nessa conferência.

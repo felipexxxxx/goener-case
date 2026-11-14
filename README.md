@@ -1,11 +1,21 @@
-# Consolidação de extratos — Goener
+# Goener — consolidação de saldos bancários
 
-Automação de fechamento bancário: lê PDFs, imagens e Excel, valida os dados e entrega uma planilha com uma linha por arquivo, relatório HTML e logs. O Python faz a extração e as regras financeiras; o Gemini complementa a análise das exceções.
+Automação em Python que lê uma pasta de extratos e publica Excel, HTML, logs e evidências. O fluxo principal termina sem intervenção manual entre etapas. Regras financeiras fazem a primeira conferência; o Gemini complementa as exceções. A revisão posterior é opcional e fica registrada.
 
-## Executar no Windows, sem instalar Python
+**Versão 1.9.0.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
+
+Três níveis de leitura:
+
+1. **[Usar e avaliar](#1-usar-e-avaliar):** execução, entregáveis e revisões, sem conhecer o código.
+2. **[Metodologia e regras](#2-metodologia-e-regras):** mapeamento, premissas, exceções, IA e horas estimadas.
+3. **[Referência técnica](#3-referência-técnica):** stack, arquitetura, OCR, HTTP/JSON, caches, parâmetros e validação.
+
+## 1. Usar e avaliar
+
+### Executar no Windows, sem instalar Python
 
 1. Extraia **todo o ZIP** `entrega/goener_automacao.zip` em uma pasta com permissão de escrita.
-2. Mantenha `Goener.exe`, `config.toml`, `modelo.xlsx`, `.env` e a pasta `extratos/` juntos.
+2. Entre na pasta `goener-case/` extraída. Mantenha `Goener.exe`, `config.toml`, `modelo.xlsx`, `.env` e a pasta `extratos/` juntos.
 3. Coloque os documentos em `extratos/` e execute `Goener.exe`.
 
 Também é possível executar pelo PowerShell, mantendo as mensagens visíveis:
@@ -18,21 +28,17 @@ Também é possível executar pelo PowerShell, mantendo as mensagens visíveis:
 
 O executável inclui o interpretador Python, bibliotecas e modelos OCR. Foi construído para **Windows x64**; não é um executável de Linux ou macOS. O modo de arquivo único extrai bibliotecas temporariamente na inicialização, por isso existe um tempo de abertura além do processamento medido. Não precisa executar pip nem ativar ambiente. OCR e regras rodam localmente; a IA precisa de internet e chave válida. O pacote privado inclui `.env`; não publique esse ZIP, pois ele contém a credencial autorizada para a avaliação.
 
-**Validação da versão 1.8.0:** o relatório foi conferido no navegador e 110 testes passaram. O EXE 1.8.0 teve uma primeira tentativa bloqueada pelo Smart App Control (erro 4551). Em seguida, o usuário executou o mesmo binário com sucesso: 17 arquivos, cinco análises em cache, zero chamadas novas e resultados preservados. O motivo da mudança de decisão do Windows não foi identificado nos eventos. O binário continua sem assinatura; o bloqueio pode depender da política da máquina. A evidência atual está em `validacao/interface.json`; não se trata de teste em uma VM Windows limpa.
-
 **Se o Windows bloquear o EXE:** tente executá-lo novamente. Nesta máquina, a primeira tentativa foi bloqueada e a segunda funcionou com o mesmo arquivo. Isso não garante que o Windows deixe de bloquear nas próximas execuções ou em outros computadores. Se persistir, use o código Python, conforme os dois comandos abaixo; não é necessário desativar a proteção do Windows. O bloqueio acontece antes de o programa iniciar e não é uma regra da automação.
 
 **Onde estão os resultados?** Na pasta **`resultados/`**, na raiz do projeto:
 
 - **`relatorio.html`** abre o último relatório concluído, com filtros e detalhes das ressalvas.
-- **`consolidado.xlsx`** é a cópia da última planilha gerada. Feche-a antes de rodar novamente para permitir a atualização dessa cópia.
-- As pastas com o identificador de cada execução guardam os respectivos Excel, HTML, logs e evidências. Se a cópia acima estiver aberta, a nova planilha continua disponível dentro da pasta da execução.
+- **`consolidado.xlsx`** é a planilha operacional. Registre decisões na aba Revisões, salve e feche antes de atualizar.
+- As pastas com o identificador de cada execução guardam os respectivos Excel, HTML, logs e evidências. A planilha operacional aberta impede sua atualização; salve, feche e execute novamente.
 
 Por duplo clique no EXE, o painel local abre no navegador ao concluir. Mantenha o processo aberto para salvar revisões pelo formulário. O HTML salvo continua disponível para consulta sem o processo aberto. Pelo terminal, o programa informa os caminhos. `resultados/latest.json` identifica a última publicação. Saídas antigas em `.local/outputs/` continuam preservadas; os relatórios gerados não são enviados ao Git. Não há agendamento nem monitoramento automático instalados nesta versão.
 
-O histórico de validação da versão **1.8.1** registra a saída visível em `resultados/` e abre o HTML ao concluir por duplo clique. **112 testes passaram**, incluindo a publicação dos atalhos e o caso de a cópia do Excel estar aberta. O EXE 1.8.1 também foi executado pelo terminal nesta máquina: 17 arquivos processados e resultados publicados; a abertura automática do navegador por duplo clique ainda não foi verificada nesta versão.
-
-## Executar pelo código-fonte
+### Executar pelo código-fonte
 
 Esta é também a alternativa caso o Windows bloqueie `Goener.exe`. Instale o **Python 3.12**, abra o terminal na pasta do projeto e execute:
 
@@ -63,9 +69,11 @@ py -3.12 executar.py --strict
 
 `config.toml` define entrada, saída, competência e limites. Os caminhos são relativos a esse arquivo. O case usa outubro de 2026; sem competência configurada, o Python usa o mês anterior em São Paulo.
 
-## O que é entregue
+### O que é entregue
 
-A pasta `entrega/` mantém três arquivos: **ZIP da automação, consolidado Excel e documentação de uma página**. O ZIP inclui o executável Windows, fonte, entradas e resultado de referência em `resultado/`. Testes, logs e evidências técnicas ficam agrupados em `validacao/`, inclusive no Git, separados da operação. HTML, Excel e PDF gerados ficam apenas na entrega local e no ZIP privado; não são mais versionados. Os commits antigos continuam no histórico.
+O enunciado pede automação funcionando, planilha consolidada e **documentação de uma página** com fluxo, premissas, ganho em horas por mês com conta explicada e até três próximos passos.
+
+A pasta `entrega/` mantém três arquivos: **ZIP da automação, consolidado Excel e documentação de uma página**. O ZIP inclui o executável Windows, fonte, README, configuração, entradas e resultado de referência em `resultado/`. Essa pasta singular é um exemplo consultável; a primeira execução cria a base operacional em `resultados/`. Testes, logs e evidências técnicas ficam agrupados em `validacao/`, inclusive no Git, separados da operação. HTML, Excel e PDF gerados ficam apenas na entrega local e no ZIP privado; não são mais versionados. Os commits antigos continuam no histórico.
 
 | Saída por execução | Finalidade |
 | --- | --- |
@@ -128,7 +136,65 @@ As cópias ficam em `resultados/<execução>/destaques/`. PDFs e imagens recebem
 
 No caso Sol do Sertão, a cópia marca o último saldo das movimentações (**R$ 456.099,12**) e o saldo final declarado (**R$ 457.179,12**). A diferença de R$ 1.080,00 é uma inconsistência a conferir, não prova de qual valor deveria ser corrigido. Para Excel de origem, a cópia destaca e comenta a célula do saldo quando a extração fornece aba e endereço.
 
-## Fluxo atual
+## 2. Metodologia e regras
+
+### Do problema à implementação
+
+O processo manual é receber arquivos de várias contas, abrir cada formato, identificar banco/conta/mês, localizar o saldo final, transcrever, conferir e consolidar. Riscos: duplicidade, competência incorreta, erro de digitação, escolha do saldo inadequado e leitura incompleta.
+
+1. **Mapear o contrato:** entrada em pasta; uma linha por arquivo; oito colunas; problemas em Status/Observação; planilha e log gerados sem etapa manual entre leitura e publicação.
+2. **Inspecionar formatos e exceções:** PDF com texto, imagens e Excel; cópia exata, possível lançamento repetido, diferença de conciliação, mês diferente e comunicado sem saldo.
+3. **Separar leitura de validação:** os leitores extraem dados/referências; regras gerais conferem os valores sem depender do nome de um arquivo ou de uma diferença específica.
+4. **Preservar evidências:** Decimal para centavos, SHA-256, origem dos valores, eventos por documento e histórico de publicações. Uma falha em um arquivo não apaga os demais.
+5. **Adicionar IA como complemento:** conferir exceções com o original e JSON validado, sem ferramentas para executar código ou inventar saldos.
+6. **Fechar o ciclo operacional:** relatório legível, cópias destacadas e decisões humanas rastreáveis para a mesma versão do documento.
+7. **Validar e distribuir:** testes, ensaios reais de OCR/HTTP, conferência visual, EXE e pacote final verificável.
+
+### Como o robô confere as contas
+
+O robô compara os dados com regras explícitas. Créditos são positivos; débitos, negativos:
+
+```text
+saldo calculado = saldo inicial + soma das movimentações
+saldo após um lançamento = saldo anterior + valor do lançamento
+saldo final declarado deve corresponder ao saldo após o último lançamento
+```
+
+Exemplo: inicial 1.000 + crédito 200 − débito 50 = esperado 1.150. Se o extrato declara 1.180, a diferença de 30 gera ressalva. O robô preserva 1.180 como informação do original; não troca para 1.150 por conta própria. A comparação usa Decimal e centavos, sem tolerância financeira configurada além da normalização monetária.
+
+### Catálogo das premissas e exceções implementadas
+
+| Grupo | Verificação | Tratamento |
+| --- | --- | --- |
+| Identificação | Banco, conta, período e saldo final presentes; múltiplas contas no documento. | Campo essencial ausente ou múltiplas contas: falha; não somar. |
+| Competência | Período esperado; nome do arquivo não prevalece. Intervalo irregular ou múltiplos meses sem período explícito. | Outro mês: reter; ambiguidades recebem ressalva/falha conforme a leitura. |
+| Saldo correto | Final declarado, sem confundir limite ou disponível. Negativo é válido. | Não ajustar para fechar a conta. Em imagem sem cartão final reconhecido, pode registrar o último saldo legível com ressalva. |
+| Conciliação geral | Inicial + movimentos deve corresponder ao final declarado. | Diferença: preservar declarado e reter. Inicial ausente impede comprovar a conciliação e gera ressalva. |
+| Conciliação por movimento | Anterior + lançamento deve corresponder ao saldo seguinte; último deve coincidir com o declarado. | Registrar posição/diferença e reter. Ausência de movimentos também gera ressalva. |
+| Arquivo duplicado | Mesmo SHA-256, mesmo com nomes diferentes. | Original escolhido de forma determinística; cópia registrada, fora dos totais. |
+| Conta/período repetidos | Conteúdos diferentes para mesmo banco, conta e período. | Reter: hash diferente não autoriza somar documentos possivelmente sobrepostos. |
+| Lançamento repetido | Mesma data, descrição normalizada, valor e referência. | Suspeita: não apagar transação nem descontar do saldo automaticamente. |
+| Sinais e datas | Datas interpretáveis; crédito/débito compatíveis; sinal OCR legível. | Tipo/sinal inválido no Excel pode falhar a leitura. Sinal inferido pela variação de saldo em imagem fica ressalvado. |
+| Qualidade da leitura | Linha incompleta, movimento sem saldo e baixa confiança OCR em identificação/valores. | Reter/falhar conforme os dados disponíveis; não completar números inventados. |
+| Tipo de documento | Comunicado ou ausência de estrutura/campos essenciais de extrato. | Falha/exclusão com motivo; a linha continua registrada. |
+| Excel de entrada | Abas ocultas inspecionadas e sinalizadas. Fórmulas não executadas; macros, objetos ativos, conexões externas e XML com entidades recusados. | Rejeitar conteúdo ativo/não suportado. As fórmulas geradas na saída são outro contexto. |
+| Integridade e limites | Alteração, caminho externo, link simbólico, formato inválido/corrompido, excesso de bytes/páginas/pixels/células. | Bloquear aquela leitura/análise e registrar causa. |
+| IA | JSON, tipos, códigos e leitura coerentes com a extração. | Resposta fora do contrato não aplicada; indisponibilidade não interrompe a publicação do lote. |
+| Revisão humana | Decisão permitida, justificativa, responsável, data e saldo quando necessário; nome/hash/fechamento exatos. | Aplicar após validar, mantendo original/histórico. Revisão inválida não libera. |
+
+Status: `falhou` para falha essencial, `revisar` para ressalva e `ok` quando passa. Revisão humana válida pode liberar/corrigir uma divergência; exclusão humana mantém a linha fora da soma. O total usa status `ok`, competência esperada, ausência de cópia e seleção aplicável ao modo de IA/revisão.
+
+### Até onde vão as regras e onde entra a IA
+
+As regras não procuram “Sol do Sertão” nem a diferença de 1.080: conferem valores de qualquer entrada que o leitor consiga interpretar. **Novos layouts exigem validação**; os testes não demonstram cobertura universal de bancos ou problemas.
+
+No escopo padrão de exceções, os 12 regulares do lote dispensam IA; cinco recebem análise. Um problema despercebido pelas regras pode não chegar à IA. `ai_scope = "todos"` acrescenta conferência dos regulares, com mais chamadas e tokens, sem garantia de detectar toda falha.
+
+`off` usa apenas regras locais; `consultivo` registra orientação sem mudar sua seleção; `automatico` aplica retenção/exclusão no escopo analisado. A IA não remove bloqueios obrigatórios nem corrige campos extraídos. **Uma revisão humana explícita é um caminho separado**, com justificativa e integridade verificadas.
+
+O modelo não aprende automaticamente com revisões nem recebe treinamento de pesos. As decisões registradas permitem avaliação supervisionada futura com a gestão. Hoje a reutilização é por cache compatível, não por aprendizado automático.
+
+### Fluxo de ponta a ponta
 
 ```mermaid
 flowchart TD
@@ -156,6 +222,83 @@ flowchart TD
 O processamento é sequencial, sem chamadas paralelas. `Decimal` preserva os centavos. A conciliação compara saldo inicial + movimentos com o saldo final declarado. Cópias exatas e competência diferente são excluídas dos totais, sem apagar linhas ou originais. Suspeitas e divergências ficam retidas com explicação; o fluxo não espera intervenção humana para terminar.
 
 O lock evita execuções concorrentes. As saídas são montadas temporariamente e publicadas após validação. Para parar entre arquivos, crie `.local/runtime/STOP`; remova para uma nova execução. Se sobrar um lock após interrupção abrupta, confira se o processo terminou antes de removê-lo. Códigos de saída: `0` publicado, `1` infraestrutura/configuração, `2` pendências em modo estrito, `3` parada, `130` interrupção.
+
+### Referência de tempo e medição do robô
+
+O HTML é exclusivamente financeiro e operacional. Não contém painel de produtividade nem estimativa de revisão humana.
+
+Referência informada pelo responsável por amostragem de um arquivo: **8 minutos para preencher + 2 minutos para conferir os valores = 10 minutos por arquivo**. A automação não auditou essa cronometragem; o formato/arquivo da amostra não foi identificado. A extrapolação não é uma média medida de todos os formatos.
+
+Assumindo **um lote mensal de 17 arquivos**, a referência é **170 minutos/mês = 2h50/mês**. A redução projetada nesta etapa é `170/60 − duration_seconds/3600`, em horas. Esse volume mensal é uma hipótese, não um cadastro de contas esperado.
+
+O `resumo.json` guarda separadamente, em `time_estimate`:
+
+- referência manual declarada e tamanho da amostra;
+- projeção para o volume: `17 × (8 + 2) = 170 minutos`, ou 2h50;
+- duração do processamento efetivamente medida pelo robô;
+- diferença projetada apenas para a etapa de consolidação;
+- indicação de cache, para não confundir reexecução com primeira execução.
+
+Não são estimados minutos de revisão humana com automação, espera pelo banco, recebimento ou implantação. Os metadados de tempo ficam no resumo JSON para uma análise futura; o case não depende de Power BI. Não há conversão para dinheiro.
+
+### Próximos passos, por prioridade
+
+1. **P1 — Definir um critério mínimo de fechamento com o financeiro.** Cadastro por banco e conta ativa, competência esperada e prazo de entrega. Cada conta esperada precisa ter um extrato válido do mês, com saldo e identificação, sem bloqueio crítico. Cópias não contam duas vezes; recebido não significa validado. Contas ausentes mantêm o fechamento parcial. No prazo, publicar entrega com ressalvas sem chamá-la de completa. A quantidade de arquivos, sozinha, não comprova completude.
+2. **P2 — Agendar conferência da pasta e consolidar por mês.** Verificar a cada hora ou diariamente e comparar inclusões, alterações e remoções por hash. Mudança de código/configuração/competência, prazo atingido ou IA pendente com nova janela também podem exigir processamento. Reconstruir `resultados/AAAA-MM/consolidado.xlsx`, sem acrescentar linhas duplicadas; publicar somente após validação e preservar histórico. Revisões manuais ficam em cópia separada. Esta evolução ainda não está implementada.
+3. **P3 — Homologar a operação e as decisões.** Validar novos layouts, retomadas, revisões e critérios de aprovação com o financeiro; acompanhar erros da extração e decisões da IA antes de ampliar o uso automático.
+
+```mermaid
+flowchart TD
+    A[Origem abastece a pasta] --> B[Agendador confere mudanças e pendências]
+    B --> C{Há motivo para processar?}
+    C -- Não --> B
+    C -- Sim --> D[Fluxo existente de extração e validação]
+    D --> E[Comparar contas recebidas com cadastro esperado]
+    E --> F[Publicar competência parcial ou completa]
+    F --> G[Excel mensal e histórico de execuções]
+    G --> H[Consulta e revisões pelo painel local]
+```
+
+Este desenho é futuro. O processo só inclui recebimento sem trabalho manual se a origem abastecer a pasta automaticamente. Ausência de mudanças não significa que todos os documentos chegaram. O robô não autentica extratos nem substitui conciliação com o razão contábil.
+
+## 3. Referência técnica
+
+### Arquitetura e stack
+
+```mermaid
+flowchart LR
+    A[CLI / executar.py / EXE PyInstaller] --> B[pipeline.py: orquestração e publicação]
+    B --> C[readers.py: pdfplumber, openpyxl, RapidOCR e ONNX CPU]
+    B --> D[core.py: modelo, Decimal e regras]
+    B --> E[ai.py: HTTPS, JSON, cotas e failover]
+    B --> F[revisoes.py: decisões e destaques ReportLab]
+    B --> G[reporting.py: Excel e HTML/CSS/JavaScript]
+    H[painel.py: HTTPServer local] --> B
+    H --> G
+    B --> I[sqlite3: caches / hashlib: SHA-256]
+    J[entrega.py: documento PDF e ZIP] --> G
+```
+
+Python 3.12 é a versão dos ensaios. As dependências estão fixadas. O painel não exige React, Node, hospedagem ou banco remoto. A automação usa código e bibliotecas de leitura diretamente, evitando clicar em interfaces bancárias ou depender de Selenium para interpretar os arquivos.
+
+### Contrato de resposta da IA
+
+Exemplo ilustrativo do JSON no modo completo:
+
+```json
+{
+  "decision":"revisar",
+  "reason":"O saldo declarado diverge das movimentações.",
+  "evidence_codes":["CONCILIACAO_NAO_FECHA"],
+  "source_check":{
+    "bank":"Banco Aurora","account":"31827-4","period":"2026-10",
+    "closing":"457179.12","readable":true,
+    "location":"página 1","quote":"31/10/2026 SALDO FINAL 457.179,12 C"
+  }
+}
+```
+
+As decisões da IA são `considerar`, `nao_considerar` e `revisar`, distintas das quatro decisões humanas. O Python valida estrutura, tipos, códigos conhecidos e coerência com a extração. O motivo é texto explicativo; não vira comando. JSON válido não comprova interpretação correta.
 
 ### Hash e cache
 
@@ -190,7 +333,7 @@ O contrato JSON exige `decision`, `reason` e `evidence_codes`; no modo completo,
 
 **3.8 → 3.5 Flash-Lite → 3.1 Flash-Lite**, com a mesma chave/projeto. Cada modelo pode fazer até três tentativas para 500/502/503/504, timeout ou rede, com espera crescente. HTTP 429 alterna diretamente, registrando cota e espera quando informadas. 400/401/403, contrato inválido e bloqueio de segurança não são contornados por outro modelo. Uma decisão válida encerra a busca, inclusive negativa. Se todos falharem, o lote termina com a ressalva. Resultados individuais concluídos não são reenviados nessa execução.
 
-O programa respeita orçamento de tempo, pausa de modelos e cotas persistentes. O limite local dos Lite é 12 RPM/450 RPD, abaixo dos 15 RPM/500 RPD observados no projeto; para o 3.8, aplica o teto observado de 5 RPM/20 RPD. Os valores atuais do provedor prevalecem; consumo em outros programas não é visto pelo contador local. A cota diária renova à meia-noite do Pacífico. Não existe garantia de disponibilidade externa.
+O programa respeita orçamento de tempo, pausa de modelos e cotas persistentes. O limite local dos Lite é 12 RPM/450 RPD, abaixo dos 15 RPM/500 RPD observados no projeto; para o 3.8, aplica o teto observado de 5 RPM/20 RPD. Os valores atuais do provedor prevalecem; consumo em outros programas não é visto pelo contador local. A pausa diária local é calculada pela meia-noite do Pacífico; as condições efetivas do provedor prevalecem. Não existe garantia de disponibilidade externa.
 
 Os três modelos recebem **thinking HIGH**. PDFs/imagens usam também **resolução de mídia HIGH**: são controles independentes, como esforço de análise e detalhe de uma lupa. O OCR local não possui esse low/high. O teto definido pelo robô é 8.192 tokens de geração por chamada, incluindo raciocínio e resposta, sem contar a entrada. Ele não obriga o modelo a gastar o teto.
 
@@ -198,7 +341,7 @@ Nos cinco documentos do ensaio, o total passou de **23.382 tokens em low para 27
 
 `ai_batch_size = 5` permanece como opção de agrupamento. Nesse modo, IDs associam cada resultado ao documento; uma falha exige reenviar o grupo completo. O padrão individual foi escolhido para reduzir retrabalho e facilitar retomadas.
 
-## Estrutura e validação
+### Estrutura e validação
 
 ```text
 executar.py          entrada simples e ponto de empacotamento
@@ -227,41 +370,61 @@ py -3.12 -m goener.entrega --build-exe --include-env
 
 PyInstaller e hooks são fixados no `pyproject.toml`. Intermediários ficam em `.local/build/`; o binário em `.local/bin/Goener.exe`. `--exe .local/bin/Goener.exe` reutiliza um binário já construído. Sem `--include-env`, a chave não entra no ZIP. Fonte e configurações ficam legíveis no repositório; o executável não é proteção do código. Ele deve ser reconstruído quando o código operacional mudar. Distribua sempre o ZIP completo, não apenas o EXE sem seus arquivos externos.
 
-## Referência de tempo e medição do robô
 
-O HTML é exclusivamente financeiro e operacional. Não contém painel de produtividade nem estimativa de revisão humana.
+### Parâmetros operacionais
 
-Referência informada pelo responsável por amostragem de um arquivo: **8 minutos para preencher + 2 minutos para conferir os valores = 10 minutos por arquivo**. A automação não auditou essa cronometragem; o formato/arquivo da amostra não foi identificado. A extrapolação não é uma média medida de todos os formatos.
+Os mesmos parâmetros funcionam em `Goener.exe` e `py -3.12 executar.py`:
 
-O `resumo.json` guarda separadamente, em `time_estimate`:
+| Parâmetro | Uso |
+| --- | --- |
+| `--panel` | Aplicar revisões existentes e abrir painel local. |
+| `--update-reviews` | Regenerar com decisões, sem nova chamada à IA. |
+| `--ai-mode off/consultivo/automatico` | Atuação da IA. |
+| `--ai-scope excecoes/todos` | Arquivos que recebem análise. |
+| `--period 2026-11` | Competência do processamento completo. |
+| `--input`, `--output`, `--config` | Caminhos/configuração. |
+| `--no-cache` | Forçar nova extração/análise no fluxo completo, respeitando cotas. |
+| `--no-ocr` | Desligar OCR; imagens ficam como falha. |
+| `--strict` | Publicar e retornar 2 se houver revisar/falhou. |
+| `--version` | Versão. |
 
-- referência manual declarada e tamanho da amostra;
-- projeção para o volume: `17 × (8 + 2) = 170 minutos`, ou 2h50;
-- duração do processamento efetivamente medida pelo robô;
-- diferença projetada apenas para a etapa de consolidação;
-- indicação de cache, para não confundir reexecução com primeira execução.
+### Integridade operacional e registros
 
-Não são estimados minutos de revisão humana com automação, espera pelo banco, recebimento ou implantação. Os metadados de tempo ficam no resumo JSON para uma análise futura; o case não depende de Power BI. Não há conversão para dinheiro.
+`--update-reviews` lê as evidências da última publicação, verifica seu hash no manifesto, compara nomes/hashes das entradas e exige mesma competência e modo de IA. Novas entradas, remoções ou alterações exigem o fluxo completo. Esse modo não refaz a extração financeira; PDF digitalizado ainda pode exigir OCR só para localizar grifos. Edição da planilha durante o processamento impede sobrescrita silenciosa.
 
-## Próximos passos, por prioridade
+| Registro | Conteúdo |
+| --- | --- |
+| `execucao.log` / `execucao.jsonl` | Eventos legíveis/estruturados por execução e documento. |
+| `evidencias.json` | Extração, conciliação, referências, decisões e saldo original/efetivo. |
+| `resumo.json` | Quantidades, duração, versão/commit, configuração, cache e tentativas HTTP. |
+| `manifesto.json` | SHA-256 de entradas, modelo e saídas, inclusive destaques. |
 
-1. **P1 — Definir um critério mínimo de fechamento com o financeiro.** Cadastro por banco e conta ativa, competência esperada e prazo de entrega. Cada conta esperada precisa ter um extrato válido do mês, com saldo e identificação, sem bloqueio crítico. Cópias não contam duas vezes; recebido não significa validado. Contas ausentes mantêm o fechamento parcial. No prazo, publicar entrega com ressalvas sem chamá-la de completa. A quantidade de arquivos, sozinha, não comprova completude.
-2. **P2 — Agendar conferência da pasta e consolidar por mês.** Verificar a cada hora ou diariamente e comparar inclusões, alterações e remoções por hash. Mudança de código/configuração/competência, prazo atingido ou IA pendente com nova janela também podem exigir processamento. Reconstruir `resultados/AAAA-MM/consolidado.xlsx`, sem acrescentar linhas duplicadas; publicar somente após validação e preservar histórico. Revisões manuais ficam em cópia separada. Esta evolução ainda não está implementada.
-3. **P3 — Homologar a operação e as decisões.** Validar novos layouts, retomadas, revisões e critérios de aprovação com o financeiro; acompanhar erros da extração e decisões da IA antes de ampliar o uso automático.
+O manifesto permite verificar integridade; não autentica o banco emissor. Saída 0 significa publicação concluída, não que todos os documentos estejam corretos. O painel exige origem local e token da sessão, rejeita telas antigas e não serve `.env`. O campo Responsável é declarado, não autenticação corporativa; o servidor é para uso local por um operador.
 
-```mermaid
-flowchart TD
-    A[Origem abastece a pasta] --> B[Agendador confere mudanças e pendências]
-    B --> C{Há motivo para processar?}
-    C -- Não --> B
-    C -- Sim --> D[Fluxo existente de extração e validação]
-    D --> E[Comparar contas recebidas com cadastro esperado]
-    E --> F[Publicar competência parcial ou completa]
-    F --> G[Excel mensal e histórico de execuções]
-    G --> H[Consulta e revisões pelo painel local]
+### Conferência do pacote de envio
+
+O ZIP foi extraído em uma pasta separada e seu EXE executado com `--ai-mode off`, sem caches distribuídos. Reproduziu **17 arquivos, 12 ok, 4 revisar, 1 falhou e R$ 4.114.372,29**, em **38,124 segundos de processamento**, além da inicialização. Um reaproveitamento dentro do lote corresponde à cópia exata; não veio de cache prévio. Também foi executada a atualização pelo Python extraído, sem chamadas HTTP. README/fonte/EXE, contrato Excel, hashes da saída e PDF de uma página foram conferidos. Registros em `validacao/entrega.json`.
+
+### O que foi validado e o que ainda exige homologação
+
+**122 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; a última prova do EXE reutilizou cinco análises, sem nova chamada externa.
+
+O EXE 1.9.0 concluiu `--update-reviews` e iniciou `--panel` nesta máquina. O formulário completo foi testado em cópia isolada, preservando a base entregue. Não é teste em VM Windows limpa nem em todos os cenários possíveis. Regras são gerais, mas novos layouts, volumes e políticas de máquina exigem homologação.
+
+Git registra fonte, configuração e evidências técnicas; credenciais, caches, EXE, ZIP e relatórios gerados não entram no versionamento atual. Commits descrevem alterações objetivas. O workflow `.github/workflows/ci.yml` configura lint, testes e execução em Windows/Linux, com logs/JSON como artefatos; seu resultado precisa ser consultado, não presumido pela presença da configuração.
+
+```powershell
+py -3.12 -m ruff check goener executar.py validacao
+py -3.12 -m pytest -q
 ```
 
-Este desenho é futuro. O processo só inclui recebimento sem trabalho manual se a origem abastecer a pasta automaticamente. Ausência de mudanças não significa que todos os documentos chegaram. O robô não autentica extratos nem substitui conciliação com o razão contábil.
+Para atualizar só documentação/resultados no pacote, sem recompilar código operacional inalterado:
+
+```powershell
+py -3.12 -m goener.entrega --exe Goener.exe --include-env
+```
+
+O gerador usa arquivos rastreados pelo Git; adicione fontes novas antes de empacotar. O padrão seleciona a publicação em `latest.json`; `--run` escolhe outra. A primeira execução do ZIP cria `resultados/` e caches próprios; `resultado/` contém apenas a referência consultável. Não copie caches do desenvolvedor para apresentar um ensaio como primeira execução.
 
 ## Referências
 
