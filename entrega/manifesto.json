@@ -1,5 +1,5 @@
 {
-  "run_id": "20261114T102302Z_24e50f18",
+  "run_id": "20261114T104126Z_f44a480e",
   "algorithm": "SHA-256",
   "inputs": {
     "app_ipe_amarelo_1011.png": "07a6056c7b2000a0eec6b6f748f2ea94e3194c559e6fd5f6b7b3c936c4f0985f",
@@ -22,11 +22,11 @@
   },
   "template_sha256": "7438b9a9c59025faf79ae9f89a7123c6d59feb097ed62708744e3e21ced52692",
   "artifacts": {
-    "consolidado.xlsx": "e229c232814118445e8c77326f6b608f930cd6a6b04a040936171354fe263497",
-    "evidencias.json": "f11f660a411e96daad1d258867eee978b6f1daaf663f3ec092789470369f8767",
-    "execucao.jsonl": "34d5795d73f69407a4bb12145ba3a4d32f6c7b83e1bf843c4991c46c79fd9628",
-    "execucao.log": "33049714ff179d209e4115571a641ae9884c8af8b3f727d04579790871da16fa",
-    "relatorio.html": "1f562c1cbdf3ab3797a969017b3665c100742279e42fc8e60425abbe4c1d7707",
-    "resumo.json": "91688a43808d8f1396ae123d11cd3f6f451b6ce3212117a4cc78d5b20f3e6204"
+    "consolidado.xlsx": "1001350d2e536bcf8e59b707092993091c7ead6967af5f01a6afcfeb317908ec",
+    "evidencias.json": "c0389217967a4ac8f3849f41b5b639cdf2fab3846decdd50416d11406ab868c2",
+    "execucao.jsonl": "9627eccacab07655547f9712f536e4ff5ce2131d7c3d9d42ff7dd284f9318ed6",
+    "execucao.log": "5572f2689fd1a116eb8a07b077eb11072a94221ec9828ad01c00f74d18ce9df2",
+    "relatorio.html": "985438e5f30a4b34fd0401c1c96559e48698d12edc1f8cbed64401e17b91eb2b",
+    "resumo.json": "6e758d9a86fbc9d4c1f616cc2a189d4500aafc5d482427cefbcb0eb916ee1bf9"
   }
 }
