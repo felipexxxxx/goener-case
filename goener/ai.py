@@ -620,7 +620,10 @@ def request_gemini_failover(
                 details["category"] == "http_error"
                 and details.get("http_status") in (404, 429, 500, 502, 503, 504)
             )
-            if eligible and details["category"] in ("timeout", "network_error", "http_error"):
+            if eligible and (
+                details["category"] in ("timeout", "network_error")
+                or (details["category"] == "http_error" and details.get("http_status") != 429)
+            ):
                 GeminiState(config.runtime_dir).block(model, time.time() + 60, "model_cooldown")
             if not eligible or index == len(models) - 1:
                 extra = {k: v for k, v in details.items() if k not in ("category", "attempts")}

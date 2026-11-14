@@ -618,3 +618,22 @@ def test_all_models_unavailable_returns_error_with_full_history(config):
         *config.ai_fallback_models,
     ]
     assert caught.value.details["attempts"] == []
+
+
+def test_failover_preserves_provider_cooldown(config):
+    import time
+
+    from goener.ai import AIError, GeminiState, request_gemini_failover
+
+    state = GeminiState(config.runtime_dir)
+    until = time.time() + 300
+
+    def request(context, model, **kwargs):
+        if model == config.ai_model:
+            state.block(model, until, "quota_rate")
+            raise AIError("http_error", http_status=429)
+        return {"decision": "revisar", "reason": "Conferir", "evidence_codes": [], "model": model}
+
+    request_gemini_failover({"issues": []}, config, requester=request)
+    wait = state.reserve(config.ai_model, 5, 20)
+    assert wait["category"] == "quota_rate" and wait["retry_at"] == until

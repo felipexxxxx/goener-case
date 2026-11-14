@@ -174,6 +174,8 @@ Uma decisão válida encerra a busca, inclusive quando é revisar ou não consid
 
 A prioridade é preservada: quando o principal voltar a ficar disponível, pode gerar uma nova análise mesmo se existir uma resposta anterior de um alternativo. O cache é específico de cada modelo. `AI_FAILOVER` registra motivo e troca; `AI_MODEL_SELECTED` registra a escolha final. As evidências guardam principal solicitado, modelo selecionado, modelos percorridos e tentativas HTTP de toda a cadeia. Planilha e HTML mostram o modelo utilizado e se houve failover.
 
+**Validação do failover:** no lote real de 17 arquivos, as cinco exceções percorreram 3.8 (bloqueio de cota diária já registrado) → 3.1 Flash-Lite (análise válida em cache), sem novas chamadas HTTP e sem análises indisponíveis. O terceiro modelo, 3.5 Flash-Lite, também respondeu em teste HTTP com um PDF original e identificou corretamente o comunicado como documento que não deve ser considerado no fechamento. Os testes simulam indisponibilidade dos dois primeiros, esgotamento de toda a cadeia e a preservação das esperas indicadas pelo provedor.
+
 ### Testar e preparar a entrega
 
 ```powershell
@@ -182,7 +184,7 @@ A prioridade é preservada: quando o principal voltar a ficar disponível, pode 
 .\.venv\Scripts\python.exe -m goener.entrega
 ```
 
-Validação local da estrutura simplificada: **88 testes passaram**, incluindo OCR dos documentos do case. A versão anterior teve chamadas HTTP reais válidas; a validação da versão multimodal é registrada abaixo, sem presumir homologação do lote inteiro. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
+Validação local da estrutura simplificada: **89 testes passaram**, incluindo OCR dos documentos do case. A versão anterior teve chamadas HTTP reais válidas; a validação da versão multimodal é registrada abaixo, sem presumir homologação do lote inteiro. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
 
 A instalação manual usa apenas `requirements-lock.txt` e `pip install -e . --no-deps`. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado; não inclui chaves ou dados locais de execução. Nenhum agendamento foi criado nesta máquina.
 
