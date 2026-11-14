@@ -1,0 +1,16 @@
+# Caminhos relativos a este arquivo, não ao diretório do terminal.
+input_dir = "extratos"
+output_dir = "outputs"
+runtime_dir = "runtime"
+template = "templates/modelo_consolidado_extratos.xlsx"
+# Remova para usar o mês anterior na zona America/Sao_Paulo.
+period = "2026-10"
+ocr_enabled = true
+ocr_min_confidence = 0.90
+cache_enabled = true
+strict = false
+max_file_mb = 25
+max_pdf_pages = 20
+max_image_pixels = 30000000
+retries = 2
+stop_file = "runtime/STOP"
