@@ -1,6 +1,6 @@
 # Caminhos relativos a este arquivo, não ao diretório do terminal.
 input_dir = "extratos"
-output_dir = ".local/outputs"
+output_dir = "resultados"
 runtime_dir = ".local/runtime"
 template = "modelo.xlsx"
 # Remova para usar o mês anterior na zona America/Sao_Paulo.

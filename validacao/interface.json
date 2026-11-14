@@ -36,9 +36,55 @@
     "sha256": "472fb1c94d7a97c6c7f6af92045dd8944b0baab6765c1552ead6217f266a6fcf",
     "build_success": true,
     "template_matches_source": true,
-    "runtime_validation": "blocked_by_windows",
+    "runtime_validation": "successful_user_execution_after_initial_windows_block",
     "windows_error": 4551,
     "code_integrity_event": 3077,
-    "reason": "Smart App Control: binário não assinado não atende ao nível de assinatura exigido. Proteções não foram alteradas."
+    "reason": "Primeira tentativa bloqueada pelo Smart App Control; a tentativa seguinte pelo usuário concluiu. Não foi possível determinar pelos eventos a razão de o Windows ter permitido a segunda.",
+    "user_run": {
+      "run_id": "20261114T203855Z_39f46cde",
+      "exit_code": 0,
+      "version": "1.8.0",
+      "source_commit": "27e5eadac3b88710241f00a1b5dfd4b582668b24",
+      "duration_seconds": 0.275,
+      "files": 17,
+      "statuses": {
+        "ok": 12,
+        "falhou": 1,
+        "revisar": 4
+      },
+      "approved_balance": "4114372.29",
+      "ai_summary": {
+        "failover_files": 5,
+        "cached_decisions": 5,
+        "rules_only_files": 12,
+        "valid_decisions": 5,
+        "unavailable_files": 0,
+        "http_attempts": 0,
+        "source_disagreements": 0
+      },
+      "artifacts_hashes_verified": true,
+      "same_binary_hash": true
+    }
+  },
+  "output_visibility": {
+    "version": "1.8.1",
+    "automated_tests_passed": 112,
+    "source_run_id": "20261114T204755Z_63bb29b8",
+    "files": 17,
+    "statuses": {
+      "ok": 12,
+      "falhou": 1,
+      "revisar": 4
+    },
+    "http_attempts": 0,
+    "cached_decisions": 5,
+    "manifest_verified": true,
+    "output_directory": "resultados/",
+    "shortcuts": [
+      "relatorio.html",
+      "consolidado.xlsx"
+    ],
+    "frozen_double_click_opens_browser": true,
+    "new_executable_runtime": "pending"
   }
 }

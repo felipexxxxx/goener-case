@@ -7,7 +7,7 @@ import pytest
 from openpyxl import load_workbook
 
 from goener.core import Result, Statement, money
-from goener.pipeline import RunLock, file_hash, run
+from goener.pipeline import RunLock, file_hash, publish_shortcuts, run
 from goener.reporting import HEADERS, write_workbook
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -272,3 +272,38 @@ def test_html_does_not_include_time_estimate_or_manual_projection(config):
     assert "capacidade liberada" not in text.lower() and "21 minutos" not in text.lower()
     assert "Composição do saldo" in text and 'data-tab="files-panel"' in text
     assert "__BANKS__" not in text and "__ROWS__" not in text
+
+
+def test_latest_shortcuts_match_published_run(config):
+    source(config)
+    directory, _, _ = run(config)
+    assert (config.output_dir / "consolidado.xlsx").read_bytes() == (
+        directory / "consolidado.xlsx"
+    ).read_bytes()
+    assert f"{directory.name}/relatorio.html" in (config.output_dir / "relatorio.html").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_locked_shortcut_does_not_discard_published_run(tmp_path, monkeypatch):
+    directory = tmp_path / "run"
+    directory.mkdir()
+    (directory / "consolidado.xlsx").write_bytes(b"published")
+    events = []
+
+    class Log:
+        def event(self, name, **fields):
+            events.append((name, fields))
+
+    original = __import__("os").replace
+
+    def locked(source, target):
+        if Path(target).name == "consolidado.xlsx":
+            raise PermissionError("Planilha aberta")
+        return original(source, target)
+
+    monkeypatch.setattr("goener.pipeline.os.replace", locked)
+    publish_shortcuts(directory, Log())
+    assert (directory / "consolidado.xlsx").read_bytes() == b"published"
+    assert (tmp_path / "relatorio.html").is_file()
+    assert events[0][0] == "SHORTCUT_UNAVAILABLE"

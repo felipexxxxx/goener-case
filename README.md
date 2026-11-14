@@ -18,18 +18,30 @@ Também é possível executar pelo PowerShell, mantendo as mensagens visíveis:
 
 O executável inclui o interpretador Python, bibliotecas e modelos OCR. Foi construído para **Windows x64**; não é um executável de Linux ou macOS. O modo de arquivo único extrai bibliotecas temporariamente na inicialização, por isso existe um tempo de abertura além do processamento medido. Não precisa executar pip nem ativar ambiente. OCR e regras rodam localmente; a IA precisa de internet e chave válida. O pacote privado inclui `.env`; não publique esse ZIP, pois ele contém a credencial autorizada para a avaliação.
 
-**Validação da versão 1.8.0:** o relatório foi conferido no navegador e 110 testes passaram. O novo EXE foi construído e seu HTML interno foi verificado, mas o Smart App Control desta máquina bloqueou a execução por exigir assinatura digital (erro 4551). As proteções não foram alteradas. A validação anterior do EXE 1.7.0 não substitui a validação desta versão. Nesta máquina, use a execução pelo Python abaixo; distribuir para ambientes com essa política exige assinatura confiável/liberação pela TI.
+**Validação da versão 1.8.0:** o relatório foi conferido no navegador e 110 testes passaram. O EXE 1.8.0 teve uma primeira tentativa bloqueada pelo Smart App Control (erro 4551). Em seguida, o usuário executou o mesmo binário com sucesso: 17 arquivos, cinco análises em cache, zero chamadas novas e resultados preservados. O motivo da mudança de decisão do Windows não foi identificado nos eventos. O binário continua sem assinatura; o bloqueio pode depender da política da máquina. A evidência atual está em `validacao/interface.json`; não se trata de teste em uma VM Windows limpa.
 
-O resultado de cada execução fica em `.local/outputs/`. O terminal informa a pasta; `.local/outputs/latest.json` aponta para a última publicação concluída. Não há agendamento nem monitoramento automático instalados nesta versão.
+**Se o Windows bloquear o EXE:** tente executá-lo novamente. Nesta máquina, a primeira tentativa foi bloqueada e a segunda funcionou com o mesmo arquivo. Isso não garante que o Windows deixe de bloquear nas próximas execuções ou em outros computadores. Se persistir, use o código Python, conforme os dois comandos abaixo; não é necessário desativar a proteção do Windows. O bloqueio acontece antes de o programa iniciar e não é uma regra da automação.
+
+**Onde estão os resultados?** Na pasta **`resultados/`**, na raiz do projeto:
+
+- **`relatorio.html`** abre o último relatório concluído, com filtros e detalhes das ressalvas.
+- **`consolidado.xlsx`** é a cópia da última planilha gerada. Feche-a antes de rodar novamente para permitir a atualização dessa cópia.
+- As pastas com o identificador de cada execução guardam os respectivos Excel, HTML, logs e evidências. Se a cópia acima estiver aberta, a nova planilha continua disponível dentro da pasta da execução.
+
+Por duplo clique no EXE, o relatório abre no navegador ao concluir. Pelo terminal, o programa informa os caminhos. `resultados/latest.json` identifica a última publicação. Saídas antigas em `.local/outputs/` continuam preservadas; os relatórios gerados não são enviados ao Git. Não há agendamento nem monitoramento automático instalados nesta versão.
+
+A versão **1.8.1** torna a saída visível em `resultados/` e abre o HTML ao concluir por duplo clique. **112 testes passaram**, incluindo a publicação dos atalhos e o caso de a cópia do Excel estar aberta.
 
 ## Executar pelo código-fonte
 
-Com Python 3.12 instalado, abra o terminal na raiz:
+Esta é também a alternativa caso o Windows bloqueie `Goener.exe`. Instale o **Python 3.12**, abra o terminal na pasta do projeto e execute:
 
 ```powershell
 py -3.12 -m pip install -r requirements-lock.txt
 py -3.12 executar.py
 ```
+
+O primeiro comando instala as dependências; o segundo executa a automação completa, com os mesmos arquivos, `.env` e resultados do EXE. Não basta instalar as dependências: é necessário executar `executar.py`. Nas próximas vezes, basta o segundo comando.
 
 `py -3.12 -m goener` é uma entrada equivalente. No Linux/macOS, use um Python compatível e `python3 -m goener`; o executável distribuído continua sendo exclusivo de Windows. Não há criação de ambiente virtual. Para configurar a IA, copie `.env.example` como `.env`, ao lado de `config.toml`:
 

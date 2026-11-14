@@ -19,6 +19,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
 
+from .core import load_config
 from .reporting import source_root
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -205,7 +206,7 @@ def build(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--run", type=Path, help="Pasta publicada; padrão: .local/outputs/latest.json"
+        "--run", type=Path, help="Pasta publicada; padrão: latest.json na saída configurada"
     )
     parser.add_argument("--destination", type=Path, default=ROOT / "entrega")
     parser.add_argument(
@@ -221,7 +222,11 @@ if __name__ == "__main__":
     parser.add_argument("--exe", type=Path, help="Inclui um executável já construído")
     args = parser.parse_args()
     selected = args.run or Path(
-        json.loads((ROOT / ".local/outputs/latest.json").read_text(encoding="utf-8"))["directory"]
+        json.loads(
+            (load_config(ROOT / "config.toml").output_dir / "latest.json").read_text(
+                encoding="utf-8"
+            )
+        )["directory"]
     )
     executable = build_executable() if args.build_exe else args.exe
     print(build(selected, args.destination, include_env=args.include_env, executable=executable))

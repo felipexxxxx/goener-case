@@ -32,6 +32,32 @@ def atomic_json(path: Path, data: dict | list) -> None:
     os.replace(temporary, path)
 
 
+def publish_shortcuts(directory: Path, log) -> None:
+    """Atalhos para a última execução; o histórico publicado permanece intacto."""
+    targets = {
+        "consolidado.xlsx": None,
+        "relatorio.html": (
+            '<!doctype html><html lang="pt-BR"><meta charset="utf-8">'
+            f'<meta http-equiv="refresh" content="0;url={directory.name}/relatorio.html">'
+            "<title>Relatório Goener</title>"
+            f'<a href="{directory.name}/relatorio.html">Abrir último relatório</a></html>'
+        ),
+    }
+    for name, content in targets.items():
+        target = directory.parent / name
+        temporary = target.with_suffix(target.suffix + ".tmp")
+        try:
+            if content is None:
+                shutil.copyfile(directory / name, temporary)
+            else:
+                temporary.write_text(content, encoding="utf-8")
+            os.replace(temporary, target)
+        except OSError as exc:
+            log.event("SHORTCUT_UNAVAILABLE", file=name, message=str(exc), directory=str(directory))
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
 def file_hash(path: Path) -> str:
     hasher = hashlib.sha256()
     with path.open("rb") as f:
@@ -347,6 +373,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
                 config.output_dir / "latest.json",
                 {"run_id": run_id, "directory": str(published), "exit_code": exit_code},
             )
+            publish_shortcuts(published, log)
             log.event(
                 "RUN_FINISHED",
                 directory=str(published),
@@ -424,6 +451,15 @@ def main(argv=None) -> int:
                 indent=2,
             )
         )
+        print(f"Relatório: {directory / 'relatorio.html'}")
+        print(f"Planilha: {directory / 'consolidado.xlsx'}")
+        if getattr(sys, "frozen", False) and len(sys.argv) == 1:
+            try:
+                import webbrowser
+
+                webbrowser.open((directory / "relatorio.html").as_uri())
+            except Exception:
+                print("Abra o relatório na pasta resultados.")
         return code
     except (Exception, KeyboardInterrupt) as exc:
         print(f"ERRO: {type(exc).__name__}: {exc}", file=sys.stderr)
