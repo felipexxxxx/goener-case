@@ -91,7 +91,7 @@ def one_page(path: Path, summary: dict) -> None:
     )
     paragraph("Limites e próximos passos", True)
     paragraph(
-        "Os layouts do case são cobertos; novos layouts exigem validação. Confiança de OCR e conciliação não autenticam o extrato. Valores com ressalva não entram no saldo aprovado e não são corrigidos automaticamente.<br/><b>1. P1:</b> cadastrar contas esperadas para identificar extratos ausentes.<br/><b>2. P2:</b> ampliar leitores e testes com novos layouts autorizados.<br/><b>3. P3:</b> validar a análise assistida com casos revisados pela gestão; Power BI fica para uma etapa posterior."
+        "Os layouts do case são cobertos; novos layouts exigem validação. Confiança de OCR e conciliação não autenticam o extrato. Valores com ressalva não entram no saldo aprovado e não são corrigidos automaticamente.<br/><b>1. P1:</b> definir origem, contas esperadas e prazo do fechamento.<br/><b>2. P2:</b> agendar verificação da pasta por mudanças e reconstruir o Excel por competência, sem duplicar linhas; evolução ainda não implementada.<br/><b>3. P3:</b> homologar recebimento gradual, correções, retomadas, novos layouts e IA. Power BI permanece adiado."
     )
     if y < 19 * mm:
         raise ValueError("Documento ultrapassou uma página; revisar o layout")

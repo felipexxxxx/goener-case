@@ -342,9 +342,38 @@ O relatório usa a duração efetivamente medida, incluindo a análise de IA qua
 
 O projeto atende aos layouts fornecidos. Não autentica extratos nem substitui a conciliação com o razão contábil. A revisão financeira das exceções ocorre depois da geração automática do consolidado.
 
-1. Cadastrar contas esperadas para detectar extratos ausentes.
-2. Ampliar leitores e testes com outros layouts autorizados.
-3. Avaliar os erros da IA com a gestão antes de adotar decisões automáticas. Power BI permanece adiado.
+1. **P1 — Definir recebimento e completude com o financeiro.** Cadastrar contas esperadas por competência, origem dos documentos, prazo de fechamento e tratamento de ausência/correção. Distinguir recebido, validado e pendente. Uma pasta sem mudanças não comprova que todos os extratos chegaram.
+2. **P2 — Agendar a conferência da pasta e publicar por mês.** Executar pelo Agendador de Tarefas do Windows a cada hora ou diariamente, conforme o volume. Conferir mudanças antes de iniciar o processamento financeiro; reconstruir o consolidado da competência apenas quando necessário, preservando histórico e evitando duplicar linhas.
+3. **P3 — Homologar a operação contínua e ampliar a cobertura.** Testar arquivos recebidos aos poucos, correções, exclusões, cópias incompletas, falhas e retomadas; validar novos layouts e critérios da IA com a gestão. Power BI permanece adiado.
+
+### Evolução proposta: pasta monitorada e consolidado mensal
+
+**Esta seção é uma proposta de evolução. O monitoramento, o agendamento e a publicação mensal ainda não estão implementados.** Hoje o script processa a entrada ao ser executado e publica uma pasta de resultado por execução.
+
+```mermaid
+flowchart TD
+    A[Receber arquivos na pasta de entrada] --> B[Agendador verifica a pasta a cada hora ou diariamente]
+    B --> C[Comparar nomes e hashes com o último processamento concluído]
+    C --> D{Mudança ou pendência elegível para nova tentativa?}
+    D -- Não --> E[Registrar conferência sem mudanças e aguardar]
+    E --> B
+    D -- Sim --> F[Aguardar arquivos estáveis e executar o fluxo existente]
+    F --> G[Validar competência e comparar com as contas esperadas]
+    G --> H[Reconstruir o consolidado do mês sem duplicar linhas]
+    H --> I[Publicar Excel, relatório e logs com situação parcial ou completa]
+    I --> J[Guardar histórico e atualizar o controle após publicação válida]
+    J --> B
+```
+
+A verificação periódica é leve: calcula as impressões digitais e compara a lista de arquivos, sem repetir OCR ou chamadas de IA quando nada relevante mudou. Inclusões, alterações e remoções precisam ser detectadas. Mudança de competência, configuração ou código também pode exigir nova execução. Uma análise de IA que falhou por cota pode ser retomada após a liberação da janela, mesmo sem mudança no documento; não se deve abandoná-la por a pasta continuar igual. Prazo de fechamento e atualização do cadastro também devem ser considerados no controle de completude.
+
+O Excel seria separado pela **competência do extrato**, por exemplo `resultados/2026-10/consolidado.xlsx` e `resultados/2026-11/consolidado.xlsx`. O mês não deve ser inferido somente pela data em que o arquivo chegou ou pelo seu nome. A cada atualização, o robô reconstrói o resultado daquele mês a partir das fontes e das regras, em vez de simplesmente acrescentar linhas. Reexecutar o mesmo conjunto não deve duplicar saldos. O cache reaproveita as extrações e análises compatíveis, enquanto as regras são reaplicadas.
+
+A publicação substitui a versão automática do mês somente após validar a nova saída, preservando as versões de execução e os originais para auditoria. Ajustes manuais devem ficar em uma cópia revisada, pois a saída automática é regenerada. Falhas não podem marcar arquivos como concluídos antes de a publicação terminar. O lock e a verificação de alteração durante a leitura, já existentes, são controles que podem ser reaproveitados; a espera por uma cópia estável seria parte do monitor futuro.
+
+O fechamento fica **parcial** enquanto faltarem contas esperadas ou houver pendências relevantes. Fica **completo** quando a cobertura e as validações obrigatórias forem atendidas. No prazo definido, a entrega pode ser publicada com ressalvas, identificando o que falta; o robô não deve inventar documentos nem confundir ausência de mudanças com fechamento concluído.
+
+Com a pasta abastecida automaticamente, essa evolução permitiria executar e entregar sem intervenção entre etapas. Se alguém ainda precisar baixar os extratos e colocá-los na pasta, o recebimento continuará sendo uma atividade manual; automatizar a captura da origem seria necessário para incluir essa etapa no processo completo.
 
 ### Referências
 
