@@ -111,3 +111,67 @@ def test_excel_output_does_not_turn_text_into_formulas(config):
 def test_empty_input_is_not_reported_as_success(config):
     with pytest.raises(ValueError, match="vazia"):
         run(config)
+
+
+def test_html_keeps_ai_advice_separate_and_opens_source_page(config):
+    from goener.reporting import write_html
+
+    s = Statement("Banco", "1-0", "2026-10", closing=money(10))
+    r = Result("extrato com espaço.pdf", "sha", "PDF", s)
+    r.ai = {
+        "decision": "revisar",
+        "message": "Conferir R$ 1.080,00 <script>alert(1)</script>",
+        "source_disagreements": ["saldo final"],
+        "source": {"pages": 2},
+        "source_check": {"location": "Página 2, saldo final", "quote": "Saldo 99,00"},
+    }
+    summary = {
+        "run_id": "test",
+        "period": "2026-10",
+        "duration_seconds": 0.1,
+        "approved_balance": "10.00",
+        "statuses": {"ok": 1},
+        "ai_mode": "consultivo",
+        "configuration": {"input_dir": str(config.input_dir), "ai_scope": "todos"},
+    }
+    config.output_dir.mkdir()
+    path = config.output_dir / "relatorio.html"
+    write_html(path, summary, [r])
+    text = path.read_text(encoding="utf-8")
+    assert 'data-attention="true"' in text and 'data-ai="analisada"' in text
+    assert "extrato%20com%20espa%C3%A7o.pdf#page=2" in text
+    assert "&lt;script&gt;" in text and "<script>alert(1)</script>" not in text
+    assert "R$ 1.080,00" in text
+    assert "Onde conferir" in text and "indicação da IA" in text
+    assert r.status == "ok" and r.included("consultivo", "2026-10")
+
+
+def test_workbook_retains_model_with_human_review_reference(config):
+    from goener.core import Transaction
+
+    s = Statement("Banco", "1-0", "2026-10", closing=money(10), evidence={"closing": {"page": 2}})
+    s.transactions = [
+        Transaction(
+            "2026-10-26", "PIX repetido", money(10), money(10), location="página 2, linha 10"
+        ),
+        Transaction(
+            "2026-10-26", "PIX repetido", money(10), money(20), location="página 2, linha 11"
+        ),
+    ]
+    s.issue("LANCAMENTO_REPETIDO", "Possível lançamento repetido")
+    r = Result("extrato.pdf", "sha", "PDF", s)
+    config.output_dir.mkdir()
+    path = config.output_dir / "consolidado.xlsx"
+    write_workbook(config.template, path, [r])
+    wb = load_workbook(path)
+    ws = wb["Consolidado"]
+    assert ws.max_column == 8 and [c.value for c in ws[1]] == HEADERS
+    assert ws["A1"].fill.fgColor.rgb.endswith("003836")
+    assert (
+        "Onde conferir:" in ws["H2"].value
+        and "linha 10" in ws["H2"].value
+        and "linha 11" in ws["H2"].value
+    )
+    assert not ws.sheet_view.showGridLines and ws.freeze_panes == "A2"
+    assert ws.auto_filter.ref == "A1:H2"
+    wb.close()

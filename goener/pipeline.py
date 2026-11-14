@@ -296,6 +296,7 @@ def run(config: Config) -> tuple[Path, dict, int]:
                 "configuration": config.to_dict(),
                 "ai_mode": config.ai_mode,
                 "ai_summary": {
+                    "rules_only_files": sum(r.ai.get("routing") == "rules_passed" for r in results),
                     "valid_decisions": sum(
                         r.ai.get("decision") in ("considerar", "nao_considerar", "revisar")
                         for r in results
@@ -381,6 +382,9 @@ def main(argv=None) -> int:
         choices=["off", "consultivo", "automatico"],
         help="Modo da análise assistida; API exige chave e pode gerar cobrança",
     )
+    parser.add_argument(
+        "--ai-scope", choices=["excecoes", "todos"], help="Quais arquivos enviar à IA"
+    )
     args = parser.parse_args(argv)
     try:
         config = load_config(
@@ -392,6 +396,7 @@ def main(argv=None) -> int:
             cache_enabled=False if args.no_cache else None,
             strict=True if args.strict else None,
             ai_mode=args.ai_mode,
+            ai_scope=args.ai_scope,
         )
         directory, summary, code = run(config)
         print(

@@ -390,3 +390,39 @@ def test_invalid_independent_reading_is_rejected():
     ):
         with pytest.raises(AIError):
             validate_source_check({**valid_source_check(), **change})
+
+
+@pytest.mark.parametrize("mode", ["consultivo", "automatico"])
+def test_selective_routing_calls_ai_only_for_exceptions(config, mode):
+    config.ai_mode = mode
+    config.ai_scope = "excecoes"
+    regular = Result(
+        "regular.pdf", "sha1", "PDF", Statement("Banco", "1-0", "2026-10", closing=money(10))
+    )
+    unusual = Result(
+        "pendente.pdf", "sha2", "PDF", Statement("Banco", "2-0", "2026-10", closing=money(20))
+    )
+    unusual.statement.issue("TESTE", "Conferir a origem")
+    calls = []
+
+    def recommend(context, model):
+        calls.append(context["file_id"])
+        return {
+            "decision": "revisar",
+            "reason": "Conferir na página 1",
+            "evidence_codes": ["TESTE"],
+        }
+
+    review([regular, unusual], config, recommend)
+    assert calls == ["sha2"]
+    assert regular.ai["routing"] == "rules_passed"
+    assert regular.included(mode, config.period)
+    assert not unusual.included(mode, config.period)
+    assert regular.ai["decision"] == "nao_solicitada"
+
+
+def test_rules_route_cannot_release_later_business_failure(config):
+    r = Result("a", "sha", "PDF", Statement("Banco", "1-0", "2026-10", closing=money(10)))
+    r.ai = {"routing": "rules_passed"}
+    r.statement.issue("DIVERGENCIA", "Saldo diverge")
+    assert not r.included("automatico", config.period)

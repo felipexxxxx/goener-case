@@ -419,6 +419,17 @@ def review(results, config, requester=None, log=None):
             if log:
                 log.event(event, file=file, **fields)
 
+        if config.ai_scope == "excecoes" and rules_status == "ok":
+            r.ai = {
+                "decision": "nao_solicitada",
+                "routing": "rules_passed",
+                "mode": config.ai_mode,
+                "scope": config.ai_scope,
+                "message": "Conferido pelas regras; IA dispensada por não haver pendências.",
+            }
+            emit("AI_SKIPPED", reason="rules_passed")
+            continue
+
         try:
             if config.stop_file.exists() or any(i.code == "CANCELADO_STOP" for i in s.issues):
                 raise AIError("stopped")
@@ -544,6 +555,7 @@ def review(results, config, requester=None, log=None):
                     "A análise assistida não foi concluída; saldo retido para conferência.",
                 )
         r.ai["duration_ms"] = round((time.monotonic() - started) * 1000, 2)
+        r.ai["scope"] = config.ai_scope
         emit(
             "AI_FINISHED",
             decision=r.ai["decision"],

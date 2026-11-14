@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import subprocess
@@ -15,6 +16,8 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
+
+from .reporting import source_root
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -120,9 +123,29 @@ def build(run_dir: Path, destination: Path) -> Path:
         for name in names:
             if name and not name.startswith("entrega/"):
                 z.write(ROOT / name, "goener-case/" + name)
-        for p in sorted(run_dir.iterdir()):
-            if p.is_file() and not p.name.startswith("~$"):
-                z.write(p, "goener-case/resultado/" + p.name)
+        payloads = {
+            p.name: p.read_bytes()
+            for p in sorted(run_dir.iterdir())
+            if p.is_file() and not p.name.startswith("~$")
+        }
+        if "relatorio.html" in payloads:
+            input_dir = summary.get("configuration", {}).get("input_dir", ROOT / "extratos")
+            prefix = source_root(run_dir, input_dir) + "/"
+            payloads["relatorio.html"] = (
+                payloads["relatorio.html"]
+                .decode("utf-8")
+                .replace('href="' + prefix, 'href="../extratos/')
+                .encode("utf-8")
+            )
+            manifest = json.loads(payloads["manifesto.json"])
+            manifest["artifacts"]["relatorio.html"] = hashlib.sha256(
+                payloads["relatorio.html"]
+            ).hexdigest()
+            payloads["manifesto.json"] = json.dumps(manifest, ensure_ascii=False, indent=2).encode(
+                "utf-8"
+            )
+        for name, data in payloads.items():
+            z.writestr("goener-case/resultado/" + name, data)
         z.write(destination / "documentacao_1_pagina.pdf", "goener-case/documentacao_1_pagina.pdf")
     return archive
 

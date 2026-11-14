@@ -17,6 +17,16 @@ CENT = Decimal("0.01")
 MONEY = r"(?<![\d.,])[-+]?\s*(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2}(?:\s*[CD](?!\w))?(?![\d.,])"
 
 
+def human_text(text: str) -> str:
+    text = re.sub(r"\b(?:ValueError|PermissionError|OSError):\s*", "", text)
+
+    def br(match):
+        number = f"{Decimal(match[1]):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+        return "R$ " + number
+
+    return re.sub(r"R\$ (-?\d+\.\d{2})(?![\d,])", br, text)
+
+
 def normalized(value: Any) -> str:
     return " ".join(
         "".join(
@@ -133,14 +143,105 @@ class Result:
 
     @property
     def observation(self) -> str:
-        notes = [i.message for i in self.statement.issues]
+        notes = [
+            "Pendência: " + re.sub(r"\b(?:ValueError|PermissionError|OSError):\s*", "", i.message)
+            for i in self.statement.issues
+        ]
+        if self.status != "ok" or self.ai.get("source_disagreements"):
+            ref = self.review_reference
+            notes.append("Onde conferir: " + ref["where"])
+            if ref["quote"]:
+                notes.append("Referência (" + ref["origin"] + "): " + ref["quote"])
         if self.ai:
             notes.append(self.ai.get("message", ""))
-        return " | ".join(n for n in notes if n)
+            if self.ai.get("policy_block") and self.ai["policy_block"] not in self.ai.get(
+                "message", ""
+            ):
+                notes.append("Bloqueio obrigatório: " + self.ai["policy_block"])
+        return human_text("\n".join(n for n in notes if n))
+
+    @property
+    def review_reference(self) -> dict:
+        s = self.statement
+        closing = s.evidence.get("closing", {})
+        check = self.ai.get("source_check", {})
+        if check.get("location") and check.get("quote"):
+            match = re.search(r"p[aá]gina\s*(\d+)", check["location"], re.I)
+            page = int(match[1]) if match else None
+            if page and not 1 <= page <= self.ai.get("source", {}).get("pages", 0):
+                page = None
+            return {
+                "where": check["location"],
+                "quote": check["quote"],
+                "page": page,
+                "origin": "indicação da IA; confirmar no original",
+            }
+        codes = {i.code for i in s.issues}
+        if "LANCAMENTO_REPETIDO" in codes:
+            seen = {}
+            for tx in s.transactions:
+                key = (tx.date, normalized(tx.description), tx.amount, tx.reference)
+                if key in seen:
+                    return {
+                        "where": seen[key].location + " e " + tx.location,
+                        "quote": tx.date + " · " + tx.description + " · " + str(tx.amount),
+                        "page": closing.get("page"),
+                        "origin": "extração local",
+                    }
+                seen[key] = tx
+        if "FORA_COMPETENCIA" in codes:
+            line = next(
+                (
+                    line
+                    for line in s.evidence.get("text", "").splitlines()
+                    if "PERIODO" in normalized(line)
+                ),
+                "Competência identificada: " + s.period,
+            )
+            return {
+                "where": "Cabeçalho do documento · período do extrato",
+                "quote": line,
+                "page": closing.get("page") if self.format == "PDF" else None,
+                "origin": "extração local",
+            }
+        if closing.get("sheet"):
+            where = (
+                "Aba "
+                + closing["sheet"]
+                + " · "
+                + (
+                    "célula " + closing["cell"]
+                    if closing.get("cell")
+                    else "linha " + str(closing.get("row", "não informada"))
+                )
+            )
+        elif self.format == "PDF" and closing.get("page"):
+            where = "Página " + str(closing["page"]) + " · saldo final"
+        elif self.format == "Imagem" and closing:
+            where = "Imagem · cartão do saldo final"
+        elif self.format == "PDF" and self.ai.get("source", {}).get("pages") == 1:
+            return {
+                "where": "Página 1 · tipo de documento e campos essenciais",
+                "quote": "",
+                "page": 1,
+                "origin": "contagem de páginas do original",
+            }
+        else:
+            where = "Documento completo · verificar tipo e campos essenciais"
+        return {
+            "where": where,
+            "quote": closing.get("text", ""),
+            "page": closing.get("page") if self.format == "PDF" else None,
+            "origin": "extração local",
+        }
 
     def included(self, mode: str, period: str) -> bool:
         eligible = self.status == "ok" and not self.duplicate_of and self.statement.period == period
-        return eligible and (mode != "automatico" or self.ai.get("decision") == "considerar")
+        return eligible and (
+            mode != "automatico"
+            or self.ai.get("decision") == "considerar"
+            or self.ai.get("routing") == "rules_passed"
+        )
 
     def row(self) -> list:
         s = self.statement
@@ -285,9 +386,10 @@ class Config:
     max_pdf_pages: int = 20
     max_image_pixels: int = 30_000_000
     retries: int = 2
-    ai_mode: str = "off"
-    ai_provider: str = "openai"
-    ai_model: str = "gpt-4.1-mini"
+    ai_mode: str = "consultivo"
+    ai_scope: str = "excecoes"
+    ai_provider: str = "gemini"
+    ai_model: str = "gemini-3.8-flash"
     ai_document_mode: str = "completo"
     ai_thinking_level: str = "high"
     ai_timeout_seconds: int = 60
@@ -318,6 +420,8 @@ def load_config(path: Path, **overrides) -> Config:
     result = Config(**data)
     if result.ai_mode not in ("off", "consultivo", "automatico"):
         raise ValueError("Modo de IA inválido")
+    if result.ai_scope not in ("excecoes", "todos"):
+        raise ValueError("Escopo de IA inválido")
     if result.ai_provider not in ("openai", "gemini"):
         raise ValueError("Provedor de IA inválido")
     if result.ai_document_mode not in ("dados", "completo"):

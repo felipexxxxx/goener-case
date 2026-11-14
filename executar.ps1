@@ -4,7 +4,9 @@ param(
     [switch]$NoCache,
     [switch]$NoOCR,
     [switch]$Strict,
-    [switch]$Validate
+    [switch]$Validate,
+    [ValidateSet("off", "consultivo", "automatico")][string]$AiMode,
+    [ValidateSet("excecoes", "todos")][string]$AiScope
 )
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot
@@ -35,6 +37,8 @@ try {
     if ($NoCache) { $pipelineArgs += "--no-cache" }
     if ($NoOCR) { $pipelineArgs += "--no-ocr" }
     if ($Strict) { $pipelineArgs += "--strict" }
+    if ($AiMode) { $pipelineArgs += @("--ai-mode", $AiMode) }
+    if ($AiScope) { $pipelineArgs += @("--ai-scope", $AiScope) }
     & $venvPython @pipelineArgs
     $pipelineCode = $LASTEXITCODE
 } finally {

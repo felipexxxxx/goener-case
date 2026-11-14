@@ -38,6 +38,14 @@ Nenhum saldo é corrigido para fazer a conta fechar. Os originais são preservad
 
 O cenário de referência tem 17 arquivos: 12 ok, 4 revisar e 1 falhou. O saldo aprovado pelas regras é R$ 4.114.372,29. O aviso de agência não é um extrato; há também divergência de conciliação e uma imagem de setembro em um lote de outubro.
 
+### Conferência rápida no Excel e no HTML
+
+A planilha mantém as oito colunas do modelo, filtro e cabeçalho congelado. Status usa cor e texto; Observação separa pendência, onde conferir, referência e análise da IA. Os saldos continuam numéricos e os originais são preservados.
+
+O relatório abre na fila de atenção e mostra o motivo antes de expandir o arquivo. Há filtros para recomendações concluídas e indisponibilidades da IA. Dentro de cada item: regras → IA → onde conferir → próximo passo. O botão abre o documento de origem; em PDF, inclui a página quando identificada. A origem da indicação fica explícita: extração local ou sugestão da IA. Quando a localização não é conhecida, o relatório pede conferência do documento completo, sem inventar página.
+
+O formato original não é alterado para satisfazer a IA. Um alerta consultivo pode exigir atenção mesmo quando as regras passaram, mas não muda automaticamente o total. As indicações geradas pelo modelo precisam ser confirmadas no original. Os links de origem do relatório são ajustados no ZIP para os arquivos do case que acompanham o pacote.
+
 ### Configuração e comandos
 
 Edite `config.toml` para trocar pasta, competência, limites e modo de IA. Os caminhos são relativos ao arquivo de configuração. O case usa outubro de 2026; sem `period`, o comando Python usa o mês anterior em São Paulo.
@@ -94,14 +102,16 @@ Códigos de saída: `0` fluxo publicado; `1` configuração/infraestrutura; `2` 
 
 ### IA opcional
 
-`ai_mode = "off"` mantém a análise externa desligada. Para usar Gemini, configure `GEMINI_API_KEY` no ambiente; os parâmetros do provedor já estão em `config.toml`. A configuração inicial da chave ocorre na implantação, sem login ou confirmação durante os lotes.
+O padrão é `ai_mode = "consultivo"` e `ai_scope = "excecoes"`. O Python lê todos os documentos, valida campos, competência, duplicidade e conciliação. Só os que ficam como revisar/falhou seguem para o Gemini. Os regulares são concluídos pelas regras, com registro de IA dispensada. A IA exige `GEMINI_API_KEY` no ambiente; sem chave ou serviço disponível, as pendências continuam identificadas, sem impedir a publicação do lote. A configuração inicial da chave ocorre na implantação, sem login ou confirmação durante os lotes.
 
 ```powershell
-.\.venv\Scripts\python.exe -m goener --ai-mode consultivo
-.\.venv\Scripts\python.exe -m goener --ai-mode automatico
+.\executar.ps1                              # consultivo somente nas exceções
+.\executar.ps1 -AiMode off                  # apenas regras locais
+.\executar.ps1 -AiMode consultivo -AiScope todos  # conferência adicional de todos
+.\executar.ps1 -AiMode automatico            # decisão aplicada às exceções, sem superar bloqueios
 ```
 
-**Consultivo:** registra recomendação e justificativa, preservando os totais pelas regras. **Automático:** a IA pode reter o saldo; para incluí-lo, ele também precisa passar nas verificações obrigatórias. Duplicidade, competência incorreta, campos ausentes e divergências não são liberados pela IA.
+**Consultivo:** registra recomendação, justificativa e indicação de onde conferir, preservando os totais pelas regras. **Automático:** a IA pode reter o saldo dos arquivos escolhidos pelo escopo; para incluí-los, eles também precisam passar nas verificações obrigatórias. Com escopo excecoes, os arquivos regulares não dependem de uma resposta da IA. Com todos, cada arquivo precisa da decisão válida para entrar no total automático. Duplicidade, competência incorreta, campos ausentes e divergências não são liberados pela IA.
 
 O contrato básico contém `decision` (`considerar`, `nao_considerar` ou `revisar`), `reason` e `evidence_codes`. No modo completo do Gemini, o JSON também exige `source_check`: banco, conta, competência, saldo, legibilidade, localização e um trecho de evidência do original. O Python valida o contrato e compara essa leitura com a extração local. Campos extras e códigos de evidência inventados são rejeitados. Uma citação gerada pela IA não comprova, sozinha, que a leitura está correta.
 
@@ -122,13 +132,15 @@ Gemini usa HTTPS `generateContent`, esquema JSON e chave no cabeçalho. Também 
 
 Parâmetros editáveis: `ai_thinking_level = "high"` (Gemini 3; também aceita medium/low), `ai_timeout_seconds = 60`, `ai_max_attempts = 3` e `ai_batch_timeout_seconds = 300`. O timeout de rede é por operação; não é uma garantia rígida de duração total. O orçamento impede novas tentativas após o prazo e reduz o timeout ao tempo restante. Após três análises externas falharem seguidamente, as restantes ficam indisponíveis sem novas chamadas. O arquivo STOP é verificado antes dos próximos arquivos e tentativas.
 
-Os eventos `AI_STARTED`, `AI_ATTEMPT` e `AI_FINISHED` registram arquivo, duração, tentativa, código HTTP, status seguro do provedor e resultado. Corpos HTTP, documentos e chaves não são copiados para os logs. As evidências registram versão das instruções, hash do contexto, tipo/completude da fonte, resposta validada e discrepâncias. `ai_summary` no resumo separa tentativas HTTP, decisões válidas, arquivos indisponíveis e diferenças encontradas. Sucesso HTTP não equivale a uma análise aprovada.
+Os eventos `AI_SKIPPED`, `AI_STARTED`, `AI_ATTEMPT` e `AI_FINISHED` registram arquivo, duração, tentativa, código HTTP, status seguro do provedor e resultado. Corpos HTTP, documentos e chaves não são copiados para os logs. As evidências registram versão das instruções, hash do contexto, tipo/completude da fonte, resposta validada e discrepâncias. `ai_summary` no resumo separa tentativas HTTP, decisões válidas, arquivos indisponíveis e diferenças encontradas. Sucesso HTTP não equivale a uma análise aprovada.
 
 Não salve chaves no código ou nos logs. A assinatura Google AI de estudante e o faturamento da API são separados. Verifique se o projeto está no Free Tier e tem cota. O programa não ativa faturamento. O experimento de navegador ChatGPT foi retirado para reduzir dependências e porque exigia confirmação humana.
 
-**Histórico da versão anterior (antes da melhoria multimodal):** o lote consultivo de 17 arquivos levou 603,661 segundos; 2 análises retornaram decisões válidas e 15 ficaram indisponíveis (8 timeouts e 7 erros classificados como `ValueError`). Os totais pelas regras foram preservados. Portanto, a conectividade e o contrato tiveram respostas reais válidas, mas a IA externa **ainda não está homologada para decidir o lote inteiro**. Ela permanece desligada por padrão. Os detalhes deste ensaio estão no histórico local da execução `20261114T103109Z_a649ee0e`; os tipos de erro registrados não permitem atribuir todos os casos a uma causa específica.
+**Histórico da versão anterior (antes da melhoria multimodal):** o lote consultivo de 17 arquivos levou 603,661 segundos; 2 análises retornaram decisões válidas e 15 ficaram indisponíveis (8 timeouts e 7 erros classificados como `ValueError`). Os totais pelas regras foram preservados. Portanto, a conectividade e o contrato tiveram respostas reais válidas, mas a IA externa **ainda não está homologada para decidir o lote inteiro**. Naquela versão, ela ficava desligada por padrão. A configuração atual é consultiva apenas nas exceções, por solicitação do responsável pelo case. Os detalhes deste ensaio estão no histórico local da execução `20261114T103109Z_a649ee0e`; os tipos de erro registrados não permitem atribuir todos os casos a uma causa específica.
 
 **Ensaio multimodal desta versão:** três documentos do case (Excel, PDF e PNG), em modo consultivo, foram processados em 127,685 segundos, incluindo a extração local. Para essa rodada foram usados 30 segundos por operação, duas tentativas e orçamento de 120 segundos para IA. Nenhum retornou uma decisão válida: ocorreram HTTP 503 (`UNAVAILABLE`), HTTP 429 (`RESOURCE_EXHAUSTED`) e timeouts, agora discriminados por tentativa. A validação de payload, integridade, todas as abas e bloqueios foi feita por testes automatizados; a leitura multimodal real ainda não está homologada. A evidência local está em `.local/validacao_multimodal/20261114T141520Z_1981ae30/`. Nenhuma nova cobrança foi habilitada.
+
+**Ensaio do roteamento seletivo:** o lote de 17 documentos passou pelas regras; 12 dispensaram a IA e 5 foram classificados como exceção. Houve 3 tentativas HTTP, todas com 429 (`RESOURCE_EXHAUSTED`); o controle de falhas pausou os dois arquivos restantes. O resultado financeiro permaneceu em 12 ok, 4 revisar e 1 falhou. O ensaio usou uma tentativa, 15 segundos por operação e 60 segundos de orçamento para IA, sem alterar os parâmetros padrão de operação. Nenhuma recomendação foi apresentada como concluída quando o serviço não respondeu.
 
 O ajuste supervisionado deve usar exemplos classificados pela equipe e avaliação em casos separados. Ajustar instruções não é treinar os pesos do modelo. A gestão define quando os resultados permitem passar do consultivo para o automático.
 
@@ -140,7 +152,7 @@ O ajuste supervisionado deve usar exemplos classificados pela equipe e avaliaç�
 .\.venv\Scripts\python.exe -m goener.entrega
 ```
 
-Validação local da estrutura simplificada: **70 testes passaram, com 83% de cobertura**, incluindo OCR dos documentos do case. A versão anterior teve chamadas HTTP reais válidas; a validação da versão multimodal é registrada abaixo, sem presumir homologação do lote inteiro. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
+Validação local da estrutura simplificada: **75 testes passaram, com 83% de cobertura**, incluindo OCR dos documentos do case. A versão anterior teve chamadas HTTP reais válidas; a validação da versão multimodal é registrada abaixo, sem presumir homologação do lote inteiro. Os testes automatizados usam HTTP simulado para não depender de chave ou consumir cota na integração contínua.
 
 A instalação manual usa apenas `requirements-lock.txt` e `pip install -e . --no-deps`. Para testar sem inferência OCR, acrescente `-m "not ocr"`. A integração contínua roda os testes e o lote em Windows e Linux, com Python 3.12. O ZIP inclui fonte, entradas, modelo, testes e resultado; não inclui chaves ou dados locais de execução. Nenhum agendamento foi criado nesta máquina.
 

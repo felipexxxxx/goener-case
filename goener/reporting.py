@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import html
 import math
+import os
 from collections import Counter
-from copy import copy
 from pathlib import Path
+from urllib.parse import quote
 
 from openpyxl import load_workbook
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
-from .core import Result
+from .core import Result, human_text
 
 HEADERS = [
     "Arquivo",
@@ -23,6 +24,21 @@ HEADERS = [
 ]
 
 
+def needs_attention(result):
+    return (
+        result.status != "ok"
+        or bool(result.ai.get("source_disagreements"))
+        or result.ai.get("decision") in ("revisar", "nao_considerar")
+    )
+
+
+def source_root(run_dir, input_dir):
+    try:
+        return quote(os.path.relpath(input_dir, run_dir).replace("\\", "/"), safe="/:")
+    except ValueError:
+        return Path(input_dir).resolve().as_uri()
+
+
 def write_workbook(template: Path, destination: Path, results: list[Result]) -> None:
     wb = load_workbook(template, keep_links=False)
     try:
@@ -31,15 +47,36 @@ def write_workbook(template: Path, destination: Path, results: list[Result]) -> 
             raise ValueError("Cabeçalho do modelo diverge do contrato esperado")
         if ws.max_row > 1:
             ws.delete_rows(2, ws.max_row - 1)
+        ws.sheet_view.showGridLines = False
+        ws.sheet_view.zoomScale = 80
+        ws.sheet_properties.tabColor = "00A19A"
+        bottom = Side(style="hair", color="DCE8E8")
         for row_number, result in enumerate(results, 2):
             for col_number, value in enumerate(result.row(), 1):
                 cell = ws.cell(row_number, col_number, value)
                 if isinstance(value, str):
                     # Literal inclusive quando um nome/observação começa com =, +, - ou @.
                     cell.data_type = "s"
-                cell.alignment = Alignment(vertical="center", wrap_text=col_number in (1, 8))
+                cell.font = Font(name="Aptos", size=10, color="003836")
+                cell.fill = PatternFill(
+                    "solid", fgColor="F4F9F8" if row_number % 2 == 0 else "FFFFFF"
+                )
+                cell.border = Border(bottom=bottom)
+                cell.alignment = Alignment(
+                    vertical="center",
+                    wrap_text=col_number in (1, 2, 8),
+                    horizontal="center"
+                    if col_number in (3, 4, 6, 7)
+                    else "right"
+                    if col_number == 5
+                    else "left",
+                )
+                if col_number == 1:
+                    cell.font = Font(name="Aptos", size=10, bold=True, color="003836")
+                if col_number == 8 and needs_attention(result):
+                    cell.fill = PatternFill("solid", fgColor="FFF8E8")
                 if col_number == 5:
-                    cell.number_format = "#,##0.00;[Red](#,##0.00)"
+                    cell.number_format = '"R$" #,##0.00;[Red]-"R$" #,##0.00'
                 if col_number == 7:
                     colors = {
                         "ok": ("E7F3EC", "176038"),
@@ -49,16 +86,27 @@ def write_workbook(template: Path, destination: Path, results: list[Result]) -> 
                     bg, fg = colors[result.status]
                     cell.fill = PatternFill("solid", fgColor=bg)
                     cell.font = Font(name="Calibri", size=11, bold=True, color=fg)
-            lines = max(1, math.ceil(len(result.observation) / 95))
-            ws.row_dimensions[row_number].height = max(31, lines * 16 + 8)
-        for col, width in zip("ABCDEFGH", (48, 22, 18, 14, 20, 22, 14, 110), strict=True):
+            lines = sum(
+                max(1, math.ceil(len(line) / 78)) for line in result.observation.splitlines()
+            )
+            ws.row_dimensions[row_number].height = min(409, max(34, lines * 14 + 14))
+        for col, width in zip("ABCDEFGH", (40, 21, 17, 13, 21, 17, 14, 86), strict=True):
             ws.column_dimensions[col].width = width
         ws.freeze_panes = "A2"
         ws.auto_filter.ref = f"A1:H{len(results) + 1}"
-        ws.row_dimensions[1].height = 24
+        ws.row_dimensions[1].height = 32
         for cell in ws[1]:
-            cell.font = copy(cell.font)
+            cell.font = Font(name="Aptos", size=11, bold=True, color="FFFFFF")
+            cell.fill = PatternFill("solid", fgColor="003836")
             cell.alignment = Alignment(horizontal="center", vertical="center")
+        ws.print_options.horizontalCentered = True
+        ws.print_area = f"A1:H{len(results) + 1}"
+        ws.print_title_rows = "1:1"
+        ws.sheet_properties.pageSetUpPr.fitToPage = True
+        ws.page_setup.orientation = "landscape"
+        ws.page_setup.paperSize = ws.PAPERSIZE_A3
+        ws.page_setup.fitToWidth = 1
+        ws.page_setup.fitToHeight = 0
         wb.save(destination)
     finally:
         wb.close()
@@ -85,10 +133,7 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         return f"{float(value):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
     def plain(text):
-        import re
-
-        text = re.sub(r"\b(?:ValueError|PermissionError|OSError):\s*", "", text)
-        return re.sub(r"R\$ (-?\d+\.\d{2})", lambda m: "R$ " + br(m.group(1)), text)
+        return human_text(text)
 
     labels = {
         "ok": "Sem pendências",
@@ -103,34 +148,89 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         "ERRO_EXTRACAO": "Confirme se o documento é um extrato completo e envie uma nova cópia.",
     }
     rows = []
-    for r in sorted(results, key=lambda r: (r.status == "ok", r.filename.casefold())):
+    cfg = summary.get("configuration", {})
+    input_dir = Path(cfg.get("input_dir", path.parent))
+    source_base = source_root(path.parent, input_dir)
+    decisions = {
+        "considerar": "IA sugere considerar",
+        "revisar": "IA sugere revisão",
+        "nao_considerar": "IA sugere não considerar",
+    }
+    for r in sorted(
+        results, key=lambda r: (not needs_attention(r), r.status != "falhou", r.filename.casefold())
+    ):
         s = r.statement
         messages = [plain(i.message) for i in s.issues]
-        action = next(
-            (actions[i.code] for i in s.issues if i.code in actions),
-            "Você pode considerar este arquivo conforme a política do fechamento."
-            if r.status == "ok"
-            else "Confira os dados no documento de origem.",
+        action = (
+            actions["ARQUIVO_DUPLICADO"]
+            if r.duplicate_of
+            else next(
+                (actions[i.code] for i in s.issues if i.code in actions),
+                "Confira a diferença apontada pela IA no original."
+                if r.ai.get("source_disagreements")
+                else "Você pode considerar este arquivo conforme a política do fechamento."
+                if r.status == "ok"
+                else "Confira os dados no documento de origem.",
+            )
         )
+        ref = r.review_reference
+        href = source_base + "/" + quote(r.filename, safe="")
+        if r.format == "PDF" and isinstance(ref.get("page"), int) and ref["page"] > 0:
+            href += "#page=" + str(ref["page"])
+        decision = r.ai.get("decision")
+        if decision in decisions:
+            ai_state, ai_label = "analisada", decisions[decision]
+        elif decision == "indisponivel":
+            ai_state, ai_label = "indisponivel", "IA indisponível"
+        elif r.ai.get("routing") == "rules_passed":
+            ai_state, ai_label = "dispensada", "Só regras · IA dispensada"
+        else:
+            ai_state, ai_label = "desligada", "IA desligada nesta execução"
         issues = "".join("<li>" + html.escape(m) + "</li>" for m in messages)
-        ai_text = (
-            "<h3>Análise assistida</h3><p>" + html.escape(r.ai.get("message", "")) + "</p>"
-            if r.ai
-            else ""
+        issues = (
+            "<ul>" + issues + "</ul>"
+            if issues
+            else "<p>Os campos e a conciliação passaram nas verificações programadas.</p>"
         )
+        ai_message = plain(r.ai.get("message", "Não foi solicitada análise por IA nesta execução."))
+        if r.ai.get("policy_block") and r.ai["policy_block"] not in ai_message:
+            ai_message += " Bloqueio obrigatório: " + plain(r.ai["policy_block"])
+        if r.ai.get("source_disagreements"):
+            ai_message += " O modo consultivo preserva os totais das regras; valide esta diferença antes do fechamento."
         meta = html.escape(
             " · ".join(
                 v for v in (s.bank, "Conta " + s.account if s.account else "", s.period) if v
             )
         )
         amount = "R$ " + br(s.closing) if s.closing is not None else "Saldo não identificado"
+        finding = (
+            messages[0]
+            if messages
+            else (
+                "A IA apontou uma diferença na leitura do original."
+                if needs_attention(r)
+                else "Conferido automaticamente pelas regras."
+            )
+        )
+        quote_block = (
+            "<blockquote>" + html.escape(ref["quote"]) + "</blockquote>"
+            if ref["quote"]
+            else '<p class="caption">Não há trecho localizado disponível. Confira o documento completo.</p>'
+        )
         rows.append(
-            f'<details class="item" data-status="{r.status}"><summary><span class="pill {r.status}">{labels[r.status]}</span><div><span class="filename">{html.escape(r.filename)}</span><span class="meta">{meta}</span></div><span class="amount">{amount}</span></summary><div class="body"><h3>O que encontramos</h3>{"<ul>" + issues + "</ul>" if issues else "<p>Os campos foram identificados e os saldos conferem com as movimentações lidas.</p>"}<div class="explain"><b>Próximo passo</b><br>{html.escape(action)}</div>{ai_text}</div></details>'
+            f'<details class="item" data-status="{r.status}" data-attention="{str(needs_attention(r)).lower()}" data-ai="{ai_state}">'
+            f'<summary><span class="pill {r.status}">{labels[r.status]}</span><div><span class="filename">{html.escape(r.filename)}</span>'
+            f'<span class="meta">{meta}</span><span class="finding">{html.escape(finding)}</span><span class="ai-badge {ai_state}">{html.escape(ai_label)}</span></div>'
+            f'<span class="amount">{amount}</span></summary><div class="body"><div class="reviewgrid"><section><h3>1. O que as regras encontraram</h3>{issues}</section>'
+            f"<section><h3>2. Recomendação da IA</h3><p>{html.escape(ai_message)}</p></section></div>"
+            f'<div class="reference"><h3>3. Onde conferir</h3><p><b>{html.escape(ref["where"])}</b></p><span class="caption">{html.escape(ref["origin"])}</span>{quote_block}'
+            f'<a class="btn secondary" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener">Abrir documento de origem ↗</a></div>'
+            f'<div class="explain"><b>4. Próximo passo</b><br>{html.escape(action)}</div></div></details>'
         )
     cfg = summary.get("configuration", {})
     minutes = cfg.get("manual_minutes_per_file", 8)
     review_minutes = cfg.get("review_minutes_per_file", 3)
-    pending = sum(r.status != "ok" for r in results)
+    pending = sum(needs_attention(r) for r in results)
     manual = len(results) * minutes / 60
     assisted = summary["duration_seconds"] / 3600 + pending * review_minutes / 60
     saved = manual - assisted
@@ -154,7 +254,15 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         "COUNT": len(results),
         "BALANCE": "R$ " + br(summary["approved_balance"]),
         "INCLUDED": summary.get("included_files", summary["statuses"].get("ok", 0)),
-        "OK": summary["statuses"].get("ok", 0),
+        "OK": sum(not needs_attention(r) for r in results),
+        "BALANCE_LABEL": "Saldo incluído após as validações"
+        if summary.get("ai_mode") == "automatico"
+        else "Saldo validado pelas regras",
+        "ROUTING": "IA desligada"
+        if summary.get("ai_mode", "off") == "off"
+        else "IA nas exceções"
+        if cfg.get("ai_scope") == "excecoes"
+        else "IA em todo o lote",
         "ATTENTION": pending,
         "REVIEW": summary["statuses"].get("revisar", 0),
         "FAILED": summary["statuses"].get("falhou", 0),
@@ -165,9 +273,15 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         "REVIEW_MINUTES": review_minutes,
         "DURATION": br(summary["duration_seconds"]),
         "RUN": summary["run_id"],
+        "AI_ANALYZED": sum(r.ai.get("decision") in decisions for r in results),
+        "AI_UNAVAILABLE": sum(r.ai.get("decision") == "indisponivel" for r in results),
+        "AI_EXEMPT": sum(r.ai.get("routing") == "rules_passed" for r in results),
+        "SCOPE": "somente exceções" if cfg.get("ai_scope") == "excecoes" else "todos os arquivos",
         "METHOD": "A análise por IA está desligada."
         if summary.get("ai_mode", "off") == "off"
-        else "Modo de análise assistida: " + summary["ai_mode"] + ".",
+        else "Consultivo: a IA orienta a revisão; os totais seguem as regras."
+        if summary["ai_mode"] == "consultivo"
+        else "Automático: a decisão é aplicada no escopo configurado, respeitando as regras obrigatórias.",
     }
     document = Path(__file__).with_name("report.html").read_text(encoding="utf-8")
     for key, value in values.items():
