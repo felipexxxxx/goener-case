@@ -1,5 +1,6 @@
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -28,6 +29,10 @@ def test_batch_preserves_duplicates_and_failures_and_has_evidence(config):
     assert code == 0
     assert summary["files"] == 4 and summary["statuses"] == {"revisar": 1, "ok": 1, "falhou": 2}
     assert summary["duplicates"] == 1 and summary["approved_balance"] == "225934.57"
+    assert (
+        summary["git_commit"]
+        == subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    )
     assert {p.name: file_hash(p) for p in config.input_dir.iterdir()} == before
     rows = load_workbook(out / "consolidado.xlsx")["Consolidado"]
     assert rows.max_row == 5
@@ -149,7 +154,7 @@ def test_html_keeps_ai_advice_separate_and_opens_source_page(config):
 def test_workbook_retains_model_with_human_review_reference(config):
     from goener.core import Transaction
 
-    s = Statement("Banco", "1-0", "2026-10", closing=money(10), evidence={"closing": {"page": 2}})
+    s = Statement("Banco", "1-0", "2026-10", closing=money(10), evidence={"closing": {"page": 3}})
     s.transactions = [
         Transaction(
             "2026-10-26", "PIX repetido", money(10), money(10), location="página 2, linha 10"
@@ -160,6 +165,7 @@ def test_workbook_retains_model_with_human_review_reference(config):
     ]
     s.issue("LANCAMENTO_REPETIDO", "Possível lançamento repetido")
     r = Result("extrato.pdf", "sha", "PDF", s)
+    assert r.review_reference["page"] == 2
     config.output_dir.mkdir()
     path = config.output_dir / "consolidado.xlsx"
     write_workbook(config.template, path, [r])

@@ -126,7 +126,7 @@ def git_revision() -> str:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            cwd=Path(__file__).resolve().parents[2],
+            cwd=Path(__file__).resolve().parents[1],
             capture_output=True,
             text=True,
             timeout=5,

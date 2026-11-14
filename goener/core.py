@@ -182,10 +182,11 @@ class Result:
             for tx in s.transactions:
                 key = (tx.date, normalized(tx.description), tx.amount, tx.reference)
                 if key in seen:
+                    match = re.search(r"p[aá]gina\s*(\d+)", seen[key].location, re.I)
                     return {
                         "where": seen[key].location + " e " + tx.location,
                         "quote": tx.date + " · " + tx.description + " · " + str(tx.amount),
-                        "page": closing.get("page"),
+                        "page": int(match[1]) if match else None,
                         "origin": "extração local",
                     }
                 seen[key] = tx
@@ -201,7 +202,7 @@ class Result:
             return {
                 "where": "Cabeçalho do documento · período do extrato",
                 "quote": line,
-                "page": closing.get("page") if self.format == "PDF" else None,
+                "page": None,
                 "origin": "extração local",
             }
         if closing.get("sheet"):
