@@ -52,7 +52,7 @@ def load_config(path: Path, **overrides) -> Config:
     result = Config(**data)
     if result.ai_mode not in ("off", "consultivo", "automatico"):
         raise ValueError("Modo de IA inválido")
-    if result.ai_provider not in ("chatgpt", "openai"):
+    if result.ai_provider not in ("chatgpt", "openai", "gemini"):
         raise ValueError("Provedor de IA inválido")
     if result.manual_minutes_per_file <= 0 or result.review_minutes_per_file < 0:
         raise ValueError("Premissas de tempo inválidas")

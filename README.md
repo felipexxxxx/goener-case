@@ -198,7 +198,19 @@ Próximos passos, por prioridade:
 
 ### Análise assistida e custo
 
-Existem dois transportes configuráveis. `ai_provider = "openai"` usa a Responses API por HTTPS; pode gerar cobrança e exige `OPENAI_API_KEY` no ambiente. `ai_provider = "chatgpt"` usa o adaptador experimental de navegador com perfil próprio, sem reutilizar cookies privados de outro perfil. `ai_mode = "off"` mantém ambos desligados por padrão. Não houve chamada real à API sem chave.
+Existem três transportes configuráveis. `ai_provider = "openai"` usa a Responses API por HTTPS; pode gerar cobrança e exige `OPENAI_API_KEY` no ambiente. `ai_provider = "chatgpt"` usa o adaptador experimental de navegador com perfil próprio, sem reutilizar cookies privados de outro perfil. `ai_mode = "off"` mantém ambos desligados por padrão. Não houve chamada real à API sem chave.
+
+Para usar Gemini, altere `ai_provider = "gemini"` e `ai_model = "gemini-3.8-flash"` em `config.toml`, configure `GEMINI_API_KEY` no ambiente e execute com um dos modos abaixo. Também é aceita `GOOGLE_API_KEY` quando a primeira não estiver definida. A chave segue apenas no cabeçalho HTTPS, sem aparecer na URL, planilha ou logs. Não salve a chave no código nem envie pelo chat.
+
+O projeto da API pode ter Free Tier, sujeito ao modelo, região e cotas. O plano Google AI de estudante não garante uso gratuito da API: os benefícios da interface e o faturamento da API são separados. Confira o projeto no AI Studio antes de habilitar a integração; o programa não ativa faturamento nem troca automaticamente para um serviço pago. A configuração inicial da chave ocorre na implantação. Cada lote, depois disso, roda sem login ou confirmação manual.
+
+```powershell
+.\.venv\Scripts\python.exe -m goener --ai-mode consultivo
+# Após validar os critérios com a gestão:
+.\.venv\Scripts\python.exe -m goener --ai-mode automatico
+```
+
+A chamada Gemini usa `generateContent`, esquema JSON e validação local. São feitas até três tentativas por arquivo em erros transitórios; cotas esgotadas, bloqueio, resposta parcial ou contrato inválido são registrados como indisponibilidade. No modo automático o saldo fica retido. O limite de tentativas evita espera indefinida, mas a disponibilidade depende da cota do projeto. Os testes automatizados simulam o HTTP; a validação real depende de chave configurada.
 
 `--ai-mode consultivo` acrescenta recomendação e justificativa à observação, preservando a seleção pelas regras. `--ai-mode automatico` permite que a IA retenha um arquivo dos totais; para incluir, ele também precisa passar nas verificações obrigatórias. Cópias, dados ausentes, outra competência e divergências não são liberados pela IA. Recusa, resposta incompleta ou JSON inválido mantêm o arquivo fora do total no modo automático. Os valores originais são preservados.
 
@@ -229,3 +241,7 @@ As decisões e os motivos estão em [docs/decisoes.md](docs/decisoes.md). A docu
 
 - [RapidOCR: uso e campos de saída](https://rapidai.github.io/RapidOCRDocs/main/en/install_usage/rapidocr/usage/)
 - [openpyxl: leitura e gravação de planilhas](https://openpyxl.readthedocs.io/en/stable/tutorial.html)
+
+- [Gemini: contrato HTTP oficial](https://ai.google.dev/api/generate-content)
+- [Google AI: assinatura e API são serviços separados](https://aistudio.google.com/docs/google-ai-plans)
+- [Gemini: cotas e faturamento](https://ai.google.dev/gemini-api/docs/billing)

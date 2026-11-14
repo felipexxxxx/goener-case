@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -165,13 +166,66 @@ def request_decision(context, model, opener=urlopen):
     return {**decision, "response_id": body.get("id"), "usage": body.get("usage", {})}
 
 
+def request_gemini(context, model, opener=urlopen):
+    """API oficial do Gemini; a chave nunca faz parte da URL ou dos logs."""
+    key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not key:
+        raise ValueError("GEMINI_API_KEY não configurada")
+    if not re.fullmatch(r"[a-zA-Z0-9._-]+", model):
+        raise ValueError("Identificador de modelo inválido")
+    payload = {
+        "systemInstruction": {"parts": [{"text": INSTRUCTIONS}]},
+        "contents": [{"role": "user", "parts": [{"text": json.dumps(context)}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseJsonSchema": SCHEMA,
+            "maxOutputTokens": 4096,
+        },
+    }
+    req = Request(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+        data=json.dumps(payload).encode(),
+        headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+    )
+    for attempt in range(3):
+        try:
+            with opener(req, timeout=45) as response:
+                body = json.load(response)
+            break
+        except HTTPError as exc:
+            if exc.code not in (429, 500, 502, 503, 504) or attempt == 2:
+                raise ValueError(f"Gemini indisponível (HTTP {exc.code})") from None
+            time.sleep(2**attempt)
+    candidates = body.get("candidates", [])
+    if body.get("promptFeedback", {}).get("blockReason") or len(candidates) != 1:
+        raise ValueError("Gemini não retornou uma resposta utilizável")
+    candidate = candidates[0]
+    if candidate.get("finishReason") != "STOP":
+        raise ValueError("Resposta incompleta ou bloqueada pelo Gemini")
+    text = "".join(
+        p.get("text", "")
+        for p in candidate.get("content", {}).get("parts", [])
+        if not p.get("thought")
+    )
+    decision = validate_decision(json.loads(text), {i["code"] for i in context["issues"]})
+    return {
+        **decision,
+        "response_id": body.get("responseId"),
+        "model": body.get("modelVersion", model),
+        "usage": body.get("usageMetadata", {}),
+    }
+
+
 def review(results, config, requester=None):
     if config.ai_mode == "off":
         return
-    requester = requester or (
-        request_decision
-        if config.ai_provider == "openai"
-        else lambda context, model: request_browser(context, config)
+    requester = (
+        requester
+        or {
+            "openai": request_decision,
+            "gemini": request_gemini,
+            "chatgpt": lambda context, model: request_browser(context, config),
+        }[config.ai_provider]
     )
     for r in results:
         s = r.statement
@@ -197,7 +251,8 @@ def review(results, config, requester=None):
                 "provider": config.ai_provider,
                 "rules_status": rules_status,
                 "model": response.get(
-                    "model", config.ai_model if config.ai_provider == "openai" else "não confirmado"
+                    "model",
+                    config.ai_model if config.ai_provider != "chatgpt" else "não confirmado",
                 ),
                 "prompt_version": "1",
                 "message": "Recomendação da IA: " + response["reason"],
@@ -214,7 +269,7 @@ def review(results, config, requester=None):
                 "decision": "indisponivel",
                 "mode": config.ai_mode,
                 "provider": config.ai_provider,
-                "model": config.ai_model if config.ai_provider == "openai" else "não confirmado",
+                "model": config.ai_model if config.ai_provider != "chatgpt" else "não confirmado",
                 "error_type": type(exc).__name__,
                 "rules_status": rules_status,
                 "message": "A análise por IA não foi concluída. Confira este arquivo antes de decidir.",

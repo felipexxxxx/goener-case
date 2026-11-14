@@ -29,3 +29,5 @@ Dois modos foram definidos com o responsável pelo case: consultivo, que registr
 O desenvolvimento supervisionado começará com exemplos classificados pela equipe, avaliação em casos separados e registro das divergências. Ajustar instruções e exemplos não equivale a treinar os pesos do modelo. Uma eventual etapa de fine-tuning depende de dados suficientes e avaliação específica. A passagem para o modo automático será discutida com a gestão após medir erros e critérios de aceitação.
 
 O pipeline atual continua sequencial. Paralelismo é uma evolução possível por arquivo, com limite de trabalhadores e escrita centralizada da planilha e do checkpoint; ainda não foi implementado nem medido.
+
+A alternativa Gemini usa a API oficial por HTTPS e o mesmo contrato JSON e regras de retenção. A assinatura de estudante não foi tratada como crédito de API. Nenhuma cobrança foi habilitada. A integração depende de chave e cota do projeto; sua validação HTTP automatizada usa respostas simuladas, sem afirmar que uma chamada real ocorreu. O transporte de navegador permanece experimental e não homologado para a execução autônoma.

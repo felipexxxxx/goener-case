@@ -3,7 +3,14 @@ import json
 
 import pytest
 
-from goener.ai import SCHEMA, request_browser, request_decision, review, validate_decision
+from goener.ai import (
+    SCHEMA,
+    request_browser,
+    request_decision,
+    request_gemini,
+    review,
+    validate_decision,
+)
 from goener.models import Result, Statement, money
 
 
@@ -95,3 +102,81 @@ def test_missing_key_and_api_failure(config, monkeypatch):
 def test_browser_requires_prepared_profile_before_loading_selenium(config):
     with pytest.raises(ValueError, match="sessão"):
         request_browser({"issues": []}, config)
+
+
+def test_gemini_http_contract(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only")
+
+    def opener(req, timeout):
+        assert req.full_url.endswith("/models/gemini-3.8-flash:generateContent")
+        assert "test-only" not in req.full_url
+        assert req.get_header("X-goog-api-key") == "test-only"
+        assert timeout == 45
+        payload = json.loads(req.data)
+        assert payload["generationConfig"]["responseJsonSchema"] == SCHEMA
+        assert "tools" not in payload
+        return io.StringIO(
+            json.dumps(
+                {
+                    "responseId": "fake-id",
+                    "modelVersion": "gemini-3.8-flash",
+                    "candidates": [
+                        {
+                            "finishReason": "STOP",
+                            "content": {
+                                "parts": [
+                                    {"thought": True, "text": "ignorar raciocínio"},
+                                    {
+                                        "text": json.dumps(
+                                            {
+                                                "decision": "revisar",
+                                                "reason": "Conferir",
+                                                "evidence_codes": [],
+                                            }
+                                        )
+                                    },
+                                ]
+                            },
+                        }
+                    ],
+                }
+            )
+        )
+
+    result = request_gemini({"issues": []}, "gemini-3.8-flash", opener)
+    assert result["decision"] == "revisar"
+    assert result["response_id"] == "fake-id"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"promptFeedback": {"blockReason": "SAFETY"}},
+        {"candidates": [{"finishReason": "MAX_TOKENS"}]},
+        {"candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": "inválido"}]}}]},
+    ],
+)
+def test_gemini_rejects_blocked_partial_or_invalid(monkeypatch, body):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only")
+    with pytest.raises(ValueError):
+        request_gemini({"issues": []}, "test", lambda *a, **k: io.StringIO(json.dumps(body)))
+
+
+def test_gemini_quota_is_bounded_and_automatic_mode_retains(config, monkeypatch):
+    from urllib.error import HTTPError
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only")
+    monkeypatch.setattr("goener.ai.time.sleep", lambda _: None)
+    calls = []
+
+    def opener(req, timeout):
+        calls.append(req)
+        raise HTTPError(req.full_url, 429, "quota", {}, None)
+
+    config.ai_mode = "automatico"
+    config.ai_provider = "gemini"
+    r = Result("a", "sha", "PDF", Statement("Banco", "1-0", "2026-10", closing=money(10)))
+    review([r], config, lambda context, model: request_gemini(context, model, opener))
+    assert len(calls) == 3
+    assert not r.included(config.ai_mode, config.period)
+    assert r.ai["decision"] == "indisponivel"
