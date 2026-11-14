@@ -478,6 +478,9 @@ def test_persistent_quota_limits_do_not_consume_attempt_while_waiting(tmp_path):
     blocked = state.reserve("model", 5, 2, now + 40)
     assert blocked["category"] == "quota_daily"
     assert state.reserve("model", 5, 2, blocked["retry_at"] + 1) is None
+    reset = state.day_bounds(now)[1]
+    assert state.reserve("midnight", 5, 20, reset - 1) is None
+    assert state.reserve("midnight", 5, 20, reset + 1)["category"] == "quota_rate"
 
 
 def test_daily_provider_quota_is_not_retried_and_body_is_not_logged(monkeypatch):

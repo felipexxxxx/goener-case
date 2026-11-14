@@ -148,9 +148,10 @@ class GeminiState:
             ).fetchone()
             if block and block[0] > now:
                 return {"wait": block[0] - now, "category": block[1], "retry_at": block[0]}
-            count, last = db.execute(
-                "SELECT count(*),max(at) FROM requests WHERE model=? AND at>=?", (model, start)
-            ).fetchone()
+            count = db.execute(
+                "SELECT count(*) FROM requests WHERE model=? AND at>=?", (model, start)
+            ).fetchone()[0]
+            last = db.execute("SELECT max(at) FROM requests WHERE model=?", (model,)).fetchone()[0]
             if count >= rpd:
                 return {"wait": reset - now, "category": "quota_daily", "retry_at": reset}
             wait = (last + 60 / rpm + 0.2 - now) if last is not None else 0
