@@ -229,13 +229,32 @@ def test_package_excludes_env_by_default_and_includes_only_when_requested(
         assert secret in z.read("goener-case/.env").decode()
 
 
-def test_time_reference_for_bi_separates_sample_projection_and_measurement():
+def test_time_estimate_separates_full_statements_from_triage_and_annualizes():
     from goener.reporting import estimate_effort
 
-    rows = [Result(str(i), str(i), "PDF", Statement()) for i in range(17)]
+    rows = [
+        Result(
+            str(i),
+            str(i),
+            "PDF",
+            Statement(bank="Banco", account="1", period="2026-10", closing=money(10)),
+        )
+        for i in range(14)
+    ]
+    rows += [
+        Result("copy", "0", "PDF", rows[0].statement, duplicate_of="0"),
+        Result(
+            "other",
+            "other",
+            "PDF",
+            Statement(bank="Banco", account="1", period="2026-09", closing=money(10)),
+        ),
+        Result("notice", "notice", "PDF", Statement()),
+    ]
     report = estimate_effort(
         rows,
         {
+            "period": "2026-10",
             "duration_seconds": 60,
             "configuration": {
                 "manual_minutes_per_file": 8,
@@ -244,12 +263,55 @@ def test_time_reference_for_bi_separates_sample_projection_and_measurement():
             },
         },
     )
+    assert report["workload_counts"] == {
+        "current_unique_statements": 14,
+        "duplicates": 1,
+        "other_period": 1,
+        "insufficient_or_nonstatement": 1,
+    }
     assert report["manual_sample_minutes"] == 10
-    assert report["projected_manual_seconds"] == 10200
-    assert report["measured_robot_seconds"] == 60
-    assert report["projected_difference_seconds"] == 10140
+    assert report["projected_manual_seconds"] == (14 * 10 + 3 * 1) * 60
+    assert report["projected_difference_seconds"] == 8520
+    assert report["scenarios"]["central"]["annual_hours"] == 28.4
+    assert report["uncertainty"]["confidence_level"] is None
+    assert report["uncertainty"]["empirical_confidence_interval"] is None
     assert "assisted_human_minutes" not in report
-    assert report["manual_sample_files"] == 1
+
+
+def test_time_estimate_uses_actual_volume_and_frequency_without_fixed_file_count():
+    from goener.reporting import estimate_effort
+
+    rows = [
+        Result(
+            str(i),
+            str(i),
+            "Excel",
+            Statement(bank="Banco", account="1", period="2026-10", closing=money(0)),
+        )
+        for i in range(3)
+    ]
+    report = estimate_effort(
+        rows, {"period": "2026-10", "duration_seconds": 60, "configuration": {"monthly_batches": 2}}
+    )
+    assert report["workload_counts"]["current_unique_statements"] == 3
+    assert report["triage_files"] == 0
+    assert report["scenarios"]["central"]["annual_hours"] == 11.6
+    assert report["current_statements_by_format"] == {"Excel": 3}
+    assert (
+        report["scenarios"]["lower"]["monthly_hours"]
+        < report["scenarios"]["central"]["monthly_hours"]
+        < report["scenarios"]["upper"]["monthly_hours"]
+    )
+
+
+def test_time_estimate_does_not_hide_negative_gain_or_invent_confidence():
+    from goener.reporting import estimate_effort
+
+    report = estimate_effort(
+        [Result("notice", "a", "PDF", Statement())], {"period": "2026-10", "duration_seconds": 200}
+    )
+    assert report["projected_difference_seconds"] == -140
+    assert report["uncertainty"]["type"] == "scenario_sensitivity_not_confidence_interval"
 
 
 def test_html_does_not_include_time_estimate_or_manual_projection(config):

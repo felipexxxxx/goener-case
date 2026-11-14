@@ -66,3 +66,10 @@ O EXE 1.9.0 foi bloqueado na primeira tentativa (4551) e concluiu na repetição
 `entrega.json` registra o ensaio a partir do ZIP extraído em outra pasta. O EXE processou os 17 arquivos com IA desligada, sem caches distribuídos: 12 ok, 4 revisar, 1 falhou e R$ 4.114.372,29. Foram 38,124 segundos de processamento, além da inicialização. O único reaproveitamento ocorreu dentro do próprio lote, por causa da cópia idêntica. Planilha com oito colunas, fórmulas, revisões e hashes das saídas foram conferidos.
 
 A atualização por Python também foi executada usando o fonte extraído, com os mesmos resultados e zero chamadas HTTP. O teste de empacotamento passou. README, fontes, EXE e documento foram comparados com o conteúdo do ZIP; o PDF foi renderizado e conferido em uma página. A validação não representa máquina sem Python instalado nem política Windows universal. Nenhum novo teste externo de IA foi feito nessa conferência.
+
+
+## Estimativa por atividade 1.9.1
+
+124 testes passaram. O modelo de tempo foi corrigido para separar extratos únicos da competência de arquivos que exigem apenas triagem inicial. Neste lote: 14 extratos (5 PDF, 5 Excel e 4 imagens) e três triagens. Referência de consolidação: 10 min declarados; triagem: hipótese de 1 min. Cenários são análise de sensibilidade, sem nível de confiança estatístico atribuído. Uma referência manual não sustenta IC de 95%.
+
+`tempo.json` preserva contagens, hipóteses, tempo medido e projeções mensal/anual. Foram testados volumes/frequências diferentes, separação de duplicidade/outro período/comunicado, preservação de ganho negativo e ausência de IC fabricado. O HTML continua sem análise de tempo. As projeções antigas ficam como histórico, substituídas pela metodologia versão 3 nos novos resultados.

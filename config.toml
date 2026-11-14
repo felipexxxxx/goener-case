@@ -30,5 +30,7 @@ ai_batch_timeout_seconds = 300 # novas chamadas param após este orçamento de t
 # Referência informada pelo responsável; projeção para o lote, não medição de todos os formatos.
 manual_minutes_per_file = 8.0 # preenchimento
 manual_check_minutes_per_file = 2.0 # conferência dos valores
+manual_triage_minutes = 1.0 # hipótese: identificar cópia, mês incorreto ou documento sem dados; não é tempo medido
+monthly_batches = 1.0 # hipótese de lotes mensais semelhantes; projeção anual usa 12 meses
 manual_sample_files = 1
 manual_sample_basis = "Amostragem manual informada pelo responsável: 8 minutos para preencher e 2 minutos para conferir os valores de um arquivo."

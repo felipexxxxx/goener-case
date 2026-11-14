@@ -105,14 +105,29 @@ def one_page(path: Path, summary: dict) -> None:
     paragraph(
         f"<b>{summary['files']} arquivos</b>: {counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} para revisar e {counts.get('falhou', 0)} com falha. {timing}: <b>{summary['duration_seconds']:.2f} segundos</b> nesta máquina. A cópia de Lagoa Azul foi preservada e marcada por SHA-256. Também foram sinalizados um possível lançamento repetido, uma diferença de R$ 1.080,00 no saldo declarado de Sol do Sertão, um extrato de setembro e um comunicado sem dados de extrato."
     )
-    paragraph("Premissas e ganho mensal estimado", True)
-    cfg = summary.get("configuration", {})
-    entry = cfg.get("manual_minutes_per_file", 8)
-    checking = cfg.get("manual_check_minutes_per_file", 2)
-    manual = summary["files"] * (entry + checking) / 60
-    difference = manual - summary["duration_seconds"] / 3600
+    paragraph("Tempo estimado e qualidade da evidência", True)
+    estimate = summary.get("time_estimate", {})
+    if estimate.get("version") != "3":
+        raise ValueError("Atualize a execução com a versão atual antes de gerar a entrega.")
+    counts_time = estimate["workload_counts"]
+    reference = estimate["manual_sample_minutes"]
     paragraph(
-        f"Hipótese de <b>um lote mensal com {summary['files']} arquivos</b>. Amostragem informada pelo responsável: {entry:g} min para preencher + {checking:g} min para conferir. Conta: <b>{summary['files']} × ({entry:g} + {checking:g}) = {summary['files'] * (entry + checking):g} min/mês = {manual:.2f} h/mês</b>. Robô nesta execução: {summary['duration_seconds']:.2f} s. Redução projetada da consolidação: {manual:.2f} − {summary['duration_seconds']:.2f}/3.600 = <b>{difference:.2f} h/mês</b>. A amostra não foi auditada nem representa todos os formatos. Excluem-se revisão de exceções, espera pelo banco e implantação; cache não representa primeira execução. Sem economia em reais."
+        f"Cálculo por atividade: <b>{counts_time['current_unique_statements']} extratos únicos do mês</b> para consolidar e <b>{estimate['triage_files']} triagens</b> ({counts_time['duplicates']} cópia(s), {counts_time['other_period']} de outro mês, {counts_time['insufficient_or_nonstatement']} sem dados suficientes). Referência declarada: {reference:g} min/extrato; hipótese de triagem: {estimate['triage_minutes_assumption']:g} min/arquivo. Cada cenário desconta os {summary['duration_seconds']:.2f} s medidos do robô e pressupõe {estimate['monthly_batches_assumption']:g} lote(s)/mês, com mesmo volume e composição por 12 meses."
+    )
+    c.setFont("Helvetica-Bold", 9)
+    for x, text in ((17 * mm, "Cenário"), (105 * mm, "Horas/mês"), (151 * mm, "Horas/ano")):
+        c.drawString(x, y - 10, text)
+    y -= 19
+    for name, label in (("lower", "Menor ganho"), ("central", "Central"), ("upper", "Maior ganho")):
+        scenario = estimate["scenarios"][name]
+        c.setFont("Helvetica", 9)
+        c.drawString(17 * mm, y - 10, label)
+        c.drawString(105 * mm, y - 10, f"{scenario['monthly_hours']:.2f}".replace(".", ","))
+        c.drawString(151 * mm, y - 10, f"{scenario['annual_hours']:.2f}".replace(".", ","))
+        y -= 16
+    y -= 5
+    paragraph(
+        "<b>Faixa de planejamento, não IC de 95%.</b> Consolidação a 80%/100%/120% da referência e triagem a 50%/100%/200%; hipóteses, não quantis medidos. Uma amostra manual não estima desvio-padrão. Para inferência: piloto por PDF/Excel/imagem, média e dispersão por grupo e ponderação pelo volume. Excluem-se revisão posterior de exceções, espera pelo banco e implantação. Cache não representa primeira execução; sem economia em reais."
     )
     paragraph("Limites e próximos passos", True)
     paragraph(

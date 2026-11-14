@@ -2,7 +2,7 @@
 
 Automação em Python que lê uma pasta de extratos e publica Excel, HTML, logs e evidências. O fluxo principal termina sem intervenção manual entre etapas. Regras financeiras fazem a primeira conferência; o Gemini complementa as exceções. A revisão posterior é opcional e fica registrada.
 
-**Versão 1.9.0.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
+**Versão 1.9.1.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
 
 Três níveis de leitura:
 
@@ -88,7 +88,7 @@ As oito colunas são **Arquivo, Banco, Conta, Período, Saldo final, Formato de 
 
 O lote fornecido contém **17 arquivos: 12 ok, 4 revisar e 1 falhou**, com saldo aprovado de **R$ 4.114.372,29**. `EXT_102026_LagoaAzul (1).pdf` é cópia exata do original sem sufixo, identificada por SHA-256; permanece registrada e fora da soma. Também há possível lançamento repetido, divergência de R$ 1.080,00 em Sol do Sertão, extrato de setembro num lote de outubro e comunicado sem saldo. Nenhum saldo é corrigido para fazer a conciliação fechar.
 
-### Painel interativo da versão 1.9.0
+### Painel interativo
 
 **Validação:** 122 testes passaram; a atualização e a abertura do painel pelo novo EXE foram verificadas nesta máquina. A primeira tentativa do EXE foi bloqueada pelo Windows e a repetição concluiu, sem mudar proteções. O formulário completo foi testado em uma cópia separada; nenhuma correção de ensaio foi aplicada à base entregue.
 
@@ -223,23 +223,48 @@ O processamento é sequencial, sem chamadas paralelas. `Decimal` preserva os cen
 
 O lock evita execuções concorrentes. As saídas são montadas temporariamente e publicadas após validação. Para parar entre arquivos, crie `.local/runtime/STOP`; remova para uma nova execução. Se sobrar um lock após interrupção abrupta, confira se o processo terminou antes de removê-lo. Códigos de saída: `0` publicado, `1` infraestrutura/configuração, `2` pendências em modo estrito, `3` parada, `130` interrupção.
 
-### Referência de tempo e medição do robô
+### Tempo: cálculo por atividade, mês e ano
 
-O HTML é exclusivamente financeiro e operacional. Não contém painel de produtividade nem estimativa de revisão humana.
+O HTML continua exclusivamente financeiro e operacional. A estimativa fica no resumo JSON e na documentação de uma página.
 
-Referência informada pelo responsável por amostragem de um arquivo: **8 minutos para preencher + 2 minutos para conferir os valores = 10 minutos por arquivo**. A automação não auditou essa cronometragem; o formato/arquivo da amostra não foi identificado. A extrapolação não é uma média medida de todos os formatos.
+O cálculo usa a **população observada por atividade**, não o total bruto de arquivos multiplicado por um tempo único. No lote de referência:
 
-Assumindo **um lote mensal de 17 arquivos**, a referência é **170 minutos/mês = 2h50/mês**. A redução projetada nesta etapa é `170/60 − duration_seconds/3600`, em horas. Esse volume mensal é uma hipótese, não um cadastro de contas esperado.
+| Atividade | Quantidade observada | Tempo central por unidade | Origem do tempo |
+| --- | --- | --- | --- |
+| Consolidar extrato único da competência, inclusive os retidos por divergência | 14: 5 PDF, 5 Excel e 4 imagens | 8 min de preenchimento + 2 min de conferência inicial = 10 min | Referência declarada pelo responsável a partir de um arquivo; formato não identificado e medição não auditada. |
+| Identificar e encaminhar cópia, outro mês ou documento sem dados suficientes | 3: uma cópia, um extrato de outro mês e um comunicado | 1 min | Hipótese de triagem, não tempo cronometrado. Não inclui resolver a exceção. |
 
-O `resumo.json` guarda separadamente, em `time_estimate`:
+A composição por formato é observada; o tempo de dez minutos ainda é uma referência comum aplicada aos formatos, não uma média estratificada medida. Esses grupos são derivados dos dados de cada execução. Um lote diferente terá outra composição. Os dois extratos com divergências entram no esforço de consolidação; não se confunde “fora do total financeiro” com “sem trabalho manual”. A cópia e o comunicado não recebem dez minutos de transcrição como se fossem novos extratos.
 
-- referência manual declarada e tamanho da amostra;
-- projeção para o volume: `17 × (8 + 2) = 170 minutos`, ou 2h50;
-- duração do processamento efetivamente medida pelo robô;
-- diferença projetada apenas para a etapa de consolidação;
-- indicação de cache, para não confundir reexecução com primeira execução.
+```text
+T_manual = N_extratos_unicos_do_mes × t_consolidacao + N_triagem × t_triagem
+G_mes = (T_manual_em_segundos − tempo_medido_do_robo) × lotes_mensais / 3.600
+G_ano = 12 × G_mes, se volume e composição se repetirem nos 12 meses
+```
 
-Não são estimados minutos de revisão humana com automação, espera pelo banco, recebimento ou implantação. Os metadados de tempo ficam no resumo JSON para uma análise futura; o case não depende de Power BI. Não há conversão para dinheiro.
+No cenário central desta composição: `14 × 10 + 3 × 1 = 143 minutos` por lote, antes de descontar o tempo do robô. Com um lote/mês, aproximadamente **2h23/mês e 28h36/ano** na reexecução com cache medida. Não é economia líquida de todo o fechamento: exclui revisão posterior de exceções, espera pelo banco, recebimento e implantação. Não há conversão para dinheiro.
+
+#### Análise de sensibilidade — não intervalo de confiança
+
+| Cenário | Min/extrato a consolidar | Min/triagem | Ganho aproximado mensal | Projeção anual |
+| --- | --- | --- | --- | --- |
+| Menor ganho | 8 | 0,5 | 1,89 h | 22,70 h |
+| Central | 10 | 1 | 2,38 h | 28,60 h |
+| Maior ganho | 12 | 2 | 2,90 h | 34,80 h |
+
+Valores arredondados para um lote/mês com a composição acima, descontando a reexecução com cache. Cada execução registra seus próprios valores. O benchmark histórico de primeira execução do pacote, sem IA, levou 38,124 s: aplicando esse tempo, o cenário central seria aproximadamente **2,37 h/mês e 28,47 h/ano**. Ele não representa a latência de uma primeira execução com chamadas reais à IA.
+
+Os limites são hipóteses deliberadas: consolidação a 80%/100%/120% da referência e triagem a 50%/100%/200%. **Não são percentis empíricos, IC de 95% ou limites garantidos.** Não há probabilidade atribuída aos cenários. A projeção anual supõe frequência/volume/composição constantes, sem redução artificial da incerteza por multiplicar por 12.
+
+#### Qualidade da evidência e plano de amostragem
+
+A composição é contada nos arquivos e verificável; a estimativa de tempo é **exploratória**. Há apenas uma referência manual, insuficiente para estimar dispersão ou um IC de 95% defensável. Não se pode afirmar “95% de confiança” sem amostra e variabilidade que sustentem a conta.
+
+Para evoluir: coletar um piloto **estratificado por PDF, Excel e imagem**, com triagem separada; cronometrar arquivos diferentes e tarefas equivalentes; registrar tempo, formato, legibilidade e operador. Calcular média, desvio-padrão e coeficiente de variação por grupo. Dimensionar a amostra pela margem de erro desejada após o piloto; um número arbitrário de observações não garante precisão.
+
+A estimativa mensal passará a usar `soma(N_grupo × media_tempo_grupo) − tempo_robo`. Sob pressupostos adequados de amostragem/independência, um IC para a média de cada grupo pode usar `media ± t × desvio_padrao / raiz(n)`; o resultado agregado exige combinar as variâncias dos grupos, não somar seus ICs. Referência metodológica: [NIST — Confidence Limits for the Mean](https://www.itl.nist.gov/div898/handbook/eda/section3/eda352.htm).
+
+`resumo.json` guarda os grupos, formatos, hipóteses, medição e cenários em `time_estimate` versão 3. `confidence_level` e `empirical_confidence_interval` ficam nulos por falta de evidência. `manual_triage_minutes` e `monthly_batches` são editáveis no config; a referência de preenchimento/conferência também. Nenhum valor depende de o lote ter exatamente 17 arquivos.
 
 ### Próximos passos, por prioridade
 

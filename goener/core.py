@@ -464,6 +464,8 @@ class Config:
     ai_batch_timeout_seconds: int = 300
     manual_minutes_per_file: float = 8.0
     manual_check_minutes_per_file: float = 2.0
+    manual_triage_minutes: float = 1.0
+    monthly_batches: float = 1.0
     manual_sample_files: int = 1
     manual_sample_basis: str = "Amostragem manual informada pelo responsável: 8 minutos para preencher e 2 minutos para conferir os valores de um arquivo."
 
@@ -537,6 +539,15 @@ def load_config(path: Path, **overrides) -> Config:
         or not isinstance(result.manual_sample_basis, str)
     ):
         raise ValueError("Referência da amostragem inválida")
+    for name in ("manual_triage_minutes", "monthly_batches"):
+        value = getattr(result, name)
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or value <= 0
+        ):
+            raise ValueError("Premissa de triagem ou frequência mensal inválida")
     for p in (result.output_dir, result.runtime_dir):
         if p == result.input_dir or p.is_relative_to(result.input_dir):
             raise ValueError("Saída e runtime devem ficar fora da pasta de entrada")

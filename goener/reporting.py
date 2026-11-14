@@ -46,29 +46,98 @@ def source_root(run_dir, input_dir):
 
 
 def estimate_effort(results, summary):
-    """Referência manual declarada e duração medida; dados de apoio ao BI, fora do HTML."""
+    """Estimativa por atividade; cenários de planejamento não são intervalos de confiança."""
     cfg = summary.get("configuration", {})
-    minutes = cfg.get("manual_minutes_per_file", 8.0)
-    check_minutes = cfg.get("manual_check_minutes_per_file", 2.0)
-    manual_seconds = len(results) * (minutes + check_minutes) * 60
+    entry = cfg.get("manual_minutes_per_file", 8.0)
+    checking = cfg.get("manual_check_minutes_per_file", 2.0)
+    triage = cfg.get("manual_triage_minutes", 1.0)
+    batches = cfg.get("monthly_batches", 1.0)
+    period = summary.get("period", cfg.get("period", ""))
+    counts = {
+        "current_unique_statements": 0,
+        "duplicates": 0,
+        "other_period": 0,
+        "insufficient_or_nonstatement": 0,
+    }
+    formats = Counter()
+    seen = set()
+    for result in results:
+        statement = result.statement
+        if result.duplicate_of or (result.sha256 and result.sha256 in seen):
+            counts["duplicates"] += 1
+            continue
+        if result.sha256:
+            seen.add(result.sha256)
+        if (
+            not statement.bank
+            or not statement.account
+            or not statement.period
+            or statement.closing is None
+            or result.rules_status == "falhou"
+        ):
+            counts["insufficient_or_nonstatement"] += 1
+        elif statement.period != period:
+            counts["other_period"] += 1
+        else:
+            counts["current_unique_statements"] += 1
+            formats[result.format] += 1
+    full = counts["current_unique_statements"]
+    triaged = len(results) - full
     robot_seconds = summary["duration_seconds"]
+    scenarios = {}
+    # Faixas deliberadas de sensibilidade, sem probabilidade ou cobertura estatística.
+    for name, full_factor, triage_factor in (
+        ("lower", 0.8, 0.5),
+        ("central", 1, 1),
+        ("upper", 1.2, 2),
+    ):
+        manual_seconds = (
+            full * (entry + checking) * full_factor + triaged * triage * triage_factor
+        ) * 60
+        difference = manual_seconds - robot_seconds
+        scenarios[name] = {
+            "statement_minutes": round((entry + checking) * full_factor, 3),
+            "triage_minutes": round(triage * triage_factor, 3),
+            "manual_seconds_per_batch": round(manual_seconds, 3),
+            "difference_seconds_per_batch": round(difference, 3),
+            "monthly_hours": round(difference * batches / 3600, 6),
+            "annual_hours": round(difference * batches * 12 / 3600, 6),
+        }
+    central = scenarios["central"]
     return {
-        "version": "2",
-        "manual_entry_minutes": minutes,
-        "manual_check_minutes": check_minutes,
-        "manual_sample_minutes": minutes + check_minutes,
+        "version": "3",
+        "manual_entry_minutes": entry,
+        "manual_check_minutes": checking,
+        "manual_sample_minutes": entry + checking,
         "manual_sample_files": cfg.get("manual_sample_files", 1),
         "manual_sample_basis": cfg.get(
-            "manual_sample_basis", "Referência manual informada pelo responsável."
+            "manual_sample_basis", "Referência informada pelo responsável."
         ),
-        "manual_source": "Declaração do responsável; a automação não auditou a cronometragem manual.",
+        "manual_source": "Referência declarada; sem amostra independente de tempos por formato.",
         "files": len(results),
-        "projected_manual_seconds": round(manual_seconds, 3),
+        "workload_counts": counts,
+        "current_statements_by_format": dict(formats),
+        "triage_files": triaged,
+        "triage_minutes_assumption": triage,
+        "monthly_batches_assumption": batches,
+        "annual_months_assumption": 12,
+        "formula": "N_extratos_unicos_do_mes * t_consolidacao + N_triagem * t_triagem - tempo_do_robo",
+        "projected_manual_seconds": central["manual_seconds_per_batch"],
         "measured_robot_seconds": robot_seconds,
-        "projected_difference_seconds": round(manual_seconds - robot_seconds, 3),
+        "projected_difference_seconds": central["difference_seconds_per_batch"],
+        "scenarios": scenarios,
+        "uncertainty": {
+            "type": "scenario_sensitivity_not_confidence_interval",
+            "confidence_level": None,
+            "empirical_confidence_interval": None,
+            "reason": "Uma amostra manual não permite estimar o desvio-padrão; não há IC de 95% defensável. Triagem e faixas são hipóteses de planejamento.",
+            "sensitivity": "Consolidação a 80%/100%/120% da referência; triagem a 50%/100%/200%. Não são quantis medidos nem limites garantidos.",
+            "annualization": "12 meses com o mesmo volume e composição. Incerteza sistemática não diminui por multiplicar por 12.",
+            "sampling_plan": "Coletar piloto por PDF, Excel e imagem, com triagem separada; medir média e desvio-padrão por grupo, ponderar pelos volumes e dimensionar amostra pelo erro desejado antes de calcular IC.",
+        },
         "uses_extraction_cache": bool(summary.get("cache_hits", 0)),
         "uses_ai_cache": bool(summary.get("ai_summary", {}).get("cached_decisions", 0)),
-        "scope": "Somente consolidação dos arquivos recebidos. Não estima revisão humana, espera por terceiros, implantação ou recebimento. Extrapolação de uma amostra não é média medida de todos os formatos. Reexecução com cache não representa primeira execução.",
+        "scope": "Ganho potencial da consolidação e triagem inicial; não é economia líquida de todo o fechamento. Exclui revisão posterior de exceções, espera pelo banco, recebimento e implantação. Cache não representa primeira execução.",
     }
 
 
