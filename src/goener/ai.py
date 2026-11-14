@@ -175,6 +175,7 @@ def review(results, config, requester=None):
     )
     for r in results:
         s = r.statement
+        rules_status = r.status
         context = {
             "file_id": r.sha256,
             "period": s.period,
@@ -194,6 +195,7 @@ def review(results, config, requester=None):
                 **response,
                 "mode": config.ai_mode,
                 "provider": config.ai_provider,
+                "rules_status": rules_status,
                 "model": response.get(
                     "model", config.ai_model if config.ai_provider == "openai" else "não confirmado"
                 ),
@@ -202,6 +204,11 @@ def review(results, config, requester=None):
             }
             if response["decision"] == "considerar" and r.status != "ok":
                 r.ai["policy_block"] = "As verificações obrigatórias ainda apontam pendências."
+            if config.ai_mode == "automatico" and response["decision"] != "considerar":
+                s.issue(
+                    "IA_RETIDO",
+                    "A análise assistida recomendou reter este saldo: " + response["reason"],
+                )
         except Exception as exc:
             r.ai = {
                 "decision": "indisponivel",
@@ -209,5 +216,11 @@ def review(results, config, requester=None):
                 "provider": config.ai_provider,
                 "model": config.ai_model if config.ai_provider == "openai" else "não confirmado",
                 "error_type": type(exc).__name__,
+                "rules_status": rules_status,
                 "message": "A análise por IA não foi concluída. Confira este arquivo antes de decidir.",
             }
+            if config.ai_mode == "automatico":
+                s.issue(
+                    "IA_INDISPONIVEL",
+                    "A análise assistida não foi concluída; saldo retido para conferência.",
+                )
