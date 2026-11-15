@@ -518,7 +518,9 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
         s = r.statement
         outcome = operational_state(r, summary.get("ai_mode", "off"), summary["period"])
         messages = [
-            plain(i.message)
+            plain(i.message).replace("Valor retido para revisão.", "")
+            if r.automatic_exclusion
+            else plain(i.message)
             for i in s.issues
             if i.code not in {"IA_RETIDO", "IA_DIVERGENCIA_ORIGINAL"}
         ]
@@ -572,6 +574,33 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
                 if summary.get("ai_mode") == "consultivo"
                 else " A diferença foi registrada e o arquivo permanece fora do total."
             )
+        ai_heading = "2. Análise da IA"
+        ai_content = "<p>" + html.escape(ai_message) + "</p>"
+        if r.automatic_exclusion:
+            conclusion = {
+                "competencia": (
+                    f"Análise concluída: a IA leu o documento e confirmou o período de {_period_label(s.period)}. "
+                    f"Como o fechamento é de {_period_label(summary['period'])}, o arquivo foi excluído automaticamente deste total. "
+                    "Não há revisão humana pendente para esta exclusão. Solicite o extrato do mês correto."
+                ),
+                "nao_extrato": (
+                    "Análise concluída: a IA confirmou no documento que ele não é um extrato bancário. "
+                    "O arquivo foi excluído automaticamente do total e não aguarda revisão humana de saldo."
+                ),
+                "copia": (
+                    "Exclusão concluída: o SHA-256 identificou uma cópia idêntica de outro arquivo. "
+                    "A cópia não entra no total; esta regra não depende da decisão da IA."
+                ),
+            }[r.automatic_exclusion]
+            ai_heading = "2. Conclusão da análise"
+            original_report = (
+                "<details><summary>Ver parecer original da IA e modelo utilizado</summary><p>"
+                + html.escape(ai_message)
+                + '</p><p class="caption">O parecer acima é o registro original. A decisão final deste fechamento é a exclusão descrita acima.</p></details>'
+                if decision in decisions
+                else '<p class="caption">' + html.escape(ai_message) + "</p>"
+            )
+            ai_content = "<p><strong>" + html.escape(conclusion) + "</strong></p>" + original_report
         meta = html.escape(
             " · ".join(
                 v for v in (s.bank, "Conta " + s.account if s.account else "", s.period) if v
@@ -666,8 +695,8 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
             f'<details class="item" data-status="{r.status}" data-outcome="{outcome}" data-attention="{str(outcome == "pendente").lower()}" data-ai="{ai_state}" data-file="{html.escape(r.filename, quote=True)}">'
             f'<summary><span class="pill {outcome}">{OUTCOME_LABELS[outcome]}</span><div><span class="filename">{html.escape(r.filename)}</span>'
             f'<span class="meta">{meta}</span><span class="finding">{html.escape(finding)}</span><span class="ai-badge {ai_state}">{html.escape(ai_label)}</span></div>'
-            f'<span class="amount">{amount}<small class="caption">{amount_note}</small></span></summary><div class="body"><div class="reviewgrid"><section><h3>1. O que as regras encontraram</h3>{issues}</section>'
-            f"<section><h3>2. Recomendação da IA</h3><p>{html.escape(ai_message)}</p></section></div>"
+            f'<span class="amount">{amount}<small class="caption">{amount_note}</small></span></summary><div class="body"><div class="reviewgrid"><section><h3>1. Alerta inicial das regras</h3>{issues}</section>'
+            f"<section><h3>{ai_heading}</h3>{ai_content}</section></div>"
             f'<div class="reference"><h3>3. Onde conferir</h3><p><b>{html.escape(ref["where"])}</b></p><span class="caption">{html.escape(ref["origin"])}</span>{quote_block}'
             f'<a class="btn secondary" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener">Abrir documento de origem ↗</a>{highlighted_link}{review_button}</div>'
             f'<div class="explain"><b>4. Medida aplicada automaticamente</b><br>{html.escape(plain(r.applied_action).replace("Saldo original preservado e retido fora dos totais; ressalva registrada.", "Saldo fora do total; aguardando revisão.").replace("Saldo confirmado e incluído por revisão humana; valor original preservado na aba Revisões e nas evidências.", "Saldo confirmado e incluído após revisão humana registrada."))}<p><b>Contribuição deste arquivo no total: {contribution}.</b>{waiting}</p>{human_block}'

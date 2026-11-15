@@ -9,7 +9,7 @@
   },
   "panel_routes": 5,
   "review_sync": "Excel e HTML do mesmo fechamento atualizados; teste apenas na cópia temporária",
-  "tests_passed": 163,
+  "tests_passed": 164,
   "excel_desktop": {
     "opened_without_repair": true,
     "included": 12,
@@ -19,5 +19,6 @@
     "calculated_balance": "4114372.29",
     "visible_status_columns": 1
   },
-  "windows_process_tree_kill_test": "Supervisor encerrado abruptamente; trabalhador e subprocesso auxiliar terminaram pelo Job Object"
+  "windows_process_tree_kill_test": "Supervisor encerrado abruptamente; trabalhador e subprocesso auxiliar terminaram pelo Job Object",
+  "confirmed_exclusions_copy": "HTML distingue alerta inicial, confirmação da IA e exclusão concluída; parecer original disponível em seção expansível"
 }

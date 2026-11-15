@@ -685,3 +685,42 @@ def test_delivery_reference_uses_runtime_and_only_dynamic_launcher_in_root(
         assert version + "relatorio.html" in names
         assert not any(n.startswith(version) and n.endswith(".cmd") for n in names)
         assert z.read(prefix + "consolidado.xlsx") == z.read(version + "consolidado.xlsx")
+
+
+def test_confirmed_exclusion_shows_completed_analysis_instead_of_pending_review(config):
+    from goener.reporting import write_html
+
+    source(config)
+    _, summary, _ = run(config)
+    result = Result(
+        "setembro.png", "hash", "Imagem", Statement("Banco", "1", "2026-09", closing=money(20))
+    )
+    result.statement.issue(
+        "FORA_COMPETENCIA", "Período 2026-09; esperado 2026-10. Valor retido para revisão."
+    )
+    original = "Documento de setembro, exigindo revisão para outubro."
+    result.ai = {
+        "mode": "automatico",
+        "decision": "revisar",
+        "reason": original,
+        "message": "Recomendação da IA: " + original,
+        "selected_model": "modelo-teste",
+        "source_check": {
+            "readable": True,
+            "period": "2026-09",
+            "location": "topo da imagem",
+            "quote": "09/2026",
+        },
+    }
+    assert result.automatic_exclusion == "competencia"
+    summary.update(ai_mode="automatico", files=1)
+    page = config.output_dir / "conclusao.html"
+    write_html(page, summary, [result])
+    text = page.read_text(encoding="utf-8")
+    assert "Análise concluída: a IA leu o documento e confirmou o período de setembro/2026." in text
+    assert "Não há revisão humana pendente para esta exclusão." in text
+    assert "Valor retido para revisão." not in text
+    assert "2. Recomendação da IA" not in text
+    assert "<details><summary>Ver parecer original da IA e modelo utilizado</summary>" in text
+    assert original in text and "modelo-teste" in text
+    assert result.ai["reason"] == original  # A apresentação não reescreve o parecer registrado.
