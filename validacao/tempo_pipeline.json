@@ -394,5 +394,17 @@
   "min_seconds": 43.89,
   "max_seconds": 119.509,
   "sample_stdev_seconds": 42.13,
-  "limitations": "Três execuções no mesmo equipamento e mesmos documentos. API e carga da máquina variam; não é SLA nem teste de novos bancos."
+  "limitations": "Três execuções no mesmo equipamento e mesmos documentos. API e carga da máquina variam; não é SLA nem teste de novos bancos.",
+  "reference": {
+    "scenario": "Pipeline completo com 3.8 pulado por cota diária, sem tentativas HTTP nesse modelo; inclui retries do 3.5.",
+    "run_ids": [
+      "20261115T155550Z_f6244ff9",
+      "20261115T155634Z_a34ad010"
+    ],
+    "n": 2,
+    "mean_seconds": 46.701,
+    "min_seconds": 43.89,
+    "max_seconds": 49.511,
+    "limitation": "Duas medições observadas; não é SLA. A média geral de três rodadas continua preservada acima."
+  }
 }

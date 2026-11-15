@@ -200,7 +200,9 @@ A referência de desempenho agora é um ensaio de **três execuções completas*
 | 2 | 43,89 s | 5/5 | 1 |
 | 3 | 49,51 s | 5/5 | 2 |
 
-**Média: 70,97 s (1 min 10,97 s).** Mínimo 43,89 s; máximo 119,51 s; desvio-padrão amostral 42,13 s. Foram **15/15 análises válidas**, em um grupo de cinco por rodada, e sete tentativas HTTP no total. Todas publicaram os 17 registros. A primeira teve timeouts e 503 antes da recuperação; a terceira teve 503 e retry bem-sucedido. Um grupo lógico pode gerar várias tentativas por disponibilidade.
+**Média geral do ensaio: 70,97 s (1 min 10,97 s).** Mínimo 43,89 s; máximo 119,51 s; desvio-padrão amostral 42,13 s. Foram **15/15 análises válidas**, em um grupo de cinco por rodada, e sete tentativas HTTP no total. Todas publicaram os 17 registros. A primeira teve timeouts e 503 antes da recuperação; a terceira teve 503 e retry bem-sucedido. Um grupo lógico pode gerar várias tentativas por disponibilidade.
+
+**Referência adotada para a projeção: 46,70 s**, média das rodadas 2 e 3 (43,89 s e 49,51 s), nas quais o 3.8 foi pulado por cota diária esgotada, sem tentativas HTTP nesse modelo. Inclui leitura/OCR, análise agrupada high, geração e publicação, além do 503/retry no 3.5 da terceira rodada. São duas medições do cenário sem tentativas no 3.8, não uma garantia de duração. A rodada 1 permanece na tabela e na média geral para auditoria; não entra nesta referência de cenário. Se o 3.8 voltar a ser tentado, esta referência pode não representar o tempo da execução.
 
 O ensaio individual anterior permanece em `validacao/tempo_pipeline_individual.json`: média 226,62 s, 14/15 análises e 32 tentativas. **Não é um experimento controlado para atribuir toda a diferença ao agrupamento:** disponibilidade da API, modelo efetivamente usado, cotas e cache implícito do provedor variaram. O cache local foi desativado; os metadados registram quando houve reaproveitamento no próprio provedor. As médias das duas configurações não são misturadas.
 
@@ -216,17 +218,17 @@ Registro das medições e tentativas: `validacao/tempo_pipeline.json`. Para repe
 `T_manual = 14 × 10 + 3 × 1 = 143 minutos/lote`. São tarefas dos arquivos, não 17 transcrições equivalentes. Um extrato com divergência continua exigindo consolidação no processo manual. A cópia idêntica e o comunicado não recebem dez minutos de digitação.
 
 ```text
-G_mês = (tempo manual estimado − média medida do pipeline completo) × lotes/mês
+G_mês = (tempo manual estimado − referência medida do pipeline completo para o cenário sem tentativas no 3.8) × lotes/mês
 G_ano = G_mês × 12
 ```
 
 | Cenário | Min/extrato | Min/triagem | Horas/mês | Horas/ano |
 | --- | --- | --- | --- | --- |
-| Menor ganho | 8 | 0,5 | 1,87 | 22,46 |
-| Central | 10 | 1 | 2,36 | 28,36 |
-| Maior ganho | 12 | 2 | 2,88 | 34,56 |
+| Menor ganho | 8 | 0,5 | 1,88 | 22,54 |
+| Central | 10 | 1 | 2,37 | 28,44 |
+| Maior ganho | 12 | 2 | 2,89 | 34,64 |
 
-No cenário central, o ganho potencial é **2,36 horas/mês e 28,36 horas/ano**, descontando a média de 70,97 s do fluxo completo.
+No cenário central, o ganho potencial é **2,37 horas/mês e 28,44 horas/ano**, descontando a referência de 46,70 s do fluxo completo sem tentativas no 3.8.
 
 Os cenários usam consolidação a 80%/100%/120% da referência e triagem a 50%/100%/200%. São **faixas de planejamento**, sem probabilidade atribuída: não são percentis nem IC de 95%. A referência manual única não permite estimar desvio-padrão ou um intervalo de confiança defensável. Para isso, coletar um piloto por PDF/Excel/imagem, medir média e dispersão por grupo e dimensionar a amostra pela margem de erro desejada.
 
@@ -234,9 +236,9 @@ As projeções supõem um lote/mês com o mesmo volume e composição durante 12
 
 ### Próximos passos, por prioridade
 
-1. **P1 — Definir um critério mínimo de fechamento com o financeiro.** Cadastro por banco e conta ativa, competência esperada e prazo de entrega. Cada conta esperada precisa ter um extrato válido do mês, com saldo e identificação, sem bloqueio crítico. Cópias não contam duas vezes; recebido não significa validado. Contas ausentes mantêm o fechamento parcial. No prazo, publicar entrega com ressalvas sem chamá-la de completa. A quantidade de arquivos, sozinha, não comprova completude.
-2. **P2 — Agendar conferência da pasta e consolidar por mês.** Verificar a cada hora ou diariamente e comparar inclusões, alterações e remoções por hash. Mudança de código/configuração/competência, prazo atingido ou IA pendente com nova janela também podem exigir processamento. Reconstruir `resultados/AAAA-MM/consolidado.xlsx`, sem acrescentar linhas duplicadas; publicar somente após validação e preservar histórico. Revisões manuais ficam em cópia separada. Esta evolução ainda não está implementada.
-3. **P3 — Homologar a operação e as decisões.** Definir indicadores de falsos alertas, divergências não detectadas, indisponibilidade e decisões alteradas pelo revisor; acompanhar uma amostra independente de documentos e acordar critérios de aprovação com o financeiro antes de ampliar o uso automático.
+1. **P1 — Definir quais extratos são esperados e quando o fechamento está completo.** Combinar com o financeiro quais bancos, contas e competências devem chegar e até quando. Uma conta esperada sem extrato válido mantém o fechamento parcial; cópias não contam duas vezes. Assim, o robô poderá distinguir “processou tudo que recebeu” de “recebeu tudo que precisava”.
+2. **P2 — Agendar o processamento e atualizar o fechamento quando houver mudanças na pasta.** Verificar a pasta a cada hora ou diariamente. Quando entrar, mudar ou sair um documento, reconstruir o fechamento do mês sem duplicar linhas, preservando o histórico e as revisões registradas. Se nada relevante mudar, evitar processamento desnecessário. Mudanças de competência/configuração ou uma nova janela para IA pendente também devem ser consideradas. O agendamento ainda será desenvolvido.
+3. **P3 — Medir a qualidade dos resultados com o financeiro e ajustar os critérios de aprovação automática.** Acompanhar documentos de uma amostra independente e conferir quantos alertas eram problemas reais, quantos eram falsos alarmes e se algum erro passou despercebido. Testar também a retomada após falhas. Com essas evidências, combinar quais decisões podem ser automáticas e quais continuam exigindo aprovação humana; esta ampliação ainda depende de validação com a gestão.
 
 ```mermaid
 flowchart TD

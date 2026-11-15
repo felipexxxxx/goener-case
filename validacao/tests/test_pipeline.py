@@ -514,8 +514,9 @@ def test_unpublished_session_does_not_replace_current_session(config):
     assert json.loads(pointer.read_text(encoding="utf-8")) == {"folder": "anterior"}
 
 
+@pytest.mark.parametrize("scenario_reference", [False, True])
 def test_delivery_uses_complete_pipeline_benchmark_instead_of_review_duration(
-    config, monkeypatch, tmp_path
+    config, monkeypatch, tmp_path, scenario_reference
 ):
     import pdfplumber
 
@@ -529,11 +530,17 @@ def test_delivery_uses_complete_pipeline_benchmark_instead_of_review_duration(
     benchmark.write_text(
         json.dumps(
             {
-                "mean_seconds": 240.0,
+                "mean_seconds": 900.0 if scenario_reference else 240.0,
                 "n": 3,
                 "rounds": [
-                    {"ai": {"valid_decisions": 5, "unavailable_files": 0}} for _ in range(3)
+                    {"run_id": str(i), "ai": {"valid_decisions": 5, "unavailable_files": 0}}
+                    for i in range(3)
                 ],
+                **(
+                    {"reference": {"mean_seconds": 240.0, "n": 2, "run_ids": ["1", "2"]}}
+                    if scenario_reference
+                    else {}
+                ),
             }
         ),
         encoding="utf-8",
@@ -544,5 +551,6 @@ def test_delivery_uses_complete_pipeline_benchmark_instead_of_review_duration(
     with pdfplumber.open(pdf) as document:
         assert len(document.pages) == 1
         text = document.pages[0].extract_text()
-        assert "240.00 segundos" in text and "15/15" in text
+        assert "240.00 segundos" in text
+        assert ("10/10" if scenario_reference else "15/15") in text
         assert "0.94" not in text

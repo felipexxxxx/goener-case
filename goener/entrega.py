@@ -67,7 +67,7 @@ def one_page(path: Path, summary: dict) -> None:
 
     paragraph("O que foi automatizado", True)
     paragraph(
-        "Python 3.12 lê a pasta de extratos em PDF, Excel e imagem, confere os saldos e gera planilha, relatório, logs e evidências. Cada arquivo recebe status e observação. Pendências não interrompem a publicação. Cada fechamento tem pasta e atalhos próprios; o painel registra revisões e atualiza Excel e HTML juntos. Cópias destacadas direcionam a conferência."
+        "Python 3.12 lê PDF, Excel e imagem da pasta de entrada e gera planilha, relatório, logs e evidências, com status por arquivo. Publica mesmo com pendências. O painel registra revisões e atualiza Excel e HTML juntos; cópias destacadas direcionam a conferência."
     )
     paragraph("Fluxo e controles", True)
     gap, box_height = 9, 31
@@ -95,7 +95,7 @@ def one_page(path: Path, summary: dict) -> None:
             c.line(right + gap - 4, y - box_height / 2 - 2, right + gap - 1, y - box_height / 2)
     y -= box_height + 9
     paragraph(
-        "* Regulares dispensam IA. O Python compara saldo inicial + movimentos com o final declarado e confere os saldos entre lançamentos. Hash identifica cópias; competência, campos e OCR são validados. O Gemini confere original/contexto e pode concordar ou discordar do alerta. Seu JSON é validado; parecer não equivale a autorização para corrigir saldo. Falha da API gera ressalva, sem impedir a publicação. Cache, retries, cotas, lock e STOP apoiam a operação."
+        "* Regulares dispensam IA. O Python compara saldo inicial + movimentos com o final declarado e confere os saldos entre lançamentos. Hash identifica cópias; competência, campos e OCR são validados. O Gemini confere original/contexto e pode concordar ou discordar do alerta. Seu JSON é validado; parecer não equivale a autorização para corrigir saldo. Falha da API gera ressalva, sem impedir a publicação. Há cache, retries, cotas, trava e STOP."
     )
     paragraph("Resultado do lote fornecido", True)
     counts = summary["statuses"]
@@ -103,17 +103,26 @@ def one_page(path: Path, summary: dict) -> None:
     benchmark = (
         json.loads(benchmark_path.read_text(encoding="utf-8")) if benchmark_path.exists() else None
     )
-    seconds = benchmark["mean_seconds"] if benchmark else summary["duration_seconds"]
+    reference = benchmark.get("reference", benchmark) if benchmark else None
+    seconds = reference["mean_seconds"] if reference else summary["duration_seconds"]
+    scenario = (
+        " Com 3.8 pulado por cota, sem tentativas nesse modelo; inclui retry no 3.5."
+        if benchmark and "reference" in benchmark
+        else ""
+    )
     timing = (
-        f"Pipeline completo: média de <b>{seconds:.2f} segundos</b> em {benchmark['n']} execuções sem cache local, incluindo IA HTTP high agrupada e publicação."
+        f"Pipeline completo: média de <b>{seconds:.2f} segundos</b> em {reference['n']} execuções sem cache local, incluindo IA HTTP high agrupada e publicação.{scenario}"
         if benchmark
         else "O tempo desta atualização não é usado como benchmark do pipeline completo."
     )
     if benchmark:
-        valid = sum(r["ai"]["valid_decisions"] for r in benchmark["rounds"])
-        expected = sum(
-            r["ai"]["valid_decisions"] + r["ai"]["unavailable_files"] for r in benchmark["rounds"]
-        )
+        rounds = [
+            r
+            for r in benchmark["rounds"]
+            if "run_ids" not in reference or r["run_id"] in reference["run_ids"]
+        ]
+        valid = sum(r["ai"]["valid_decisions"] for r in rounds)
+        expected = sum(r["ai"]["valid_decisions"] + r["ai"]["unavailable_files"] for r in rounds)
         timing += f" IA: {valid}/{expected} análises válidas; esperas e falhas incluídas."
     paragraph(
         f"<b>{summary['files']} arquivos</b>: {counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} para revisar e {counts.get('falhou', 0)} com falha. {timing} Ressalvas: cópia idêntica, lançamento suspeito de repetição, diferença de R$ 1.080,00, outro mês e comunicado sem dados."
@@ -147,11 +156,11 @@ def one_page(path: Path, summary: dict) -> None:
         y -= 16
     y -= 5
     paragraph(
-        "<b>Faixa de planejamento, não IC de 95%.</b> Consolidação a 80%/100%/120% da referência e triagem a 50%/100%/200%; hipóteses, não quantis medidos. Uma amostra manual não estima desvio-padrão. Para inferência: piloto por PDF/Excel/imagem, média e dispersão por grupo e ponderação pelo volume. Excluem-se revisão posterior de exceções, espera pelo banco e implantação. Cache não representa primeira execução; sem economia em reais."
+        "<b>Faixa de planejamento, não IC de 95%.</b> Consolidação a 80%/100%/120% da referência e triagem a 50%/100%/200%; hipóteses, não quantis. Uma amostra manual não estima dispersão. Para inferência, medir um piloto por formato. Excluem-se revisão posterior, espera pelo banco e implantação; sem economia em reais."
     )
     paragraph("Limites e próximos passos", True)
     paragraph(
-        "Arquivos sem evidência suficiente são retidos; a IA ajuda quando o envio é seguro. Validações e OCR não garantem detectar todo erro nem autenticam o extrato. Valores com ressalva não entram no saldo aprovado e não são corrigidos automaticamente.<br/><b>1. P1:</b> definir origem, banco/conta/competência esperados, prazo e critério de fechamento completo.<br/><b>2. P2:</b> agendar verificação da pasta por mudanças e reconstruir o Excel por competência, sem duplicar linhas; evolução ainda não implementada.<br/><b>3. P3:</b> monitorar falsos alertas e erros não detectados, validar retomadas e acordar critérios de aprovação."
+        "Validações e OCR não garantem detectar todo erro nem autenticam o extrato. Saldos com ressalva exigem conferência. Evoluções propostas:<br/><b>1. P1 — Definir quais extratos são esperados e quando o fechamento está completo.</b> Combinar bancos, contas, mês e prazo; conta sem extrato válido mantém o fechamento parcial.<br/><b>2. P2 — Agendar o processamento e atualizar o fechamento quando houver mudanças na pasta.</b> Verificar periodicamente e atualizar o mês sem duplicar linhas, preservando histórico e revisões; agendamento ainda não implementado.<br/><b>3. P3 — Medir a qualidade com o financeiro e ajustar os critérios de aprovação automática.</b> Conferir problemas reais, falsos alertas, erros não detectados e retomadas após falhas antes de ampliar decisões automáticas."
     )
     if y < 19 * mm:
         raise ValueError("Documento ultrapassou uma página; revisar o layout")
