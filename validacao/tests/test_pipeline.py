@@ -87,7 +87,7 @@ def test_lock_prevents_overlapping_execution(config):
 def test_failed_publication_does_not_advance_latest(config, monkeypatch):
     source(config)
     out, _, _ = run(config)
-    latest = (config.output_dir / "latest.json").read_bytes()
+    latest = (config.output_dir / "historico/latest.json").read_bytes()
 
     def denied(*args):
         raise PermissionError("Destino indisponível")
@@ -95,7 +95,7 @@ def test_failed_publication_does_not_advance_latest(config, monkeypatch):
     monkeypatch.setattr("goener.pipeline.write_workbook", denied)
     with pytest.raises(PermissionError):
         run(config)
-    assert (config.output_dir / "latest.json").read_bytes() == latest
+    assert (config.output_dir / "historico/latest.json").read_bytes() == latest
     assert out.is_dir()
     assert not (config.runtime_dir / "execution.lock").exists()
 
@@ -342,9 +342,9 @@ def test_latest_shortcuts_match_published_run(config):
     assert (config.output_dir / "consolidado.xlsx").read_bytes() == (
         directory / "consolidado.xlsx"
     ).read_bytes()
-    assert f"{directory.name}/relatorio.html" in (config.output_dir / "relatorio.html").read_text(
-        encoding="utf-8"
-    )
+    assert f"historico/{directory.name}/relatorio.html" in (
+        config.output_dir / "relatorio.html"
+    ).read_text(encoding="utf-8")
 
 
 def test_locked_shortcut_does_not_discard_published_run(tmp_path, monkeypatch):

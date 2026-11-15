@@ -38,6 +38,11 @@ def needs_attention(result):
     )
 
 
+def latest_pointer(output_dir):
+    current = output_dir / "historico/latest.json"
+    return current if current.exists() else output_dir / "latest.json"
+
+
 def source_root(run_dir, input_dir):
     try:
         return quote(os.path.relpath(input_dir, run_dir).replace("\\", "/"), safe="/:")

@@ -14,6 +14,7 @@ from urllib.parse import unquote, urlparse
 from openpyxl import load_workbook
 
 from .core import Result, Statement
+from .reporting import latest_pointer
 from .revisoes import apply_reviews, digest, read_reviews
 
 
@@ -40,9 +41,12 @@ def make_server(config, *, port=0):
             self.wfile.write(data)
 
         def latest(self):
-            pointer = json.loads((config.output_dir / "latest.json").read_text(encoding="utf-8"))
+            pointer = json.loads(latest_pointer(config.output_dir).read_text(encoding="utf-8"))
             directory = Path(pointer["directory"]).resolve()
-            if directory.parent != config.output_dir.resolve():
+            if directory.parent not in (
+                config.output_dir.resolve(),
+                (config.output_dir / "historico").resolve(),
+            ):
                 raise ValueError("Publicação fora da pasta de resultados.")
             return pointer, directory
 

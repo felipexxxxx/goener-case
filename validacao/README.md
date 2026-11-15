@@ -75,3 +75,8 @@ A atualização por Python também foi executada usando o fonte extraído, com o
 `tempo.json` preserva contagens, hipóteses, tempo medido e projeções mensal/anual. Foram testados volumes/frequências diferentes, separação de duplicidade/outro período/comunicado, preservação de ganho negativo e ausência de IC fabricado. O HTML continua sem análise de tempo. As projeções antigas ficam como histórico, substituídas pela metodologia versão 3 nos novos resultados.
 
 O EXE 1.9.1 também concluiu `--update-reviews` na primeira tentativa deste ensaio, com modelo de tempo versão 3 e zero chamadas externas. Fonte/EXE/documentação foram reempacotados juntos após a alteração.
+
+
+## Abertura e organização 1.9.2
+
+128 testes passaram: supervisor conserva código/log após encerramento abrupto do filho, falha interativa aguarda Enter, sucesso não pausa, trava mantida pelo SO é recuperada após matar o processo e processo anterior ativo não é removido. O histórico agora fica agrupado em resultados/historico; a raiz contém apenas o Excel operacional, o HTML e esse diretório. Não foram adicionadas mensagens de progresso. O diagnóstico nativo é complementar e não garante capturar todo tipo de término forçado do Windows.

@@ -20,7 +20,7 @@ from . import EXTRACTOR_VERSION, __version__
 from .ai import http_attempt_count, review
 from .core import Config, Result, Statement, classify_duplicates, load_config, validate
 from .readers import LocalOCR, extract
-from .reporting import estimate_effort, status_counts, write_html, write_workbook
+from .reporting import estimate_effort, latest_pointer, status_counts, write_html, write_workbook
 from .revisoes import apply_reviews, digest, read_reviews, write_highlights
 
 
@@ -33,19 +33,21 @@ def atomic_json(path: Path, data: dict | list) -> None:
     os.replace(temporary, path)
 
 
-def publish_shortcuts(directory: Path, log, *, require_workbook=False) -> None:
+def publish_shortcuts(directory: Path, log, *, require_workbook=False, output_dir=None) -> None:
     """Atalhos para a última execução; o histórico publicado permanece intacto."""
+    output_dir = output_dir or directory.parent
+    relative = os.path.relpath(directory, output_dir).replace("\\", "/")
     targets = {
         "consolidado.xlsx": None,
         "relatorio.html": (
             '<!doctype html><html lang="pt-BR"><meta charset="utf-8">'
-            f'<meta http-equiv="refresh" content="0;url={directory.name}/relatorio.html">'
+            f'<meta http-equiv="refresh" content="0;url={relative}/relatorio.html">'
             "<title>Relatório Goener</title>"
-            f'<a href="{directory.name}/relatorio.html">Abrir último relatório</a></html>'
+            f'<a href="{relative}/relatorio.html">Abrir último relatório</a></html>'
         ),
     }
     for name, content in targets.items():
-        target = directory.parent / name
+        target = output_dir / name
         temporary = target.with_suffix(target.suffix + ".tmp")
         try:
             if content is None:
@@ -72,23 +74,96 @@ def file_hash(path: Path) -> str:
 
 
 class RunLock:
+    """Trava mantida pelo SO: uma queda libera o bloqueio sem perder o diagnóstico."""
+
     def __init__(self, path: Path):
         self.path = path
+        self.guard = None
+        self.recovered = None
+
+    @staticmethod
+    def process_alive(pid):
+        if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+            return True
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+
+            kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+            kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+            kernel.OpenProcess.restype = wintypes.HANDLE
+            kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+            kernel.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+            handle = kernel.OpenProcess(0x1000, False, pid)
+            if not handle:
+                return ctypes.get_last_error() not in (87, 1168)
+            try:
+                code = wintypes.DWORD()
+                return (
+                    not kernel.GetExitCodeProcess(handle, ctypes.byref(code)) or code.value == 259
+                )
+            finally:
+                kernel.CloseHandle(handle)
+        try:
+            os.kill(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+
+    def release(self):
+        if self.guard:
+            self.guard.close()  # O SO libera o bloqueio ao fechar ou encerrar o processo.
+            self.guard = None
 
     def __enter__(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        guard_path = self.path.with_name(self.path.name + ".guard")
+        self.guard = guard_path.open("a+b")
+        self.guard.seek(0, os.SEEK_END)
+        if self.guard.tell() == 0:
+            self.guard.write(b"0")
+            self.guard.flush()
+        self.guard.seek(0)
         try:
-            descriptor = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        except FileExistsError as exc:
+            if os.name == "nt":
+                import msvcrt
+
+                msvcrt.locking(self.guard.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(self.guard.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            self.release()
             raise RuntimeError(
-                f"Execução bloqueada por {self.path}. Confira PID e processo antes de remover um lock abandonado."
+                "Execução bloqueada: outro robô está processando esta pasta."
             ) from exc
-        with os.fdopen(descriptor, "w", encoding="utf-8") as f:
-            json.dump({"pid": os.getpid(), "started_at": datetime.now(UTC).isoformat()}, f)
-        return self
+        try:
+            if self.path.exists():
+                previous = json.loads(self.path.read_text(encoding="utf-8"))
+                if self.process_alive(previous.get("pid")):
+                    raise RuntimeError(
+                        "Execução bloqueada: processo anterior ainda ativo ou não verificável."
+                    )
+                self.recovered = previous
+                atomic_json(
+                    self.path, {"pid": os.getpid(), "started_at": datetime.now(UTC).isoformat()}
+                )
+            else:
+                with self.path.open("x", encoding="utf-8") as f:
+                    json.dump({"pid": os.getpid(), "started_at": datetime.now(UTC).isoformat()}, f)
+            return self
+        except BaseException:
+            self.release()
+            raise
 
     def __exit__(self, *_):
-        self.path.unlink(missing_ok=True)
+        try:
+            self.path.unlink(missing_ok=True)
+        finally:
+            self.release()
 
 
 class RunLog:
@@ -252,16 +327,21 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
     log = RunLog(config.runtime_dir / "logs", run_id)
     start = time.perf_counter()
     started_at = datetime.now(UTC).isoformat()
-    with RunLock(config.runtime_dir / "execution.lock"):
+    with RunLock(config.runtime_dir / "execution.lock") as lock:
+        if lock.recovered:
+            log.event("STALE_LOCK_RECOVERED", previous_pid=lock.recovered["pid"])
         operational = config.output_dir / "consolidado.xlsx"
         review_rows, operational_hash = read_reviews(operational)
         log.event("RUN_STARTED", version=__version__, period=config.period, files=len(files))
         ocr = LocalOCR()
         previous_results = {}
         if reviews_only:
-            pointer = json.loads((config.output_dir / "latest.json").read_text(encoding="utf-8"))
+            pointer = json.loads(latest_pointer(config.output_dir).read_text(encoding="utf-8"))
             previous_dir = Path(pointer["directory"]).resolve()
-            if previous_dir.parent != config.output_dir.resolve():
+            if previous_dir.parent not in (
+                config.output_dir.resolve(),
+                (config.output_dir / "historico").resolve(),
+            ):
                 raise ValueError("A execução anterior não pertence à pasta de resultados.")
             previous_summary = json.loads(
                 (previous_dir / "resumo.json").read_text(encoding="utf-8")
@@ -319,7 +399,10 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
                 if reviews_only:
                     old = previous_results[path.name]
                     ai = dict(old["ai"])
-                    ai.update(attempts=[], cached=True)
+                    ai.update(
+                        attempts=[],
+                        cached=ai.get("decision") in ("considerar", "nao_considerar", "revisar"),
+                    )
                     results.append(
                         Result(
                             path.name,
@@ -440,11 +523,13 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
                 raise RuntimeError(
                     "A planilha operacional mudou durante o processamento. Salve, feche e execute novamente; revisões preservadas."
                 )
-            published = config.output_dir / run_id
+            history = config.output_dir / "historico"
+            history.mkdir(exist_ok=True)
+            published = history / run_id
             os.replace(stage, published)
-            publish_shortcuts(published, log, require_workbook=True)
+            publish_shortcuts(published, log, require_workbook=True, output_dir=config.output_dir)
             atomic_json(
-                config.output_dir / "latest.json",
+                history / "latest.json",
                 {"run_id": run_id, "directory": str(published), "exit_code": exit_code},
             )
             log.event(
@@ -516,7 +601,7 @@ def main(argv=None) -> int:
         if args.panel:
             from .painel import serve
 
-            if not (config.output_dir / "latest.json").exists():
+            if not latest_pointer(config.output_dir).exists():
                 run(config)
             else:
                 run(config, reviews_only=True)

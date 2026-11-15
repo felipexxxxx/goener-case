@@ -2,7 +2,7 @@
 
 Automação em Python que lê uma pasta de extratos e publica Excel, HTML, logs e evidências. O fluxo principal termina sem intervenção manual entre etapas. Regras financeiras fazem a primeira conferência; o Gemini complementa as exceções. A revisão posterior é opcional e fica registrada.
 
-**Versão 1.9.1.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
+**Versão 1.9.2.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
 
 Três níveis de leitura:
 
@@ -34,9 +34,9 @@ O executável inclui o interpretador Python, bibliotecas e modelos OCR. Foi cons
 
 - **`relatorio.html`** abre o último relatório concluído, com filtros e detalhes das ressalvas.
 - **`consolidado.xlsx`** é a planilha operacional. Registre decisões na aba Revisões, salve e feche antes de atualizar.
-- As pastas com o identificador de cada execução guardam os respectivos Excel, HTML, logs e evidências. A planilha operacional aberta impede sua atualização; salve, feche e execute novamente.
+- A pasta **historico** agrupa as fotografias de cada execução, os destaques e arquivos técnicos. O Excel da raiz é a base de trabalho; o Excel do histórico é uma fotografia para auditoria, não outra base a editar. A planilha operacional aberta impede sua atualização; salve, feche e execute novamente.
 
-Por duplo clique no EXE, o painel local abre no navegador ao concluir. Mantenha o processo aberto para salvar revisões pelo formulário. O HTML salvo continua disponível para consulta sem o processo aberto. Pelo terminal, o programa informa os caminhos. `resultados/latest.json` identifica a última publicação. Saídas antigas em `.local/outputs/` continuam preservadas; os relatórios gerados não são enviados ao Git. Não há agendamento nem monitoramento automático instalados nesta versão.
+Por duplo clique no EXE, o painel local abre no navegador ao concluir. Mantenha o processo aberto para salvar revisões pelo formulário. O HTML salvo continua disponível para consulta sem o processo aberto. Pelo terminal, o programa informa os caminhos. `resultados/historico/latest.json` identifica a última publicação. Saídas antigas em `.local/outputs/` continuam preservadas; os relatórios gerados não são enviados ao Git. Não há agendamento nem monitoramento automático instalados nesta versão.
 
 ### Executar pelo código-fonte
 
@@ -132,7 +132,7 @@ Editar diretamente o **Consolidado** ainda recalcula as fórmulas do **Resumo** 
 
 ### Como funcionam os destaques
 
-As cópias ficam em `resultados/<execução>/destaques/`. PDFs e imagens recebem uma cópia PDF visual rasterizada, com grifos numerados e um quadro lateral de explicações; não substitui o arquivo original nem conserva suas assinaturas digitais ou a camada de texto original. Em PDF com texto, as posições vêm da extração local; nos digitalizados, do OCR, aceitando somente leituras com confiança de pelo menos 90%. Esse limiar não garante acerto. Sem referência localizável, o relatório informa que não há marcação segura. Nenhuma região é grifada por coordenada inventada pela IA.
+As cópias ficam em `resultados/historico/<execução>/destaques/`. PDFs e imagens recebem uma cópia PDF visual rasterizada, com grifos numerados e um quadro lateral de explicações; não substitui o arquivo original nem conserva suas assinaturas digitais ou a camada de texto original. Em PDF com texto, as posições vêm da extração local; nos digitalizados, do OCR, aceitando somente leituras com confiança de pelo menos 90%. Esse limiar não garante acerto. Sem referência localizável, o relatório informa que não há marcação segura. Nenhuma região é grifada por coordenada inventada pela IA.
 
 No caso Sol do Sertão, a cópia marca o último saldo das movimentações (**R$ 456.099,12**) e o saldo final declarado (**R$ 457.179,12**). A diferença de R$ 1.080,00 é uma inconsistência a conferir, não prova de qual valor deveria ser corrigido. Para Excel de origem, a cópia destaca e comenta a célula do saldo quando a extração fornece aba e endereço.
 
@@ -221,7 +221,7 @@ flowchart TD
 
 O processamento é sequencial, sem chamadas paralelas. `Decimal` preserva os centavos. A conciliação compara saldo inicial + movimentos com o saldo final declarado. Cópias exatas e competência diferente são excluídas dos totais, sem apagar linhas ou originais. Suspeitas e divergências ficam retidas com explicação; o fluxo não espera intervenção humana para terminar.
 
-O lock evita execuções concorrentes. As saídas são montadas temporariamente e publicadas após validação. Para parar entre arquivos, crie `.local/runtime/STOP`; remova para uma nova execução. Se sobrar um lock após interrupção abrupta, confira se o processo terminou antes de removê-lo. Códigos de saída: `0` publicado, `1` infraestrutura/configuração, `2` pendências em modo estrito, `3` parada, `130` interrupção.
+O bloqueio do sistema operacional evita execuções concorrentes e é liberado se o processo terminar. Uma trava antiga só é recuperada automaticamente quando o PID anterior está encerrado; processo ativo ou não verificável continua bloqueando a execução. As saídas são montadas temporariamente e publicadas após validação. Para parar entre arquivos, crie `.local/runtime/STOP`; remova para uma nova execução. Metadados inválidos ou processo não verificável exigem conferência, sem apagar a trava automaticamente. Códigos de saída: `0` publicado, `1` infraestrutura/configuração, `2` pendências em modo estrito, `3` parada, `130` interrupção.
 
 ### Tempo: cálculo por atividade, mês e ano
 
@@ -476,3 +476,12 @@ O gerador usa arquivos rastreados pelo Git; adicione fontes novas antes de empac
 - [Gemini: resolução de mídia](https://aistudio.google.com/docs/media-resolution)
 - [Gemini: cotas](https://aistudio.google.com/docs/rate-limits)
 - [Gemini: faturamento](https://aistudio.google.com/docs/billing)
+
+
+### Diagnóstico de abertura — versão 1.9.2
+
+Sem mensagens de andamento adicionais. A abertura por `Goener.exe` ou `executar.py` usa um supervisor leve: registra stdout/stderr e o código de saída, inclusive se o processo de trabalho encerrar abruptamente. Na abertura interativa sem parâmetros, uma falha mantém o console aguardando Enter. Pelo terminal ou CMD, o código continua sendo retornado sem pausa adicional. Não há reinício automático do lote.
+
+Os diagnósticos de abertura ficam em `resultados/historico/diagnosticos/`; o caminho exato aparece no erro. Se esse diretório não permitir escrita, usa uma pasta temporária e informa o caminho. O arquivo `_nativo.log` usa faulthandler quando o Python consegue capturar a falha nativa; nem todo encerramento do Windows produz uma pilha. Bloqueio do Windows antes de o EXE iniciar não pode gerar log do próprio programa. Os eventos por documento continuam em `.local/runtime/logs` e no histórico publicado.
+
+Em `resultados`, use somente `consolidado.xlsx` e `relatorio.html`. O índice técnico `latest.json`, snapshots e demais artefatos ficam em `historico`. O snapshot do Excel é intencional para preservar o que foi publicado antes de alterações manuais. Feche a planilha operacional antes de atualizar.

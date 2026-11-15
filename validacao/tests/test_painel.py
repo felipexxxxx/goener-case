@@ -27,8 +27,10 @@ def test_local_panel_validates_token_and_updates_both_outputs(config):
                 html = response.read().decode()
             token = re.search("const token='([^']+)'", html)[1]
             assert not token.startswith("__")
-            latest = json.loads((config.output_dir / "latest.json").read_text(encoding="utf-8"))
-            directory = config.output_dir / latest["run_id"]
+            latest = json.loads(
+                (config.output_dir / "historico/latest.json").read_text(encoding="utf-8")
+            )
+            directory = config.output_dir / "historico" / latest["run_id"]
             evidence = json.loads((directory / "evidencias.json").read_text(encoding="utf-8"))[0]
             payload = {
                 "file": NAME,

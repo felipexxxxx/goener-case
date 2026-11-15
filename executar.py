@@ -1,14 +1,104 @@
 """Entrada simples para Python e para o executável Windows."""
 
+import faulthandler
 import multiprocessing
 import os
+import subprocess
 import sys
+import tempfile
+import traceback
+from datetime import datetime
 from pathlib import Path
 
-from goener.pipeline import main
+
+def supervise(command, root: Path, *, desktop=False):
+    """O processo externo conserva o diagnóstico mesmo se uma biblioteca nativa cair."""
+    folder = root / "resultados/historico/diagnosticos"
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        folder = Path(tempfile.gettempdir()) / "goener-diagnosticos"
+        folder.mkdir(parents=True, exist_ok=True)
+    name = datetime.now().strftime("abertura_%Y%m%d_%H%M%S_%f")
+    path = folder / (name + ".log")
+    native = folder / (name + "_nativo.log")
+    environment = {**os.environ, "GOENER_NATIVE_LOG": str(native), "PYTHONIOENCODING": "utf-8"}
+    code = 1
+    with path.open("w", encoding="utf-8") as log:
+        log.write(f"INICIO {datetime.now().isoformat()}\n")
+        log.flush()
+        process = None
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=environment,
+            )
+            for line in process.stdout:
+                log.write(line)
+                log.flush()
+                print(line, end="", flush=True)
+            code = process.wait()
+        except KeyboardInterrupt:
+            if process and process.poll() is None:
+                process.terminate()
+                process.wait()
+            code = 130
+            log.write("Interrupção solicitada no console.\n")
+        except Exception:
+            traceback.print_exc(file=log)
+            print("Não foi possível iniciar o processamento.", file=sys.stderr)
+        log.write(f"FIM {datetime.now().isoformat()} codigo={code} hex={code & 0xFFFFFFFF:#x}\n")
+        log.flush()
+    if code:
+        print(
+            f"\nA execução não concluiu (código {code}, {code & 0xFFFFFFFF:#x}).\n"
+            f"Log da abertura: {path}\nDiagnóstico nativo, se disponível: {native}\n"
+            "Os logs por arquivo ficam em .local/runtime/logs. Não houve reinício automático.",
+            flush=True,
+        )
+        if desktop and code != 130:
+            try:
+                input("Pressione Enter para fechar esta janela...")
+            except (EOFError, KeyboardInterrupt):
+                pass
+    return code
+
+
+def worker():
+    path = os.environ.get("GOENER_NATIVE_LOG")
+    native = open(path, "a", encoding="utf-8") if path else None
+    try:
+        if native:
+            faulthandler.enable(file=native, all_threads=True)
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8", errors="replace")
+        from goener.pipeline import main
+
+        return main()
+    except Exception:
+        traceback.print_exc()
+        return 1
+    finally:
+        if native:
+            faulthandler.disable()
+            native.close()
+
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
-    if getattr(sys, "frozen", False):
+    frozen = getattr(sys, "frozen", False)
+    if frozen:
         os.chdir(Path(sys.executable).resolve().parent)
-    raise SystemExit(main())
+    if sys.argv[1:2] == ["--_goener_worker"]:
+        del sys.argv[1]
+        raise SystemExit(worker())
+    command = [sys.executable] if frozen else [sys.executable, str(Path(__file__).resolve())]
+    command += ["--_goener_worker", *sys.argv[1:]]
+    desktop = len(sys.argv) == 1 and sys.stdin is not None and sys.stdin.isatty()
+    raise SystemExit(supervise(command, Path.cwd(), desktop=desktop))

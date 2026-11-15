@@ -20,7 +20,7 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
 
 from .core import load_config
-from .reporting import source_root
+from .reporting import latest_pointer, source_root
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -112,7 +112,7 @@ def one_page(path: Path, summary: dict) -> None:
     counts_time = estimate["workload_counts"]
     reference = estimate["manual_sample_minutes"]
     paragraph(
-        f"Base: <b>{counts_time['current_unique_statements']} extratos únicos do mês + {estimate['triage_files']} triagens</b> ({counts_time['duplicates']} cópia, {counts_time['other_period']} outro mês, {counts_time['insufficient_or_nonstatement']} sem dados). Central: <b>{counts_time['current_unique_statements']} × {reference:g} + {estimate['triage_files']} × {estimate['triage_minutes_assumption']:g} = {estimate['projected_manual_seconds']/60:g} min/lote</b>; referência de consolidação declarada e triagem hipotética. Ganhos descontam {summary['duration_seconds']:.2f} s do robô e supõem {estimate['monthly_batches_assumption']:g} lote(s)/mês com volume e composição iguais durante 12 meses."
+        f"Base: <b>{counts_time['current_unique_statements']} extratos únicos do mês + {estimate['triage_files']} triagens</b> ({counts_time['duplicates']} cópia, {counts_time['other_period']} outro mês, {counts_time['insufficient_or_nonstatement']} sem dados). Central: <b>{counts_time['current_unique_statements']} × {reference:g} + {estimate['triage_files']} × {estimate['triage_minutes_assumption']:g} = {estimate['projected_manual_seconds'] / 60:g} min/lote</b>; referência de consolidação declarada e triagem hipotética. Ganhos descontam {summary['duration_seconds']:.2f} s do robô e supõem {estimate['monthly_batches_assumption']:g} lote(s)/mês com volume e composição iguais durante 12 meses."
     )
     c.setFont("Helvetica-Bold", 9)
     for x, text in ((17 * mm, "Cenário"), (105 * mm, "Horas/mês"), (151 * mm, "Horas/ano")):
@@ -262,9 +262,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     selected = args.run or Path(
         json.loads(
-            (load_config(ROOT / "config.toml").output_dir / "latest.json").read_text(
-                encoding="utf-8"
-            )
+            latest_pointer(load_config(ROOT / "config.toml").output_dir).read_text(encoding="utf-8")
         )["directory"]
     )
     executable = build_executable() if args.build_exe else args.exe

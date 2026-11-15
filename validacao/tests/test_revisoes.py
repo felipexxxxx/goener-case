@@ -79,10 +79,10 @@ def test_modified_source_rejects_quick_refresh_and_invalidates_old_review(config
     run(config, reviews_only=True)
     source = config.input_dir / NAME
     source.write_bytes(source.read_bytes() + b"\n%updated\n")
-    latest = (config.output_dir / "latest.json").read_bytes()
+    latest = (config.output_dir / "historico/latest.json").read_bytes()
     with pytest.raises(ValueError, match="documento mudou"):
         run(config, reviews_only=True)
-    assert (config.output_dir / "latest.json").read_bytes() == latest
+    assert (config.output_dir / "historico/latest.json").read_bytes() == latest
     _, summary, _ = run(config)
     assert summary["human_reviews_invalid"] == 1
     assert summary["approved_balance"] == "0.00"
