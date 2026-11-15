@@ -380,7 +380,7 @@ def validate(s: Statement, expected_period: str) -> None:
     if s.closing is not None and previous is not None and s.closing != previous:
         s.issue(
             "DIVERGENCIA_SALDO_FINAL",
-            f"Declarado R$ {s.closing}; último saldo R$ {previous}; diferença R$ {s.closing - previous}. Mantido o valor declarado.",
+            f"Declarado R$ {s.closing}; último saldo R$ {previous}; diferença R$ {s.closing - previous}. Valor declarado preservado como referência, sem correção automática.",
         )
     if s.opening is not None and s.closing is not None:
         computed = s.opening + sum((t.amount for t in s.transactions), Decimal("0.00"))

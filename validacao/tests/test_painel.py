@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+import pytest
 from openpyxl import load_workbook
 
 from goener.painel import make_server
@@ -15,8 +16,9 @@ ROOT = Path(__file__).resolve().parents[2]
 NAME = "extrato_sol_do_sertao_I_out2026.pdf"
 
 
-def test_local_panel_validates_token_and_updates_both_outputs(config):
-    shutil.copyfile(ROOT / "extratos" / NAME, config.input_dir / NAME)
+@pytest.mark.parametrize("name", [NAME, "pau_ferro_out26.xlsx"])
+def test_local_panel_validates_token_and_updates_both_outputs(config, name):
+    shutil.copyfile(ROOT / "extratos" / name, config.input_dir / name)
     _, _, _ = run(config)
     with make_server(config) as server:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -27,7 +29,7 @@ def test_local_panel_validates_token_and_updates_both_outputs(config):
                 html = response.read().decode()
             with urlopen(origin + "/evidencias.json") as response:
                 assert response.status == 200
-                assert json.load(response)[0]["file"] == NAME
+                assert json.load(response)[0]["file"] == name
             with urlopen(origin + "/execucao.log") as response:
                 assert response.status == 200
             token = re.search("const token='([^']+)'", html)[1]
@@ -38,7 +40,7 @@ def test_local_panel_validates_token_and_updates_both_outputs(config):
             directory = config.output_dir / "historico" / latest["run_id"]
             evidence = json.loads((directory / "evidencias.json").read_text(encoding="utf-8"))[0]
             payload = {
-                "file": NAME,
+                "file": name,
                 "sha256": evidence["sha256"],
                 "run_id": latest["run_id"],
                 "decision": "Corrigir e liberar",

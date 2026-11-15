@@ -98,7 +98,7 @@ Execute **Executar automacao.cmd** para processar e abrir o painel; ou `& ".\Exe
 | **Salvar e atualizar** | Valida a decisão, registra na aba Revisões e regenera Excel e HTML juntos. Mantém o histórico e não chama a IA novamente. Se a revisão for recusada, o painel mostra o motivo. |
 | **Cancelar** | Fecha o formulário sem registrar a revisão. |
 
-**Para consultar:** abra `resultados/relatorio.html`. **Para consultar e editar:** execute `py -3.12 executar.py --panel`, mantenha o terminal aberto e deixe o Excel fechado ao salvar uma revisão. Sem uma publicação anterior, faça primeiro a execução completa com `py -3.12 executar.py`. Abrir o HTML diretamente pelo Explorer permite consulta, busca, filtros e acesso aos arquivos; a edição pelo formulário depende do painel local.
+**Para consultar:** abra `resultados/relatorio.html`. **Para consultar e editar:** execute `py -3.12 executar.py --panel`, mantenha o terminal aberto e deixe o Excel fechado ao salvar uma revisão. Sem uma publicação anterior, faça primeiro a execução completa com `py -3.12 executar.py`. Abrir o HTML diretamente pelo Explorer permite consulta, busca, filtros e acesso aos arquivos; a edição pelo formulário depende do painel local. No arquivo aberto diretamente, o botão Revisar este arquivo fica desabilitado e a faixa informa o comando para habilitar a edição. No painel, expanda o cartão do documento: o botão fica junto aos links do original e da cópia destacada.
 
 ### Conferir e corrigir sem perder o histórico
 
@@ -446,7 +446,7 @@ A distribuição atual é somente Python/CMD. Ensaios anteriores de EXE são his
 ### O que foi validado e o que ainda exige homologação
 
 
-**134 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
+**136 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
 
 Na versão **1.10.2**, a planilha também foi aberta no **Excel Desktop**: sem pedido de reparo, com total de R$ 4.114.372,29 e contagens 12 ok / 4 revisar / 1 falhou. Em cópia descartável, aumentar um saldo em R$ 1 atualizou o resumo para R$ 4.114.373,29; a alteração foi desfeita. A competência também foi alterada e restaurada em outra cópia para verificar o recálculo. Registro em `validacao/excel_desktop.json`.
 
@@ -509,3 +509,10 @@ São apenas duas abas. **Consolidado** abre com saldo considerado, mês e contag
 As fórmulas continuam ligadas à tabela Extratos e o filtro fica somente na tabela, preservando a correção de compatibilidade com o Excel Desktop.
 
 A versão simplificada foi aberta no Excel Desktop sem pedido de reparo: R$ 4.114.372,29, 12 incluídos, 4 para conferir, 1 falha e 17 arquivos registrados. Em uma cópia, aumentar E8 em R$ 1 aumentou o total E2 em R$ 1; a edição foi desfeita. Os 134 testes passaram, incluindo o fluxo de revisão pelo painel. Registro em `validacao/excel_simples.json`.
+
+
+### Saldo exibido não significa saldo aprovado
+
+Quando um extrato apresenta divergência, o cartão pode mostrar o valor declarado no documento para permitir a conferência. A legenda **Valor de referência · fora do total** e a linha **Contribuição deste arquivo no total: R$ 0,00** deixam explícito que esse valor não foi somado. Por exemplo: R$ 457.179,12 declarado versus R$ 456.099,12 calculado ficam pendentes; nenhum é escolhido automaticamente para o fechamento. Uma revisão humana registrada pode liberar o original, corrigir e liberar ou manter a exclusão, conforme as regras.
+
+Para revisar no navegador, execute `py -3.12 executar.py --panel` e use a página que esse comando abrir. Abas antigas e relatórios dentro do histórico preservam a execução anterior. Expanda o arquivo e clique em **Revisar este arquivo**, ao lado da cópia destacada. Mantenha o terminal aberto. Abrir `resultados/relatorio.html` pelo Explorer permite consulta; salvar decisões exige o painel local.

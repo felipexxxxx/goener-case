@@ -104,3 +104,8 @@ O gerador foi corrigido, a coluna do total ampliada e a saída regenerada por `-
 A saída passou de quatro para duas abas, mantendo os 17 arquivos e as oito colunas exigidas. O resumo com fórmulas ficou no topo do Consolidado; a tabela começa na linha 7. As observações ficaram curtas; a evidência detalhada não foi alterada. Revisões mostra somente pendências e decisões/rascunhos preenchidos, preservando inclusive um saldo zero digitado em revisão ainda incompleta.
 
 134 testes passaram; Ruff passou. No Excel Desktop, uma cópia da saída abriu sem reparo, com total R$ 4.114.372,29 e contagens 12/4/1. Alterar E8 de 271350,74 para 271351,74 recalculou E2 para R$ 4.114.373,29; desfazer restaurou o total anterior. O fluxo pelo painel também foi testado, gravando a correção na nova posição da tabela e regenerando Excel/HTML. `excel_simples.json` identifica a saída validada. Não houve chamada externa de IA nesta atualização.
+
+
+## Clareza do saldo e edição HTML 1.11.1
+
+136 testes passaram e Ruff passou. O extrato Sol do Sertão permanece revisar, sem decisão humana, com contribuição zero ao total: o saldo declarado exibido é apenas referência. O HTML passou a mostrar explicitamente esse efeito e a espera por revisão. A instrução antiga sobre EXE foi substituída pelo comando Python. No arquivo aberto diretamente, o botão de revisão fica desabilitado; no painel local, fica habilitado. A interface real foi aberta no Chrome, o cartão expandido e o modal de revisão conferido, sem salvar alterações nos dados do responsável. O POST de correção foi testado separadamente com dados temporários, incluindo um arquivo sem pendência inicial cuja linha em Revisões é criada na primeira decisão. Registro em html_revisao.json.

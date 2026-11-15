@@ -137,9 +137,29 @@ def make_server(config, *, port=0):
                 selected = [
                     r for r in rows if tuple(r[:3]) == (old["file"], old["sha256"], config.period)
                 ]
-                if len(selected) != 1:
+                if len(selected) > 1:
                     raise ValueError("Não há uma linha única deste documento na aba Revisões.")
-                row = selected[0]
+                # Arquivos sem ressalvas não ocupam a aba Revisões inicialmente.
+                # Uma revisão explícita pelo painel cria a linha após validar a origem.
+                row = (
+                    selected[0]
+                    if selected
+                    else [
+                        old["file"],
+                        old["sha256"],
+                        config.period,
+                        float(old["statement"]["closing"])
+                        if old["statement"]["closing"] is not None
+                        else None,
+                        "",
+                        "Pendente",
+                        None,
+                        "",
+                        "",
+                        None,
+                        "",
+                    ]
+                )
                 for field in ("decision", "reason", "reviewer", "date"):
                     if not isinstance(request.get(field), str) or len(request[field]) > 2000:
                         raise ValueError("Preencha os campos da revisão.")
@@ -173,12 +193,16 @@ def make_server(config, *, port=0):
                 temporary = operational.with_name("consolidado.revisao.tmp.xlsx")
                 try:
                     ws = wb["Revisões"]
-                    index = next(
-                        i
-                        for i in range(5, ws.max_row + 1)
-                        if tuple(ws.cell(i, j).value for j in (1, 2, 3)) == tuple(row[:3])
+                    index = (
+                        next(
+                            i
+                            for i in range(5, ws.max_row + 1)
+                            if tuple(ws.cell(i, j).value for j in (1, 2, 3)) == tuple(row[:3])
+                        )
+                        if selected
+                        else max(5, ws.max_row + 1)
                     )
-                    for col in range(6, 11):
+                    for col in range(1 if not selected else 6, 11):
                         cell = ws.cell(index, col, row[col - 1] if row[col - 1] is not None else "")
                         if isinstance(row[col - 1], str):
                             cell.data_type = "s"

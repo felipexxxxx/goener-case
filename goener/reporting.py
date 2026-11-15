@@ -420,7 +420,10 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
         return f"{float(value):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
     def plain(text):
-        return human_text(text)
+        return human_text(text).replace(
+            "Mantido o valor declarado.",
+            "Valor declarado preservado como referência, sem correção automática.",
+        )
 
     labels = {
         "ok": "Sem pendências",
@@ -525,6 +528,18 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
             if r.effective_balance is not None
             else "Saldo não identificado"
         )
+        included = r.included(summary.get("ai_mode", "off"), summary["period"])
+        amount_note = "Incluído no total" if included else "Valor de referência · fora do total"
+        contribution = "R$ " + br(r.effective_balance) if included else "R$ 0,00"
+        waiting = (
+            " Aguarda revisão humana para definir se o saldo será liberado ou corrigido."
+            if not included
+            and r.status == "revisar"
+            and not r.duplicate_of
+            and s.period == summary["period"]
+            and r.human_review.get("state") != "applied"
+            else ""
+        )
         finding = (
             f"Cópia idêntica a {r.duplicate_of}. Excluída da soma."
             if r.duplicate_of
@@ -570,7 +585,7 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
                 f'<button class="attention-link" data-open-file="{html.escape(r.filename, quote=True)}"><span class="attention-dot {r.status}"></span><span><b>{html.escape(s.bank or r.filename)}</b><small>{html.escape(finding)}</small></span><span class="arrow" aria-hidden="true">↗</span></button>'
             )
         review_button = (
-            '<button class="btn review-open" hidden type="button" data-review-file="'
+            '<button class="btn review-open" disabled title="Para editar, abra o painel com py -3.12 executar.py --panel" type="button" data-review-file="'
             + html.escape(r.filename, quote=True)
             + '" data-review-sha="'
             + r.sha256
@@ -592,11 +607,11 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
             f'<details class="item" data-status="{r.status}" data-attention="{str(needs_attention(r)).lower()}" data-ai="{ai_state}" data-file="{html.escape(r.filename, quote=True)}">'
             f'<summary><span class="pill {r.status}">{labels[r.status]}</span><div><span class="filename">{html.escape(r.filename)}</span>'
             f'<span class="meta">{meta}</span><span class="finding">{html.escape(finding)}</span><span class="ai-badge {ai_state}">{html.escape(ai_label)}</span></div>'
-            f'<span class="amount">{amount}</span></summary><div class="body"><div class="reviewgrid"><section><h3>1. O que as regras encontraram</h3>{issues}</section>'
+            f'<span class="amount">{amount}<small class="caption">{amount_note}</small></span></summary><div class="body"><div class="reviewgrid"><section><h3>1. O que as regras encontraram</h3>{issues}</section>'
             f"<section><h3>2. Recomendação da IA</h3><p>{html.escape(ai_message)}</p></section></div>"
             f'<div class="reference"><h3>3. Onde conferir</h3><p><b>{html.escape(ref["where"])}</b></p><span class="caption">{html.escape(ref["origin"])}</span>{quote_block}'
             f'<a class="btn secondary" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener">Abrir documento de origem ↗</a>{highlighted_link}{review_button}</div>'
-            f'<div class="explain"><b>4. Medida aplicada automaticamente</b><br>{html.escape(r.applied_action)}{human_block}'
+            f'<div class="explain"><b>4. Medida aplicada automaticamente</b><br>{html.escape(r.applied_action)}<p><b>Contribuição deste arquivo no total: {contribution}.</b>{waiting}</p>{human_block}'
             f'<p class="caption">Ressalva para acompanhamento: {html.escape(action)}</p></div></div></details>'
         )
     pending = sum(needs_attention(r) for r in results)

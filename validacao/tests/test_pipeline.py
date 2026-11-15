@@ -444,3 +444,19 @@ def test_review_tab_keeps_only_pending_cases_and_preserves_user_drafts(config):
     write_workbook(config.template, path, [good, bad], "2026-10", [draft, *rows])
     rows, _ = read_reviews(path)
     assert len(rows) == 2 and rows[0][6] == 0
+
+
+def test_divergent_balance_is_reference_only_and_waits_for_review(config):
+    source(config, "extrato_sol_do_sertao_I_out2026.pdf")
+    directory, summary, _ = run(config)
+    assert summary["approved_balance"] == "0.00"
+    assert summary["statuses"] == {"revisar": 1}
+    document = (directory / "relatorio.html").read_text(encoding="utf-8")
+    assert "Valor de referência · fora do total" in document
+    assert "Contribuição deste arquivo no total: R$ 0,00" in document
+    assert "Aguarda revisão humana" in document
+    assert "Mantido o valor declarado" not in document
+    assert "Goener.exe" not in document and "Abrir painel.cmd" not in document
+    assert "py -3.12 executar.py --panel" in document
+    assert 'review-open" disabled' in document
+    assert "button.disabled=false" in document

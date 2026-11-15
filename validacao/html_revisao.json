@@ -1,0 +1,15 @@
+{
+  "version": "1.11.1",
+  "run_id": "20261115T042037Z_b72e6da7",
+  "file": "extrato_sol_do_sertao_I_out2026.pdf",
+  "status": "revisar",
+  "human_review": false,
+  "declared_balance": "457179.12",
+  "computed_balance": "456099.12",
+  "contribution_to_total": "0.00",
+  "tests_passed": 136,
+  "tests_seconds": 44.37,
+  "browser_validation": "Painel local aberto no Chrome. Cartão expandido, botão Revisar este arquivo habilitado e modal de decisão aberto; fechado sem salvar.",
+  "http_review_validation": "Correção testada com original divergente e com arquivo inicialmente sem ressalvas, em pastas temporárias. Excel/HTML atualizados.",
+  "external_ai_calls": 0
+}
