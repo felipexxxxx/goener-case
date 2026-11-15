@@ -170,101 +170,102 @@ def estimate_effort(results, summary):
     }
 
 
+def workbook_note(result):
+    """Resumo operacional; a evidência completa permanece no HTML e no JSON."""
+    if result.human_review.get("state") == "applied":
+        return (
+            "Excluído do total após revisão."
+            if result.human_review["decision"] == "Excluir"
+            else "Saldo confirmado em revisão e incluído no total."
+        )
+    codes = {i.code for i in result.statement.issues}
+    if result.duplicate_of:
+        problem = "Cópia idêntica; não entra no total."
+    elif "FORA_COMPETENCIA" in codes:
+        problem = "Extrato de outro mês; não entra neste fechamento."
+    elif result.statement.closing is None:
+        problem = "Não foi possível obter o saldo; não entra no total."
+    elif codes & {"DIVERGENCIA_SALDO_FINAL", "CONCILIACAO_NAO_FECHA"}:
+        problem = "Saldo final não confere com as movimentações; fora do total."
+    elif "LANCAMENTO_REPETIDO" in codes:
+        problem = "Possível lançamento repetido; saldo fora do total."
+    elif result.status != "ok":
+        issues = [i for i in result.statement.issues if not i.code.startswith("IA_")]
+        problem = (
+            human_text(issues[0].message).split("\n")[0][:130]
+            if issues
+            else "Saldo precisa de conferência."
+        )
+        problem += " Fora do total."
+    else:
+        problem = "Conferido e incluído no total."
+    if result.human_review.get("state") == "invalid":
+        problem += " Revisão não aplicada; confira a aba Revisões."
+    if result.status != "ok" or result.ai.get("source_disagreements"):
+        where = result.review_reference["where"]
+        problem += " Confira: " + where[:100] + "."
+    decision = result.ai.get("decision")
+    if decision in ("considerar", "nao_considerar", "revisar"):
+        problem += (
+            " IA: "
+            + {
+                "considerar": "recomenda incluir",
+                "nao_considerar": "recomenda excluir",
+                "revisar": "recomenda conferir",
+            }[decision]
+            + "."
+        )
+    elif decision == "indisponivel":
+        problem += " IA indisponível."
+    return problem
+
+
 def write_summary(wb, period):
-    if "Resumo" in wb.sheetnames:
-        del wb["Resumo"]
-    ws = wb.create_sheet("Resumo", 1)
-    ws.sheet_view.showGridLines = False
-    ws.sheet_properties.tabColor = "AFCA0B"
-    ws.column_dimensions["A"].width = 49
-    ws.column_dimensions["B"].width = 38
-    ws.column_dimensions["C"].width = 59
-    ws.merge_cells("A1:C1")
-    ws["A1"] = "GOENER | Resumo do fechamento"
+    """Resumo na própria aba principal, sem criar abas de apoio."""
+    for name in list(wb.sheetnames):
+        if name not in ("Consolidado", "Revisões"):
+            del wb[name]
+    ws = wb["Consolidado"]
+    ws.merge_cells("A1:H1")
+    ws["A1"] = "GOENER | Saldos bancários"
     ws["A1"].font = Font(name="Aptos", size=20, bold=True, color="FFFFFF")
     ws["A1"].fill = PatternFill("solid", fgColor="003836")
-    ws.row_dimensions[1].height = 44
-    ws["A3"] = "Mês do fechamento (editável)"
-    ws["B3"] = period
-    ws["B3"].data_type = "s"
-    ws["B3"].fill = PatternFill("solid", fgColor="FFF2CD")
-    ws["B3"].font = Font(name="Aptos", size=12, bold=True, color="1565C0")
-    ws["C3"] = "Use AAAA-MM. O resumo considera somente esse mês."
-    eligible = 'Extratos[Status],"ok",Extratos[Período],$B$3'
-    rows = {
-        6: (
-            "Saldo considerado no fechamento",
-            f"=SUMIFS(Extratos[Saldo final],{eligible})",
-            "Status ok e competência igual ao mês acima.",
-        ),
-        7: (
-            "Arquivos considerados",
-            f"=COUNTIFS({eligible})",
-            "Cópias e pendências permanecem registradas no Consolidado.",
-        ),
-        9: (
-            "Arquivos registrados",
-            "=COUNTA(Extratos[Arquivo])",
-            "Cada documento ocupa uma linha, inclusive cópias e falhas.",
-        ),
-        10: (
-            "Com status ok",
-            '=COUNTIF(Extratos[Status],"ok")',
-            "Contagem de todos os meses presentes na tabela.",
-        ),
-        11: (
-            "Com status revisar",
-            '=COUNTIF(Extratos[Status],"revisar")',
-            "Não entram no saldo considerado.",
-        ),
-        12: (
-            "Com status falhou",
-            '=COUNTIF(Extratos[Status],"falhou")',
-            "Não entram no saldo considerado.",
-        ),
-        13: (
-            "Fora do mês selecionado",
-            '=COUNTIFS(Extratos[Período],"<>"&$B$3,Extratos[Período],"<>")',
-            "Períodos preenchidos diferentes do mês selecionado.",
-        ),
-        14: (
-            "Registros sem status válido",
-            "=B9-SUM(B10:B12)",
-            "Deve ser zero. Confira o status se não for.",
-        ),
-    }
-    for row, (label, formula, explanation) in rows.items():
-        ws.cell(row, 1, label)
-        ws.cell(row, 2, formula)
-        ws.cell(row, 3, explanation)
-        for cell in ws[row]:
-            cell.fill = PatternFill("solid", fgColor="F0F7F6")
-            cell.font = Font(name="Aptos", size=11, color="003836", bold=cell.column == 2)
-            cell.alignment = Alignment(vertical="center", wrap_text=True)
-        ws.row_dimensions[row].height = 39
-    ws["B6"].number_format = '"R$" #,##0.00;[Red]-"R$" #,##0.00'
-    ws["B6"].font = Font(name="Aptos", size=20, bold=True, color="003836")
-    notes = [
-        "Para sincronizar Excel e HTML: preencha a aba Revisões em resultados/consolidado.xlsx, salve, feche e reexecute o robô.",
-        "Para incluir ou excluir registros, use Inserir/Excluir linhas da tabela. Não apague apenas o nome do arquivo.",
-        "Ao marcar ok, você assume a liberação do registro. Confira cópias, competência e pendências antes de alterar o status.",
-        "As fórmulas não refazem OCR, hash, conciliação nem análise de IA. As observações descrevem a execução original.",
-        "Edite as colunas amarelas da aba Revisões. Edições diretas no Consolidado atualizam só este Excel e serão substituídas na reexecução.",
-        "Origem: documentos do case na aba Consolidado. Cálculo: SOMASES e CONT.SES sobre a tabela Extratos.",
-    ]
-    for row, note in enumerate(notes, 17):
-        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
-        cell = ws.cell(row, 1, note)
-        cell.font = Font(name="Aptos", size=11, color="526762")
-        cell.alignment = Alignment(wrap_text=True, vertical="center")
-        ws.row_dimensions[row].height = 32
-    ws.freeze_panes = "A5"
-    ws.print_area = "A1:C22"
-    ws.sheet_properties.pageSetUpPr.fitToPage = True
-    ws.page_setup.orientation = "landscape"
-    ws.page_setup.paperSize = ws.PAPERSIZE_A4
-    ws.page_setup.fitToWidth = 1
-    ws.page_setup.fitToHeight = 1
+    ws.row_dimensions[1].height = 38
+    ws["A2"] = "Mês do fechamento"
+    ws["B2"] = period
+    ws["B2"].data_type = "s"
+    ws["B2"].fill = PatternFill("solid", fgColor="FFF2CD")
+    ws["B2"].font = Font(name="Aptos", bold=True, color="1565C0")
+    ws["B2"].number_format = "@"
+    ws.merge_cells("C2:D2")
+    ws["C2"] = "Saldo considerado"
+    ws.merge_cells("E2:H3")
+    ws["E2"] = '=SUMIFS(Extratos[Saldo final],Extratos[Status],"ok",Extratos[Período],$B$2)'
+    ws["E2"].font = Font(name="Aptos", size=22, bold=True, color="003836")
+    ws["E2"].number_format = '"R$" #,##0.00;[Red]-"R$" #,##0.00'
+    ws["E2"].alignment = Alignment(vertical="center", horizontal="left")
+    ws["A3"] = "Incluídos no mês"
+    ws["B3"] = '=COUNTIFS(Extratos[Status],"ok",Extratos[Período],$B$2)'
+    for label_cell, label, value_cell, formula in (
+        ("A4", "Para conferir", "B4", '=COUNTIF(Extratos[Status],"revisar")'),
+        ("C4", "Com falha", "D4", '=COUNTIF(Extratos[Status],"falhou")'),
+        ("E4", "Arquivos recebidos", "G4", "=COUNTA(Extratos[Arquivo])"),
+    ):
+        ws[label_cell] = label
+        ws[value_cell] = formula
+    for row in ws.iter_rows(min_row=2, max_row=4, max_col=8):
+        for c in row:
+            if c.coordinate not in ("B2", "E2"):
+                c.font = Font(name="Aptos", size=11, bold=c.data_type == "f", color="003836")
+            if c.coordinate != "B2":
+                c.fill = PatternFill("solid", fgColor="F0F7F6")
+    ws.merge_cells("A5:H5")
+    ws["A5"] = (
+        "Filtre os arquivos abaixo. Para corrigir, use a aba Revisões, salve, feche e reexecute. Detalhes no relatório HTML."
+    )
+    ws["A5"].font = Font(name="Aptos", size=10, color="526762")
+    ws["A5"].alignment = Alignment(wrap_text=True, vertical="center")
+    ws.row_dimensions[5].height = 28
 
 
 def write_workbook(
@@ -281,12 +282,15 @@ def write_workbook(
             raise ValueError("Cabeçalho do modelo diverge do contrato esperado")
         if ws.max_row > 1:
             ws.delete_rows(2, ws.max_row - 1)
+        ws.insert_rows(1, 6)
         ws.sheet_view.showGridLines = False
-        ws.sheet_view.zoomScale = 80
+        ws.sheet_view.zoomScale = 85
         ws.sheet_properties.tabColor = "00A19A"
         bottom = Side(style="hair", color="DCE8E8")
-        for row_number, result in enumerate(results, 2):
-            for col_number, value in enumerate(result.row(), 1):
+        for row_number, result in enumerate(results, 8):
+            values = result.row()
+            values[7] = workbook_note(result)
+            for col_number, value in enumerate(values, 1):
                 cell = ws.cell(row_number, col_number, value)
                 if isinstance(value, str):
                     # Literal inclusive quando um nome/observação começa com =, +, - ou @.
@@ -321,23 +325,23 @@ def write_workbook(
                     cell.fill = PatternFill("solid", fgColor=bg)
                     cell.font = Font(name="Calibri", size=11, bold=True, color=fg)
             lines = sum(
-                max(1, math.ceil(len(line) / 78)) for line in result.observation.splitlines()
+                max(1, math.ceil(len(line) / 64)) for line in workbook_note(result).splitlines()
             )
-            ws.row_dimensions[row_number].height = min(409, max(34, lines * 14 + 14))
-        for col, width in zip("ABCDEFGH", (40, 21, 17, 13, 21, 17, 14, 86), strict=True):
+            ws.row_dimensions[row_number].height = min(96, max(40, lines * 13 + 10))
+        for col, width in zip("ABCDEFGH", (37, 22, 16, 14, 21, 19, 13, 66), strict=True):
             ws.column_dimensions[col].width = width
-        ws.freeze_panes = "A2"
+        ws.freeze_panes = "C8"
         # O filtro pertence à tabela. Um AutoFilter da planilha na mesma área
         # faz o Excel Desktop reparar/remover a tabela e quebrar suas fórmulas.
         ws.auto_filter.ref = None
-        ws.row_dimensions[1].height = 32
-        for cell in ws[1]:
+        ws.row_dimensions[7].height = 30
+        for cell in ws[7]:
             cell.font = Font(name="Aptos", size=11, bold=True, color="FFFFFF")
             cell.fill = PatternFill("solid", fgColor="003836")
             cell.alignment = Alignment(horizontal="center", vertical="center")
         ws.print_options.horizontalCentered = True
-        ws.print_area = f"A1:H{len(results) + 1}"
-        ws.print_title_rows = "1:1"
+        ws.print_area = f"A1:H{len(results) + 7}"
+        ws.print_title_rows = "7:7"
         ws.sheet_properties.pageSetUpPr.fitToPage = True
         ws.page_setup.orientation = "landscape"
         ws.page_setup.paperSize = ws.PAPERSIZE_A3
@@ -345,7 +349,7 @@ def write_workbook(
         ws.page_setup.fitToHeight = 0
         ws.tables.clear()
         if results:
-            table = Table(displayName="Extratos", ref=f"A1:H{len(results) + 1}")
+            table = Table(displayName="Extratos", ref=f"A7:H{len(results) + 7}")
             table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
             ws.add_table(table)
             status_validation = DataValidation(type="list", formula1='"ok,revisar,falhou"')
@@ -354,14 +358,14 @@ def write_workbook(
             status_validation.showErrorMessage = True
             status_validation.errorStyle = "stop"
             ws.add_data_validation(status_validation)
-            status_validation.add("G2:G1048576")
+            status_validation.add("G8:G1048576")
             for status, bg, fg in [
                 ("ok", "E7F3EC", "176038"),
                 ("revisar", "FFF2CD", "805A00"),
                 ("falhou", "FCE5E5", "A52222"),
             ]:
                 ws.conditional_formatting.add(
-                    "G2:G1048576",
+                    "G8:G1048576",
                     CellIsRule(
                         operator="equal",
                         formula=[f'"{status}"'],
@@ -385,11 +389,11 @@ def write_workbook(
     check = load_workbook(destination, data_only=False)
     try:
         ws = check["Consolidado"]
-        if ws.max_row != len(results) + 1:
+        if ws.max_row != len(results) + 7:
             raise ValueError("Contagem de linhas gravadas não confere com a entrada")
         if results:
             table = ws.tables["Extratos"]
-            expected_ref = f"A1:H{len(results) + 1}"
+            expected_ref = f"A7:H{len(results) + 7}"
             if (
                 ws.auto_filter.ref is not None
                 or table.ref != expected_ref
@@ -398,8 +402,9 @@ def write_workbook(
                 or [column.name for column in table.tableColumns] != HEADERS
             ):
                 raise ValueError("Estrutura da tabela/filtro gravado não confere")
-        for row, result in zip(ws.iter_rows(min_row=2), results, strict=True):
+        for row, result in zip(ws.iter_rows(min_row=8), results, strict=True):
             expected = result.row()
+            expected[7] = workbook_note(result)
             for cell, value in zip(row[:8], expected, strict=True):
                 actual = cell.value
                 if (actual if actual is not None else "") != (value if value is not None else ""):

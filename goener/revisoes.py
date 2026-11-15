@@ -172,10 +172,13 @@ def apply_reviews(results, rows, period, log):
 
 
 def write_reviews(wb, results, previous, period):
+    from .reporting import needs_attention, workbook_note
+
     if "Revisões" in wb.sheetnames:
         del wb["Revisões"]
-    ws = wb.create_sheet("Revisões", 2)
+    ws = wb.create_sheet("Revisões", 1)
     ws.sheet_view.showGridLines = False
+    ws.sheet_view.zoomScale = 85
     ws.sheet_properties.tabColor = "AFCA0B"
     ws.merge_cells("A1:K1")
     ws["A1"] = "Revisões do fechamento"
@@ -184,22 +187,30 @@ def write_reviews(wb, results, previous, period):
     ws.row_dimensions[1].height = 40
     ws.merge_cells("A2:K2")
     ws["A2"] = (
-        "Edite somente as colunas amarelas F a J. Salve, feche o Excel e execute o robô novamente para atualizar Excel e HTML. Pendente mantém as regras automáticas."
+        "Preencha as células amarelas. Depois salve, feche e reexecute o robô para atualizar Excel e HTML."
     )
     ws["A2"].alignment = Alignment(wrap_text=True, vertical="center")
     ws.row_dimensions[2].height = 34
-    ws["A3"] = "Abrir relatório HTML (atualizado após reexecutar)"
+    ws["A3"] = "Abrir relatório com detalhes"
     ws["A3"].hyperlink = "relatorio.html"
     ws["A3"].font = Font(name="Aptos", color="007F78", underline="single")
     for col, label in enumerate(HEADERS, 1):
         c = ws.cell(4, col, label)
         c.font = Font(name="Aptos", bold=True, color="FFFFFF")
         c.fill = PatternFill("solid", fgColor="003836")
-    rows = [list(row) for row in previous]
-    keys = {tuple(row[:3]) for row in rows}
     current = {(r.filename, r.sha256, period): r for r in results}
+    rows = []
+    for row in previous:
+        r = current.get(tuple(row[:3]))
+        untouched = row[5] in (None, "", "Pendente") and all(
+            value is None or value == "" for value in row[6:10]
+        )
+        if r and not needs_attention(r) and untouched and not r.human_review:
+            continue
+        rows.append(list(row))
+    keys = {tuple(row[:3]) for row in rows}
     for key, r in current.items():
-        if key not in keys:
+        if key not in keys and (needs_attention(r) or r.human_review):
             rows.append(
                 [
                     *key,
@@ -217,19 +228,8 @@ def write_reviews(wb, results, previous, period):
         r = current.get(tuple(row[:3]))
         if r:
             row[3] = float(r.statement.closing) if r.statement.closing is not None else None
-            row[4] = (
-                human_text(
-                    " / ".join(
-                        issue.message
-                        for issue in r.statement.issues
-                        if not issue.code.startswith("IA_")
-                    )
-                )
-                or "Sem ressalvas automáticas."
-            )
-            row[10] = r.human_review.get(
-                "message", "Aguardando decisão; regras automáticas mantidas."
-            )
+            row[4] = workbook_note(r)
+            row[10] = r.human_review.get("message", "Sem decisão registrada.")
         else:
             row[10] = "Histórico: versão ausente ou outro fechamento. Não aplicada."
         if isinstance(row[9], str):
@@ -250,12 +250,17 @@ def write_reviews(wb, results, previous, period):
         ws.cell(i, 4).number_format = ws.cell(i, 7).number_format = "#,##0.00;[Red]-#,##0.00"
         ws.cell(i, 10).number_format = "dd/mm/yyyy"
         needed = max(
-            len(str(row[4] or "")) / 63, len(str(row[7] or "")) / 43, len(str(row[10] or "")) / 46
+            len(str(row[0] or "")) / 33,
+            len(str(row[4] or "")) / 42,
+            len(str(row[7] or "")) / 28,
+            len(str(row[10] or "")) / 30,
         )
         ws.row_dimensions[i].height = min(240, max(48, int(needed + 1) * 15))
-    for col, width in zip("ABCDEFGHIJK", (39, 16, 14, 20, 65, 24, 21, 45, 25, 19, 48), strict=True):
+    for col, width in zip("ABCDEFGHIJK", (33, 16, 14, 18, 42, 23, 19, 28, 21, 17, 30), strict=True):
         ws.column_dimensions[col].width = width
     ws.column_dimensions["B"].hidden = True
+    ws.column_dimensions["C"].hidden = True
+    ws.column_dimensions["K"].hidden = True
     ws.freeze_panes = "F5"
     ws.auto_filter.ref = f"A4:K{max(5, len(rows) + 4)}"
     dv = DataValidation(type="list", formula1='"' + ",".join(DECISIONS) + '"', allow_blank=True)

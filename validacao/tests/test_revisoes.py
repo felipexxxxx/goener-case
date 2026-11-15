@@ -44,10 +44,10 @@ def test_review_updates_excel_html_preserves_original_and_reuses_without_ai(conf
     assert summary["human_reviews_applied"] == 1
     assert summary["ai_summary"]["http_attempts"] == 0
     wb = load_workbook(after / "consolidado.xlsx")
-    assert wb["Consolidado"]["E2"].value == 456099.12
-    assert wb["Consolidado"]["G2"].value == "ok"
+    assert wb["Consolidado"]["E8"].value == 456099.12
+    assert wb["Consolidado"]["G8"].value == "ok"
     assert wb["Revisões"]["D5"].value == 457179.12
-    assert wb["Resumo"]["B6"].data_type == "f"
+    assert wb["Consolidado"]["E2"].data_type == "f"
     wb.close()
     assert "Revisão humana registrada" in (after / "relatorio.html").read_text(encoding="utf-8")
     assert file_hash(config.input_dir / NAME) == original

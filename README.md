@@ -63,7 +63,7 @@ A pasta `entrega/` mantém três arquivos: **ZIP da automação, consolidado Exc
 
 | Saída por execução | Finalidade |
 | --- | --- |
-| `consolidado.xlsx` | Aba Consolidado com as oito colunas obrigatórias, Resumo com fórmulas, Revisões para decisões e Instruções preservada. |
+| `consolidado.xlsx` | Duas abas: Consolidado com resumo e as oito colunas obrigatórias; Revisões para pendências e decisões já registradas. |
 | `relatorio.html` | Visão geral financeira, composição do saldo por banco, busca, filtros, IA, medidas aplicadas e acesso ao original. Sem análise de tempo. |
 | `execucao.log` e `execucao.jsonl` | Eventos, duração, tentativas e conclusão por arquivo. |
 | `evidencias.json` | Extração, conciliação, origem dos valores e resposta validada da IA. |
@@ -81,7 +81,7 @@ Execute **Executar automacao.cmd** para processar e abrir o painel; ou `& ".\Exe
 
 ### Conferir e corrigir sem perder o histórico
 
-Use sempre **`resultados/consolidado.xlsx`** como planilha de trabalho. A aba **Consolidado** mantém as oito colunas obrigatórias; a aba **Resumo** mantém as fórmulas. A nova aba **Revisões** é a entrada das decisões humanas.
+Use sempre **`resultados/consolidado.xlsx`** como planilha de trabalho. A aba **Consolidado** reúne o resumo com fórmulas no topo e a tabela de oito colunas a partir da linha 7. **Revisões** mostra pendências e decisões já preenchidas; arquivos sem ressalvas não exigem revisão. Os registros de todas as entradas continuam no Consolidado.
 
 1. No HTML, clique em **Abrir cópia destacada**. Os trechos numerados têm explicação visível ao lado. O original não é alterado.
 2. Na aba **Revisões**, encontre o arquivo e preencha somente as colunas amarelas **F a J**: decisão, saldo confirmado quando necessário, justificativa, responsável e data.
@@ -113,7 +113,7 @@ Abrir o HTML diretamente pelo Explorer continua sendo consulta: os botões de ed
 
 Uma célula do Excel não executa esse processo automaticamente: isso exigiria macro ou abertura de programa externo, com permissões próprias do Excel. O atalho evita macros. Não é necessário recompilar nem empacotar para aplicar decisões. O código é executado diretamente pelo Python.
 
-Editar diretamente o **Consolidado** ainda recalcula as fórmulas do **Resumo** no Excel, mas essas edições não são importadas pelo robô. Para manter o HTML sincronizado, registre a mudança em **Revisões**. A célula B3 do Resumo é uma simulação do mês apenas dentro do Excel; o fechamento do robô continua definido no config.
+Editar diretamente os dados da tabela **Consolidado** recalcula o resumo no topo da mesma aba, mas essas edições não são importadas pelo robô. Para manter o HTML sincronizado, registre a mudança em **Revisões**. A célula B2 do Consolidado permite simular outro mês apenas dentro do Excel; o fechamento do robô continua definido no config.
 
 ### Como funcionam os destaques
 
@@ -427,7 +427,7 @@ A distribuição atual é somente Python/CMD. Ensaios anteriores de EXE são his
 ### O que foi validado e o que ainda exige homologação
 
 
-**132 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
+**134 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
 
 Na versão **1.10.2**, a planilha também foi aberta no **Excel Desktop**: sem pedido de reparo, com total de R$ 4.114.372,29 e contagens 12 ok / 4 revisar / 1 falhou. Em cópia descartável, aumentar um saldo em R$ 1 atualizou o resumo para R$ 4.114.373,29; a alteração foi desfeita. A competência também foi alterada e restaurada em outra cópia para verificar o recálculo. Registro em `validacao/excel_desktop.json`.
 
@@ -479,3 +479,14 @@ Os registros antigos de EXE permanecem somente em validacao como histórico; nã
 Abra `resultados/relatorio.html`, o painel pelo CMD ou o exemplo `resultado/relatorio.html` do ZIP extraído. `goener/report.html` é o template de código; abri-lo diretamente agora mostra um aviso com acesso ao resultado, sem oferecer links de evidências que não existem naquela pasta.
 
 Os links de Excel, evidências, log e manifesto são relativos à publicação; não contêm um usuário Windows fixo. O índice `resultados/historico/latest.json` grava o diretório como identificador relativo. Índices antigos com caminho absoluto são resolvidos novamente pelo identificador local validado quando a pasta é movida. O CMD usa `%~dp0` para entrar na pasta onde ele está; não precisa substituir `%USERNAME%`. Os caminhos padrão do config são relativos ao config, e o projeto pode ficar em outra unidade ou perfil. Registros históricos podem conter caminhos absolutos como proveniência da execução, não como dependência de abertura dos links. Configurações absolutas personalizadas devem ser ajustadas se o usuário escolher usá-las.
+
+
+### Planilha simplificada — versão 1.11.0
+
+São apenas duas abas. **Consolidado** abre com saldo considerado, mês e contagens; abaixo ficam os oito campos exigidos, com filtros. As observações usam frases curtas, como “Cópia idêntica; não entra no total” ou “Saldo final não confere com as movimentações; fora do total”, com referência para conferir e indicação breve da IA quando disponível. Recomendação da IA não equivale a liberação: a frase informa o efeito efetivo no total. Detalhes completos, motivos, modelos e evidências continuam no HTML/JSON.
+
+**Revisões** contém as pendências, decisões anteriores e rascunhos já preenchidos. Uma revisão parcial não é apagada. As colunas técnicas de identificação/fechamento e o resultado detalhado ficam ocultos; continuam no arquivo para validar a sincronização. Preencha as células amarelas, salve, feche e reexecute. As abas separadas Resumo e Instruções foram retiradas da saída; o modelo original permanece intacto.
+
+As fórmulas continuam ligadas à tabela Extratos e o filtro fica somente na tabela, preservando a correção de compatibilidade com o Excel Desktop.
+
+A versão simplificada foi aberta no Excel Desktop sem pedido de reparo: R$ 4.114.372,29, 12 incluídos, 4 para conferir, 1 falha e 17 arquivos registrados. Em uma cópia, aumentar E8 em R$ 1 aumentou o total E2 em R$ 1; a edição foi desfeita. Os 134 testes passaram, incluindo o fluxo de revisão pelo painel. Registro em `validacao/excel_simples.json`.

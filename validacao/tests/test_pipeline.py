@@ -35,8 +35,8 @@ def test_batch_preserves_duplicates_and_failures_and_has_evidence(config):
     )
     assert {p.name: file_hash(p) for p in config.input_dir.iterdir()} == before
     rows = load_workbook(out / "consolidado.xlsx")["Consolidado"]
-    assert rows.max_row == 5
-    assert [c.value for c in rows[1]] == HEADERS
+    assert rows.max_row == 11
+    assert [c.value for c in rows[7]] == HEADERS
     manifest = json.loads((out / "manifesto.json").read_text(encoding="utf8"))
     assert all(file_hash(out / n) == sha for n, sha in manifest["artifacts"].items())
     events = [
@@ -107,10 +107,10 @@ def test_excel_output_does_not_turn_text_into_formulas(config):
     out.mkdir()
     write_workbook(config.template, out / "result.xlsx", [r])
     wb = load_workbook(out / "result.xlsx", data_only=False)
-    assert wb["Consolidado"]["A2"].data_type == "s"
-    assert wb["Consolidado"]["B2"].data_type == "s"
-    assert wb["Consolidado"]["E2"].value == 0
-    assert wb.sheetnames == ["Consolidado", "Resumo", "Revisões", "Instruções"]
+    assert wb["Consolidado"]["A8"].data_type == "s"
+    assert wb["Consolidado"]["B8"].data_type == "s"
+    assert wb["Consolidado"]["E8"].value == 0
+    assert wb.sheetnames == ["Consolidado", "Revisões"]
 
 
 def test_empty_input_is_not_reported_as_success(config):
@@ -171,16 +171,16 @@ def test_workbook_retains_model_with_human_review_reference(config):
     write_workbook(config.template, path, [r])
     wb = load_workbook(path)
     ws = wb["Consolidado"]
-    assert ws.max_column == 8 and [c.value for c in ws[1]] == HEADERS
-    assert ws["A1"].fill.fgColor.rgb.endswith("003836")
+    assert ws.max_column == 8 and [c.value for c in ws[7]] == HEADERS
+    assert ws["A7"].fill.fgColor.rgb.endswith("003836")
     assert (
-        "Onde conferir:" in ws["H2"].value
-        and "linha 10" in ws["H2"].value
-        and "linha 11" in ws["H2"].value
+        "Confira:" in ws["H8"].value
+        and "linha 10" in ws["H8"].value
+        and "linha 11" in ws["H8"].value
     )
-    assert not ws.sheet_view.showGridLines and ws.freeze_panes == "A2"
+    assert not ws.sheet_view.showGridLines and ws.freeze_panes == "C8"
     assert ws.auto_filter.ref is None
-    assert ws.tables["Extratos"].autoFilter.ref == "A1:H2"
+    assert ws.tables["Extratos"].autoFilter.ref == "A7:H8"
     wb.close()
 
 
@@ -190,16 +190,16 @@ def test_summary_uses_editable_table_and_formulas_without_changing_source(config
     path = config.output_dir / "formulas.xlsx"
     write_workbook(config.template, path, [r], "2026-11")
     wb = load_workbook(path, data_only=False)
-    assert [c.value for c in wb["Consolidado"][1]] == HEADERS
-    assert wb["Consolidado"].tables["Extratos"].ref == "A1:H2"
+    assert [c.value for c in wb["Consolidado"][7]] == HEADERS
+    assert wb["Consolidado"].tables["Extratos"].ref == "A7:H8"
     assert wb["Consolidado"].auto_filter.ref is None
-    assert wb["Consolidado"]["E2"].value == 10
-    assert wb["Resumo"]["B3"].value == "2026-11"
+    assert wb["Consolidado"]["E8"].value == 10
+    assert wb["Consolidado"]["B2"].value == "2026-11"
     assert (
-        wb["Resumo"]["B6"].value
-        == '=SUMIFS(Extratos[Saldo final],Extratos[Status],"ok",Extratos[Período],$B$3)'
+        wb["Consolidado"]["E2"].value
+        == '=SUMIFS(Extratos[Saldo final],Extratos[Status],"ok",Extratos[Período],$B$2)'
     )
-    assert all(wb["Resumo"][f"B{i}"].data_type == "f" for i in [6, 7, 9, 10, 11, 12, 13, 14])
+    assert all(wb["Consolidado"][cell].data_type == "f" for cell in ["E2", "B3", "B4", "D4", "G4"])
     assert wb.calculation.calcMode == "auto" and wb.calculation.fullCalcOnLoad
     assert len(wb["Consolidado"].data_validations.dataValidation) == 1
     wb.close()
@@ -225,7 +225,7 @@ def test_generated_table_has_no_overlapping_sheet_filter_from_template(config, t
         table = ET.fromstring(package.read("xl/tables/table1.xml"))
         assert sheet.find("s:autoFilter", ns) is None
         assert sheet.find("s:tableParts", ns).get("count") == "1"
-        assert table.find("s:autoFilter", ns).get("ref") == "A1:H2"
+        assert table.find("s:autoFilter", ns).get("ref") == "A7:H8"
         assert [c.get("name") for c in table.find("s:tableColumns", ns)] == HEADERS
 
 
@@ -395,3 +395,52 @@ def test_locked_shortcut_does_not_discard_published_run(tmp_path, monkeypatch):
     assert (directory / "consolidado.xlsx").read_bytes() == b"published"
     assert (tmp_path / "relatorio.html").is_file()
     assert events[0][0] == "SHORTCUT_UNAVAILABLE"
+
+
+def test_workbook_is_compact_but_keeps_full_evidence_outside_cells(config):
+    from goener.core import Issue
+
+    s = Statement("Banco", "1-0", "2026-10", closing=money(10))
+    s.issues.append(Issue("CONCILIACAO_NAO_FECHA", "Explicação técnica " * 80, "revisar"))
+    r = Result("extrato.pdf", "sha", "PDF", s)
+    r.ai = {
+        "decision": "revisar",
+        "message": "Recomendação extensa " * 80,
+        "selected_model": "gemini-modelo-tecnico",
+    }
+    # A saída de teste deve ficar fora do modelo compartilhado.
+    path = config.output_dir / "compacto.xlsx"
+    path.parent.mkdir(exist_ok=True)
+    write_workbook(config.template, path, [r], "2026-10")
+    wb = load_workbook(path)
+    ws = wb["Consolidado"]
+    assert wb.sheetnames == ["Consolidado", "Revisões"]
+    assert len(ws["H8"].value) < 300
+    assert "fora do total" in ws["H8"].value
+    assert "IA: recomenda conferir" in ws["H8"].value
+    assert "gemini-modelo-tecnico" not in ws["H8"].value
+    assert len(r.observation) > 1000  # O resumo não altera a evidência original.
+    assert [c.value for c in ws[7]] == HEADERS
+    assert ws["E2"].data_type == "f"
+    wb.close()
+
+
+def test_review_tab_keeps_only_pending_cases_and_preserves_user_drafts(config):
+    from goener.revisoes import read_reviews
+
+    good = Result(
+        "conferido.pdf", "good", "PDF", Statement("Banco", "1-0", "2026-10", closing=money(10))
+    )
+    bad = Result(
+        "pendente.pdf", "bad", "PDF", Statement("Banco", "2-0", "2026-10", closing=money(20))
+    )
+    bad.statement.issue("CONCILIACAO_NAO_FECHA", "Valores não conferem")
+    path = config.output_dir / "compacto.xlsx"
+    path.parent.mkdir(exist_ok=True)
+    write_workbook(config.template, path, [good, bad], "2026-10")
+    rows, _ = read_reviews(path)
+    assert [row[0] for row in rows] == ["pendente.pdf"]
+    draft = ["conferido.pdf", "good", "2026-10", 10, "", "Pendente", 0, "", "", None, ""]
+    write_workbook(config.template, path, [good, bad], "2026-10", [draft, *rows])
+    rows, _ = read_reviews(path)
+    assert len(rows) == 2 and rows[0][6] == 0

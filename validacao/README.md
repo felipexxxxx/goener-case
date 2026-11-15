@@ -98,3 +98,9 @@ O usuário identificou reparo de tabela e fórmulas `#REF!` no Excel Desktop. A 
 O gerador foi corrigido, a coluna do total ampliada e a saída regenerada por `--update-reviews`, preservando originais e análises, sem chamadas à IA. Uma cópia dessa nova saída foi aberta no Excel Desktop: total R$ 4.114.372,29, 12 aprovados, 4 revisões e 1 falha. Alterar E2 de 271350,74 para 271351,74 atualizou o resumo para R$ 4.114.373,29; a edição foi desfeita. A competência foi alterada/restaurada em outra cópia, com recálculo dos elegíveis. `excel_desktop.json` registra os arquivos e o escopo desse ensaio.
 
 132 testes passaram, incluindo regressão que inspeciona o XML para impedir filtros sobrepostos, mesmo se o modelo de entrada já tiver AutoFilter. Ruff passou. Isso valida o Excel instalado nesta máquina e os cenários descritos, sem prometer compatibilidade universal ou ausência de qualquer outro defeito.
+
+## Planilha simplificada 1.11.0
+
+A saída passou de quatro para duas abas, mantendo os 17 arquivos e as oito colunas exigidas. O resumo com fórmulas ficou no topo do Consolidado; a tabela começa na linha 7. As observações ficaram curtas; a evidência detalhada não foi alterada. Revisões mostra somente pendências e decisões/rascunhos preenchidos, preservando inclusive um saldo zero digitado em revisão ainda incompleta.
+
+134 testes passaram; Ruff passou. No Excel Desktop, uma cópia da saída abriu sem reparo, com total R$ 4.114.372,29 e contagens 12/4/1. Alterar E8 de 271350,74 para 271351,74 recalculou E2 para R$ 4.114.373,29; desfazer restaurou o total anterior. O fluxo pelo painel também foi testado, gravando a correção na nova posição da tabela e regenerando Excel/HTML. `excel_simples.json` identifica a saída validada. Não houve chamada externa de IA nesta atualização.

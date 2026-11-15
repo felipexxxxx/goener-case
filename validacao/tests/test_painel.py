@@ -71,7 +71,7 @@ def test_local_panel_validates_token_and_updates_both_outputs(config):
             status, _ = post(token)
             assert status == 200
             wb = load_workbook(config.output_dir / "consolidado.xlsx")
-            assert wb["Consolidado"]["E2"].value == 456099.12
+            assert wb["Consolidado"]["E8"].value == 456099.12
             wb.close()
             with urlopen(origin) as response:
                 assert "Revisão humana registrada" in response.read().decode()

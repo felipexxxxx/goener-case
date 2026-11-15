@@ -1,0 +1,37 @@
+{
+  "version": "1.11.0",
+  "date": "2026-11-15",
+  "application": "Microsoft Excel Desktop (Windows)",
+  "sheets": [
+    "Consolidado",
+    "Revisões"
+  ],
+  "table_header_row": 7,
+  "input_files": 17,
+  "review_rows": 5,
+  "approved_balance": "4114372.29",
+  "statuses": {
+    "ok": 12,
+    "revisar": 4,
+    "falhou": 1
+  },
+  "native_validation": {
+    "repair_prompt": false,
+    "copy": "simples_final.xlsx",
+    "action": "Alterar E8 de 271350.74 para 271351.74",
+    "observed_summary_E2": "4114373.29",
+    "after_undo": "4114372.29"
+  },
+  "final_run_id": "20261115T041601Z_0874bee5",
+  "final_xlsx_sha256": "73adb97de9760626e7d84caa86615afbc5f4c7656ec48654059a8207b014c426",
+  "tests": {
+    "passed": 134,
+    "duration_seconds": 52.16,
+    "ruff": "passed",
+    "preserved_partial_reviews_including_zero": true,
+    "http_review_updates_new_layout": true
+  },
+  "note": "Observações compactas somente no Excel. Evidências completas preservadas no HTML/JSON. A última publicação altera apenas o rótulo Sem leitura para Com falha em relação à cópia aberta no Excel.",
+  "external_ai_calls": 0,
+  "limitations": "Compatibilidade conferida na instalação local do Excel Desktop; não é garantia universal."
+}
