@@ -457,6 +457,46 @@ def test_divergent_balance_is_reference_only_and_waits_for_review(config):
     assert "Aguarda revisão humana" in document
     assert "Mantido o valor declarado" not in document
     assert "Goener.exe" not in document and "Abrir painel.cmd" not in document
-    assert "py -3.12 executar.py --panel" in document
+    assert "Executar automacao.cmd" in document
     assert 'review-open" disabled' in document
     assert "button.disabled=false" in document
+
+
+def test_panel_opens_existing_publication_without_reprocessing_or_reading_excel(
+    config, monkeypatch
+):
+    from goener.pipeline import main
+
+    source(config)
+    directory, _, _ = run(config)
+    before = (directory / "consolidado.xlsx").read_bytes()
+    monkeypatch.setattr("goener.pipeline.load_config", lambda *a, **k: config)
+
+    def forbidden(*a, **k):
+        pytest.fail("Abrir o painel existente não deve reprocessar nem ler Revisões")
+
+    monkeypatch.setattr("goener.pipeline.run", forbidden)
+    monkeypatch.setattr("goener.pipeline.read_reviews", forbidden)
+    opened = []
+    monkeypatch.setattr("goener.painel.serve", lambda cfg: opened.append(cfg))
+    assert main(["--panel"]) == 0
+    assert opened == [config]
+    assert before == (directory / "consolidado.xlsx").read_bytes()
+
+
+def test_first_panel_open_processes_inputs_then_serves_results(config, monkeypatch):
+    from goener.pipeline import main
+    from goener.reporting import publication_directory
+
+    source(config)
+    monkeypatch.setattr("goener.pipeline.load_config", lambda *a, **k: config)
+    opened = []
+
+    def serve(cfg):
+        directory = publication_directory(cfg.output_dir)
+        summary = json.loads((directory / "resumo.json").read_text(encoding="utf-8"))
+        opened.append(summary["approved_balance"])
+
+    monkeypatch.setattr("goener.painel.serve", serve)
+    assert main(["--panel"]) == 0
+    assert opened == ["225934.57"]

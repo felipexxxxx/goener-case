@@ -603,10 +603,14 @@ def main(argv=None) -> int:
         if args.panel:
             from .painel import serve
 
-            if not latest_pointer(config.output_dir).exists():
+            if args.update_reviews:
+                run(config, reviews_only=True)
+            elif not latest_pointer(config.output_dir).exists():
                 run(config)
             else:
-                run(config, reviews_only=True)
+                # Abrir resultados existentes não deve exigir fechar o Excel,
+                # reprocessar documentos ou consumir IA.
+                publication_directory(config.output_dir)
             serve(config)
             return 0
         directory, summary, code = run(config, reviews_only=args.update_reviews)

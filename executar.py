@@ -1,4 +1,4 @@
-"""Entrada simples para Python e para o executável Windows."""
+"""Entrada Python acionada pelo iniciador CMD."""
 
 import faulthandler
 import multiprocessing

@@ -7,7 +7,11 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-py -3.12 executar.py %*
+if "%~1"=="" (
+    py -3.12 executar.py --panel
+) else (
+    py -3.12 executar.py %*
+)
 set GOENER_RESULT=%ERRORLEVEL%
 if not "%GOENER_RESULT%"=="0" (
     echo.

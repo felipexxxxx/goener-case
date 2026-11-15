@@ -109,3 +109,8 @@ A saída passou de quatro para duas abas, mantendo os 17 arquivos e as oito colu
 ## Clareza do saldo e edição HTML 1.11.1
 
 136 testes passaram e Ruff passou. O extrato Sol do Sertão permanece revisar, sem decisão humana, com contribuição zero ao total: o saldo declarado exibido é apenas referência. O HTML passou a mostrar explicitamente esse efeito e a espera por revisão. A instrução antiga sobre EXE foi substituída pelo comando Python. No arquivo aberto diretamente, o botão de revisão fica desabilitado; no painel local, fica habilitado. A interface real foi aberta no Chrome, o cartão expandido e o modal de revisão conferido, sem salvar alterações nos dados do responsável. O POST de correção foi testado separadamente com dados temporários, incluindo um arquivo sem pendência inicial cuja linha em Revisões é criada na primeira decisão. Registro em html_revisao.json.
+
+
+## Iniciador sem parâmetros 1.12.0
+
+Executar automacao.cmd foi chamado sem argumentos e abriu automaticamente o painel local no Chrome. A publicação existente permaneceu a mesma; a resposta HTTP 200 continha a sessão de revisão. O teste unitário impede reprocessamento e leitura de Revisões na abertura de um resultado existente. Outro teste cobre a primeira abertura sem resultados: processa o extrato e depois serve o painel. 138 testes passaram e Ruff passou. A aplicação das revisões salvas no Excel continua explícita com --update-reviews, opcionalmente junto de --panel; as decisões no formulário continuam sendo aplicadas por Salvar e atualizar. Registro em cmd_painel.json.

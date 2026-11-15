@@ -1,0 +1,12 @@
+{
+  "version": "1.12.0",
+  "entry": "Executar automacao.cmd",
+  "arguments": [],
+  "validation": "Iniciador CMD real executado sem argumentos; abriu automaticamente a página do painel local no Chrome. HTTP 200 com sessão de revisão disponível.",
+  "existing_results": "Publicação 20261115T042818Z_d5b8cfbf permaneceu a mesma; sem novo OCR, IA ou publicação ao abrir.",
+  "first_run_test": "Sem publicação prévia, processamento local do extrato de teste concluído antes de abrir o painel.",
+  "automated_tests": 138,
+  "test_seconds": 44.68,
+  "ruff": "passed",
+  "panel_test_stopped": true
+}

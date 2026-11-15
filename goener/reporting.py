@@ -585,7 +585,7 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
                 f'<button class="attention-link" data-open-file="{html.escape(r.filename, quote=True)}"><span class="attention-dot {r.status}"></span><span><b>{html.escape(s.bank or r.filename)}</b><small>{html.escape(finding)}</small></span><span class="arrow" aria-hidden="true">↗</span></button>'
             )
         review_button = (
-            '<button class="btn review-open" disabled title="Para editar, abra o painel com py -3.12 executar.py --panel" type="button" data-review-file="'
+            '<button class="btn review-open" disabled title="Para editar, dê duplo clique em Executar automacao.cmd" type="button" data-review-file="'
             + html.escape(r.filename, quote=True)
             + '" data-review-sha="'
             + r.sha256

@@ -2,7 +2,7 @@
 
 Automação em Python que lê uma pasta de extratos e publica Excel, HTML, logs e evidências. O fluxo principal termina sem intervenção manual entre etapas. Regras financeiras fazem a primeira conferência; o Gemini complementa as exceções. A revisão posterior é opcional e fica registrada.
 
-**Versão 1.10.1.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
+**Versão 1.12.0.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
 
 Três níveis de leitura:
 
@@ -20,9 +20,9 @@ A versão atual **não distribui EXE nem usa PyInstaller**. Instale Python 3.12 
 py -3.12 -m pip install -r requirements-lock.txt
 ```
 
-Depois, dê duplo clique em **Executar automacao.cmd**. Ele chama o Python, processa os arquivos e abre o painel. Mantenha o console aberto enquanto usa o formulário. Não há criação de ambiente virtual. Se faltar Python, o CMD informa o requisito e não fecha imediatamente. Em caso de erro, o console fica aberto e informa o caminho do diagnóstico.
+Depois, dê duplo clique em **Executar automacao.cmd**. Ele abre automaticamente o painel interativo no navegador, sem pedir parâmetros. Se ainda não houver resultados, processa os extratos primeiro; se já houver, abre a publicação existente sem reprocessar nem chamar a IA. Mantenha o console aberto enquanto usa o formulário. Não há criação de ambiente virtual. Se faltar Python, o CMD informa o requisito e não fecha imediatamente. Em caso de erro, o console fica aberto e informa o caminho do diagnóstico.
 
-Resultados principais: **resultados/consolidado.xlsx** é a planilha operacional e **resultados/relatorio.html** abre o último relatório. **resultados/historico/** agrupa snapshots, destaques, índices e diagnósticos; não edite o Excel do histórico.
+Para usar o sistema, abra **Executar automacao.cmd**. **resultados/consolidado.xlsx** é a planilha operacional; o HTML é uma saída de consulta e não precisa ser aberto manualmente. **resultados/historico/** agrupa snapshots, destaques, índices e diagnósticos; não edite o Excel do histórico.
 
 ### Executar pelo código-fonte
 
@@ -33,7 +33,7 @@ py -3.12 -m pip install -r requirements-lock.txt
 py -3.12 executar.py
 ```
 
-O primeiro comando instala as dependências; o segundo executa a automação completa, com os mesmos arquivos e `.env` usados pelo CMD. Não basta instalar as dependências: é necessário executar `executar.py`. Nas próximas vezes, basta o segundo comando.
+O primeiro comando instala as dependências; o segundo executa a automação completa, com os arquivos e `.env` do projeto. O CMD sem argumentos prioriza abrir o painel já gerado; este comando Python executa o processamento completo. Não basta instalar as dependências: é necessário executar `executar.py`. Nas próximas vezes, basta o segundo comando.
 
 `py -3.12 -m goener` é uma entrada equivalente. No Linux/macOS, use um Python compatível e `python3 -m goener`; o CMD é exclusivo de Windows, mas o código Python é multiplataforma. Não há criação de ambiente virtual. Para configurar a IA, copie `.env.example` como `.env`, ao lado de `config.toml`:
 
@@ -77,7 +77,7 @@ O lote fornecido contém **17 arquivos: 12 ok, 4 revisar e 1 falhou**, com saldo
 ### Painel interativo
 
 
-Execute **Executar automacao.cmd** para processar e abrir o painel; ou `& ".\Executar automacao.cmd" --panel` para abrir os resultados existentes. No painel, clique em **Revisar este arquivo**, preencha a decisão e clique em **Salvar e atualizar**. O programa mantém o Excel e o HTML sincronizados. Deixe a janela do robô aberta enquanto usa esses botões. A execução automática pela pasta continua disponível pelos mesmos parâmetros de terminal, sem intervenção manual entre etapas.
+Dê duplo clique em **Executar automacao.cmd**. Ele abre o painel existente; na primeira vez, processa os extratos antes. Você não precisa digitar parâmetros nem procurar um HTML. Para processar uma pasta alterada, a entrada técnica continua sendo `py -3.12 executar.py`. No painel, clique em **Revisar este arquivo**, preencha a decisão e clique em **Salvar e atualizar**. O programa mantém o Excel e o HTML sincronizados. Deixe a janela do robô aberta enquanto usa esses botões. A execução automática pela pasta continua disponível pelos mesmos parâmetros de terminal, sem intervenção manual entre etapas.
 
 ### Recursos do HTML: onde clicar
 
@@ -98,7 +98,7 @@ Execute **Executar automacao.cmd** para processar e abrir o painel; ou `& ".\Exe
 | **Salvar e atualizar** | Valida a decisão, registra na aba Revisões e regenera Excel e HTML juntos. Mantém o histórico e não chama a IA novamente. Se a revisão for recusada, o painel mostra o motivo. |
 | **Cancelar** | Fecha o formulário sem registrar a revisão. |
 
-**Para consultar:** abra `resultados/relatorio.html`. **Para consultar e editar:** execute `py -3.12 executar.py --panel`, mantenha o terminal aberto e deixe o Excel fechado ao salvar uma revisão. Sem uma publicação anterior, faça primeiro a execução completa com `py -3.12 executar.py`. Abrir o HTML diretamente pelo Explorer permite consulta, busca, filtros e acesso aos arquivos; a edição pelo formulário depende do painel local. No arquivo aberto diretamente, o botão Revisar este arquivo fica desabilitado e a faixa informa o comando para habilitar a edição. No painel, expanda o cartão do documento: o botão fica junto aos links do original e da cópia destacada.
+**Para consultar e editar:** dê duplo clique em **Executar automacao.cmd** e use a página aberta automaticamente. Mantenha a janela do robô aberta; feche o Excel somente quando for salvar uma revisão. Não precisa localizar o HTML nem digitar parâmetros. Sem uma publicação anterior, o próprio CMD processa os extratos antes de abrir o painel. Abrir o HTML diretamente pelo Explorer permite consulta, busca, filtros e acesso aos arquivos; a edição pelo formulário depende do painel local. No arquivo HTML aberto diretamente, o botão Revisar este arquivo fica desabilitado e a faixa orienta abrir Executar automacao.cmd. No painel, expanda o cartão do documento: o botão fica junto aos links do original e da cópia destacada.
 
 ### Conferir e corrigir sem perder o histórico
 
@@ -106,7 +106,7 @@ Use sempre **`resultados/consolidado.xlsx`** como planilha de trabalho. A aba **
 
 1. No HTML, clique em **Abrir cópia destacada**. Os trechos numerados têm explicação visível ao lado. O original não é alterado.
 2. Na aba **Revisões**, encontre o arquivo e preencha somente as colunas amarelas **F a J**: decisão, saldo confirmado quando necessário, justificativa, responsável e data.
-3. **Salve e feche o Excel.** Execute `& ".\Executar automacao.cmd" --panel` para aplicar revisões e abrir o painel, ou `& ".\Executar automacao.cmd" --update-reviews` para atualizar sem abrir o navegador.
+3. **Salve e feche o Excel.** Execute `& ".\Executar automacao.cmd" --update-reviews --panel` para aplicar revisões e abrir o painel, ou `& ".\Executar automacao.cmd" --update-reviews` para atualizar sem abrir o navegador.
 4. No painel, clique em **Salvar e atualizar** após preencher o formulário, ou execute `--update-reviews` se a decisão já foi registrada no Excel. O robô valida as decisões e publica Excel e HTML atualizados juntos em uma nova pasta do histórico. Abra `resultados/relatorio.html` ou use o link na célula A3 da aba Revisões.
 
 | Decisão | Resultado após atualizar |
@@ -126,7 +126,7 @@ py -3.12 executar.py --update-reviews
 
 Essa atualização reaproveita a extração e a análise anteriores, **sem novas chamadas à IA nem nova extração financeira**. Confere os hashes dos documentos, lê Revisões e regenera fórmulas, relatório e cópias visuais; PDF digitalizado pode exigir OCR somente para localizar as marcações. Se houver documento novo, removido ou alterado, competência ou modo de IA diferente, execute o fluxo completo. Revisões anteriores só valem para o mesmo nome, SHA-256 e fechamento; versões antigas permanecem na aba como histórico.
 
-Você também pode revisar **diretamente no HTML interativo**: execute `py -3.12 executar.py --panel` e mantenha a janela aberta. O painel usa somente `127.0.0.1`, na própria máquina, sem nuvem, login de navegador ou dependências web adicionais. Escolha o arquivo, clique em **Revisar este arquivo**, preencha o formulário e salve. Ele registra a decisão na aba Revisões e chama o mesmo pipeline com `reviews_only=True`. O Excel precisa estar fechado. Uma cópia baixada pelo navegador é somente uma cópia: a base operacional continua em `resultados/consolidado.xlsx`.
+Você também pode revisar **diretamente no painel interativo**: dê duplo clique em **Executar automacao.cmd** e mantenha a janela aberta. O painel usa somente `127.0.0.1`, na própria máquina, sem nuvem, login de navegador ou dependências web adicionais. Escolha o arquivo, clique em **Revisar este arquivo**, preencha o formulário e salve. Ele registra a decisão na aba Revisões e chama o mesmo pipeline com `reviews_only=True`. O Excel precisa estar fechado. Uma cópia baixada pelo navegador é somente uma cópia: a base operacional continua em `resultados/consolidado.xlsx`.
 
 Abrir o HTML diretamente pelo Explorer continua sendo consulta: os botões de edição só aparecem no painel servido pelo robô. O painel não modifica código nem pede à IA para programar; as opções são fixas e validadas. O endpoint exige token por sessão e origem local, bloqueia acesso a `.env` e rejeita envio de uma tela antiga. O modo de revisão não faz novas chamadas à IA. Não exponha esse servidor na rede: ele foi feito para uso local por um operador.
 
@@ -446,7 +446,7 @@ A distribuição atual é somente Python/CMD. Ensaios anteriores de EXE são his
 ### O que foi validado e o que ainda exige homologação
 
 
-**136 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
+**138 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
 
 Na versão **1.10.2**, a planilha também foi aberta no **Excel Desktop**: sem pedido de reparo, com total de R$ 4.114.372,29 e contagens 12 ok / 4 revisar / 1 falhou. Em cópia descartável, aumentar um saldo em R$ 1 atualizou o resumo para R$ 4.114.373,29; a alteração foi desfeita. A competência também foi alterada e restaurada em outra cópia para verificar o recálculo. Registro em `validacao/excel_desktop.json`.
 
@@ -490,7 +490,7 @@ Em `resultados`, use somente `consolidado.xlsx` e `relatorio.html`. O índice t�
 
 ### Distribuição Python 1.10.0
 
-Os registros antigos de EXE permanecem somente em validacao como histórico; não homologam nem integram a distribuição atual. O empacotamento de binários foi retirado. O CMD atual chama apenas `py -3.12 executar.py`, aceita os mesmos parâmetros e mantém erros visíveis. Para abrir somente os resultados e aplicar revisões existentes, use `& ".\Executar automacao.cmd" --panel`; para atualizar sem abrir painel, use `& ".\Executar automacao.cmd" --update-reviews`.
+Os registros antigos de EXE permanecem somente em validacao como histórico; não homologam nem integram a distribuição atual. O empacotamento de binários foi retirado. O CMD atual chama o Python e mantém erros visíveis. Sem argumentos, abre o painel automaticamente; parâmetros explícitos continuam sendo repassados. Para aplicar revisões salvas no Excel e abrir o painel, use `& ".\Executar automacao.cmd" --update-reviews --panel`; para atualizar sem abrir painel, use `& ".\Executar automacao.cmd" --update-reviews`.
 
 
 ### Relatório, evidências e portabilidade de caminhos
@@ -515,4 +515,13 @@ A versão simplificada foi aberta no Excel Desktop sem pedido de reparo: R$ 4.11
 
 Quando um extrato apresenta divergência, o cartão pode mostrar o valor declarado no documento para permitir a conferência. A legenda **Valor de referência · fora do total** e a linha **Contribuição deste arquivo no total: R$ 0,00** deixam explícito que esse valor não foi somado. Por exemplo: R$ 457.179,12 declarado versus R$ 456.099,12 calculado ficam pendentes; nenhum é escolhido automaticamente para o fechamento. Uma revisão humana registrada pode liberar o original, corrigir e liberar ou manter a exclusão, conforme as regras.
 
-Para revisar no navegador, execute `py -3.12 executar.py --panel` e use a página que esse comando abrir. Abas antigas e relatórios dentro do histórico preservam a execução anterior. Expanda o arquivo e clique em **Revisar este arquivo**, ao lado da cópia destacada. Mantenha o terminal aberto. Abrir `resultados/relatorio.html` pelo Explorer permite consulta; salvar decisões exige o painel local.
+Para revisar no navegador, dê duplo clique em **Executar automacao.cmd** e use a página que ele abrir automaticamente. Abas antigas e relatórios dentro do histórico preservam a execução anterior. Expanda o arquivo e clique em **Revisar este arquivo**, ao lado da cópia destacada. Mantenha o terminal aberto. Abrir `resultados/relatorio.html` pelo Explorer permite consulta; salvar decisões exige o painel local.
+
+
+### Abertura simples — versão 1.12.0
+
+**Uso diário: dois cliques em Executar automacao.cmd.** O painel abre no navegador e o botão Revisar este arquivo fica disponível nos cartões expandidos. O terminal precisa permanecer aberto enquanto o painel estiver em uso.
+
+Na primeira abertura sem resultados, o robô processa os extratos e abre o painel. Nas demais, abre o resultado existente sem OCR, chamadas de IA ou nova publicação. Para apenas consultar, o Excel pode estar aberto; feche-o antes de salvar decisões pelo painel. Os arquivos HTML do histórico continuam como registros de consulta.
+
+**Referência técnica:** o CMD sem argumentos chama internamente `py -3.12 executar.py --panel`. Argumentos fornecidos explicitamente continuam sendo repassados. `--panel` abre a publicação existente; `--update-reviews --panel` aplica as revisões salvas no Excel antes de abrir. Para arquivos novos ou alterados na pasta, execute o processamento completo com `py -3.12 executar.py`. Abrir um resultado existente não implica reprocessar as entradas.
