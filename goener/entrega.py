@@ -112,7 +112,7 @@ def one_page(path: Path, summary: dict) -> None:
     counts_time = estimate["workload_counts"]
     reference = estimate["manual_sample_minutes"]
     paragraph(
-        f"Cálculo por atividade: <b>{counts_time['current_unique_statements']} extratos únicos do mês</b> para consolidar e <b>{estimate['triage_files']} triagens</b> ({counts_time['duplicates']} cópia(s), {counts_time['other_period']} de outro mês, {counts_time['insufficient_or_nonstatement']} sem dados suficientes). Referência declarada: {reference:g} min/extrato; hipótese de triagem: {estimate['triage_minutes_assumption']:g} min/arquivo. Cada cenário desconta os {summary['duration_seconds']:.2f} s medidos do robô e pressupõe {estimate['monthly_batches_assumption']:g} lote(s)/mês, com mesmo volume e composição por 12 meses."
+        f"Base: <b>{counts_time['current_unique_statements']} extratos únicos do mês + {estimate['triage_files']} triagens</b> ({counts_time['duplicates']} cópia, {counts_time['other_period']} outro mês, {counts_time['insufficient_or_nonstatement']} sem dados). Central: <b>{counts_time['current_unique_statements']} × {reference:g} + {estimate['triage_files']} × {estimate['triage_minutes_assumption']:g} = {estimate['projected_manual_seconds']/60:g} min/lote</b>; referência de consolidação declarada e triagem hipotética. Ganhos descontam {summary['duration_seconds']:.2f} s do robô e supõem {estimate['monthly_batches_assumption']:g} lote(s)/mês com volume e composição iguais durante 12 meses."
     )
     c.setFont("Helvetica-Bold", 9)
     for x, text in ((17 * mm, "Cenário"), (105 * mm, "Horas/mês"), (151 * mm, "Horas/ano")):
