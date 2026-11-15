@@ -65,3 +65,49 @@ def test_supervisor_keeps_diagnostic_in_selected_session(tmp_path):
     assert supervise([sys.executable, "-c", script], tmp_path) == 0
     logs = list((folder / "runtime/diagnosticos").glob("*.log"))
     assert len(logs) == 1 and "codigo=0" in logs[0].read_text(encoding="utf-8")
+
+
+def test_windows_kills_worker_and_descendant_when_supervisor_is_terminated(tmp_path):
+    import os
+    import time
+
+    import pytest
+
+    if os.name != "nt":
+        pytest.skip("Windows Job Object")
+    ready = tmp_path / "processos.json"
+    worker = (
+        "import subprocess,sys,os,time,json;from pathlib import Path;"
+        'child=subprocess.Popen([sys.executable,"-c","import time;time.sleep(120)"]);'
+        f"Path({str(ready)!r}).write_text(json.dumps([os.getpid(),child.pid]));"
+        "time.sleep(120)"
+    )
+    script = (
+        "from executar import supervise;from pathlib import Path;import sys;"
+        f'supervise([sys.executable,"-c",{worker!r}],Path({str(tmp_path)!r}))'
+    )
+    parent = subprocess.Popen(
+        [sys.executable, "-c", script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+    pids = []
+    try:
+        deadline = time.monotonic() + 15
+        while not ready.exists() and time.monotonic() < deadline:
+            assert parent.poll() is None, "Supervisor encerrou antes de iniciar os filhos"
+            time.sleep(0.05)
+        assert ready.exists()
+        pids = json.loads(ready.read_text())
+        assert all(RunLock.process_alive(pid) for pid in pids)
+        parent.kill()  # Sem finally/KeyboardInterrupt: simula encerramento abrupto da janela.
+        parent.wait(timeout=10)
+        deadline = time.monotonic() + 10
+        while any(RunLock.process_alive(pid) for pid in pids) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert all(not RunLock.process_alive(pid) for pid in pids)
+    finally:
+        if parent.poll() is None:
+            parent.kill()
+            parent.wait(timeout=10)
+        for pid in pids:
+            if RunLock.process_alive(pid):
+                os.kill(pid, 9)

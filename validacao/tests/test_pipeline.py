@@ -198,7 +198,7 @@ def test_summary_uses_editable_table_and_formulas_without_changing_source(config
     assert wb["Consolidado"]["B2"].value == "2026-11"
     assert (
         wb["Consolidado"]["E2"].value
-        == '=SUMIFS(Extratos[Saldo final],Extratos[Status],"ok",Extratos[Período],$B$2)'
+        == '=SUMIFS(Extratos[Saldo final],Extratos[Status técnico],"ok",Extratos[Período],$B$2)'
     )
     assert all(wb["Consolidado"][cell].data_type == "f" for cell in ["E2", "B3", "B4", "B5", "B6"])
     assert [wb["Consolidado"][f"A{n}"].value for n in range(3, 7)] == [
@@ -637,13 +637,15 @@ def test_operational_groups_keep_exclusions_separate_from_included_and_pending(c
     write_workbook(config.template, path, rows, "2026-10", ai_mode="automatico")
     wb = load_workbook(path)
     ws = wb["Consolidado"]
-    assert [ws.cell(i, 9).value for i in range(8, 11)] == ["Incluído", "Excluído", "Pendente"]
+    assert ws.column_dimensions["I"].hidden
+    assert ws["I7"].value == "Status técnico"
+    assert [ws.cell(i, 7).value for i in range(8, 11)] == ["Incluído", "Excluído", "Pendente"]
     assert [ws[f"A{i}"].value for i in range(3, 6)] == [
         "Incluídos no mês",
         "Excluídos",
         "Pendentes de decisão",
     ]
-    assert "Situação final" in ws["B4"].value and "Excluído" in ws["B4"].value
+    assert "Status" in ws["B4"].value and "Excluído" in ws["B4"].value
     wb.close()
     summary.update(files=3, ai_mode="automatico", outcomes=counts)
     page = config.output_dir / "grupos.html"

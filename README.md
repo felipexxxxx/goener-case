@@ -18,7 +18,7 @@ A chave Gemini fica no `.env` ao lado de `config.toml`. Não vai para o Git. A l
 
 ### Abrir e revisar um fechamento
 
-Dê dois cliques em **Executar automacao.cmd**, na raiz. Ele inicia um novo processamento dos extratos e depois abre o painel do novo fechamento. Para retomar uma execução existente, use Abrir relatorio dinamico.cmd dentro da pasta daquele fechamento. Mantenha a janela do robô aberta.
+Dê dois cliques em **Executar automacao.cmd**, na raiz. Ele inicia um novo processamento dos extratos e depois abre o painel do novo fechamento. Para retomar uma execução existente, use Abrir relatorio dinamico.cmd dentro da pasta daquele fechamento. Mantenha a janela do robô aberta enquanto usa o painel. Fechar a janela do CMD no Windows encerra o Python e seus subprocessos por um Job Object com KILL_ON_JOB_CLOSE. Ctrl+C também encerra a execução; fechar só o navegador não encerra o servidor. Se interromper durante o processamento, a publicação em andamento pode não concluir; resultados já publicados permanecem salvos.
 
 Cada fechamento tem uma pasta identificada por mês, data e horário dentro de `resultados/`. Não existem mais Excel e HTML soltos nessa raiz.
 
@@ -41,9 +41,11 @@ resultados/
 
 **No painel:** Conferir arquivos → expanda um arquivo → Revisar este arquivo → escolha a decisão e preencha os campos → Salvar e atualizar. Isso grava a revisão no Excel e atualiza a consulta HTML **do mesmo fechamento**. As versões anteriores permanecem no histórico. O atalho Abrir relatorio dinamico.cmd sempre carrega a versão atual daquele fechamento. O HTML de consulta fica somente no histórico técnico. O formulário exige Excel fechado ao salvar.
 
+Para alterar inclusão ou saldo, use Revisões; editar diretamente o Status do Consolidado não registra uma decisão nem sincroniza o HTML.
+
 **Se preferir o Excel:** na aba Revisões, preencha as células amarelas, salve e feche. Dê dois cliques em **Aplicar revisoes (Excel).cmd na mesma pasta**. Não precisa digitar parâmetros. Não foi criado botão de macro dentro do Excel.
 
-A aba Consolidado tem os indicadores alinhados verticalmente nas colunas A/B: incluídos no mês, excluídos, pendentes de decisão e recebidos. A partir da linha 7, mantém as oito colunas do enunciado: Arquivo, Banco, Conta, Período, Saldo final, Formato de origem, Status, Observação. Acrescenta somente a coluna **Situação final** (Incluído, Excluído ou Pendente), usada nos indicadores e filtros. Status continua sendo a classificação de leitura do contrato; Situação final é o resultado operacional após regras, IA e revisão. Uma linha por arquivo, inclusive cópias e falhas. Revisões mostra apenas casos que exigem decisão e decisões/rascunhos preenchidos; identificadores técnicos ficam ocultos. Nas pendências, a observação inclui **o motivo retornado pela IA**, quando disponível, e não apenas a decisão genérica. Ela é uma recomendação, não comprovação de que o documento está correto.
+A aba Consolidado tem os indicadores alinhados verticalmente nas colunas A/B: incluídos no mês, excluídos, pendentes de decisão e recebidos. A partir da linha 7, mantém as oito colunas do enunciado: Arquivo, Banco, Conta, Período, Saldo final, Formato de origem, Status, Observação. **Status** é a única classificação visível: Incluído, Excluído ou Pendente, após regras, IA e revisão. A classificação técnica ok/revisar/falhou permanece nos registros e na coluna oculta Status técnico, usada pela fórmula financeira; ela não é uma segunda decisão para o operador. As oito colunas do enunciado continuam visíveis. Uma linha por arquivo, inclusive cópias e falhas. Revisões mostra apenas casos que exigem decisão e decisões/rascunhos preenchidos; identificadores técnicos ficam ocultos. Nas pendências, a observação inclui **o motivo retornado pela IA**, quando disponível, e não apenas a decisão genérica. Ela é uma recomendação, não comprovação de que o documento está correto.
 
 O link **Abrir relatório dinâmico** na aba Revisões aponta para o CMD daquele fechamento, com URI local explícita. O painel atualiza esse vínculo para a localização atual quando é aberto com o Excel fechado. Após mover/extrair o projeto, abra primeiro o atalho pela pasta. O Office pode pedir confirmação ou bloquear a abertura de scripts; nesse caso, use Abrir relatorio dinamico.cmd pelo Explorador de Arquivos. Não há macros. O HTML estático existe só em runtime/historico/<versão>/relatorio.html para consulta daquela versão; a pasta principal não contém HTML para confundir consulta com edição.
 
@@ -53,7 +55,7 @@ Na aba Revisões, clique na célula da coluna **Decisão** e use a seta da lista
 
 Cópias exatas são exclusões determinísticas. No modo automático, documento de outra competência pode ser encerrado como exclusão quando a leitura legível da IA confirma o mesmo período identificado pelas regras, com localização/citação e sem divergência de leitura. Documento sem saldo/movimentos pode ser encerrado quando a IA recomenda não considerar e cita explicitamente que não é extrato. Esses casos permanecem no Consolidado e na consulta Todos/Excluídos do HTML, fora dos totais, e saem da fila de decisão. Se houver incerteza ou discordância, continuam pendentes. Divergência matemática não é liberada pela IA; exige revisão registrada.
 
-Os três Status do enunciado (ok/revisar/falhou) são mantidos para compatibilidade. Os indicadores do Excel e do HTML usam a **Situação final**, com grupos distintos: incluídos, excluídos e pendentes. Excluído não é considerado sem ressalvas: o motivo e a confirmação da IA (quando houve) continuam visíveis, e o valor não entra na soma. No lote de referência, são **12 incluídos, 3 excluídos e 2 pendentes**, totalizando 17 arquivos. As três exclusões são cópia idêntica, comunicado e outro mês; os dois pendentes são lançamento suspeito e divergência de saldo. Status de leitura não deve ser contado como fila de revisão. No modo consultivo, alertas da IA continuam orientativos e os totais seguem as regras, conforme a política desse modo.
+Os códigos técnicos de leitura ok/revisar/falhou são mantidos nas evidências e na coluna oculta Status técnico. No Excel, o campo visível **Status** e os indicadores usam o resultado operacional, com grupos distintos: incluídos, excluídos e pendentes. Excluído não é considerado sem ressalvas: o motivo e a confirmação da IA (quando houve) continuam visíveis, e o valor não entra na soma. No lote de referência, são **12 incluídos, 3 excluídos e 2 pendentes**, totalizando 17 arquivos. As três exclusões são cópia idêntica, comunicado e outro mês; os dois pendentes são lançamento suspeito e divergência de saldo. Status de leitura não deve ser contado como fila de revisão. No modo consultivo, alertas da IA continuam orientativos e os totais seguem as regras, conforme a política desse modo.
 
 | Decisão | Efeito |
 | --- | --- |
@@ -189,7 +191,7 @@ Exemplo: inicial 1.000 + crédito 200 − débito 50 = esperado 1.150. Se o extr
 | IA | JSON, tipos, códigos e leitura coerentes com a extração. | Resposta fora do contrato não aplicada; indisponibilidade não interrompe a publicação do lote. |
 | Revisão humana | Decisão permitida, justificativa, responsável, data e saldo quando necessário; nome/hash/fechamento exatos. | Aplicar após validar, mantendo original/histórico. Revisão inválida não libera. |
 
-Status: `falhou` para falha essencial, `revisar` para ressalva e `ok` quando passa. Revisão humana válida pode liberar/corrigir uma divergência; exclusão humana mantém a linha fora da soma. O total usa status `ok`, competência esperada, ausência de cópia e seleção aplicável ao modo de IA/revisão.
+Classificação técnica de leitura (evidências e coluna oculta): `falhou` para falha essencial, `revisar` para ressalva e `ok` quando passa. O Status visível apresenta a decisão operacional, sem repetir esses códigos. Revisão humana válida pode liberar/corrigir uma divergência; exclusão humana mantém a linha fora da soma. O total usa status `ok`, competência esperada, ausência de cópia e seleção aplicável ao modo de IA/revisão.
 
 ### Até onde vão as regras e onde entra a IA
 
@@ -417,7 +419,7 @@ Até 50 documentos, 100 mil caracteres de contexto e 16 MiB nas partes serializa
 
 ## 4. Validação e entrega
 
-Na versão 1.14.0, **162 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
+Na versão 1.14.0, **163 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
 
 Testes e registros ficam em validacao/. A suíte cobre regras financeiras, duplicidade, OCR, JSON, retries, fórmulas, segurança de entrada, publicação, revisão, arquivos alterados e isolamento entre dois fechamentos. A abertura no Excel Desktop e a navegação do link são verificadas separadamente; abrir com openpyxl não basta para comprovar compatibilidade.
 

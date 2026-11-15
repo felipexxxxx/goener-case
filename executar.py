@@ -11,6 +11,99 @@ from datetime import datetime
 from pathlib import Path
 
 
+class ProcessTree:
+    """O Windows encerra toda a árvore quando o supervisor perde este handle."""
+
+    def __enter__(self):
+        self.handle = None
+        if os.name != "nt":
+            return self
+        import ctypes
+        from ctypes import wintypes as w
+
+        class IO(ctypes.Structure):
+            _fields_ = [
+                (name, ctypes.c_ulonglong)
+                for name in (
+                    "ReadOperationCount",
+                    "WriteOperationCount",
+                    "OtherOperationCount",
+                    "ReadTransferCount",
+                    "WriteTransferCount",
+                    "OtherTransferCount",
+                )
+            ]
+
+        class Basic(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_longlong),
+                ("PerJobUserTimeLimit", ctypes.c_longlong),
+                ("LimitFlags", w.DWORD),
+                ("MinimumWorkingSetSize", ctypes.c_size_t),
+                ("MaximumWorkingSetSize", ctypes.c_size_t),
+                ("ActiveProcessLimit", w.DWORD),
+                ("Affinity", ctypes.c_size_t),
+                ("PriorityClass", w.DWORD),
+                ("SchedulingClass", w.DWORD),
+            ]
+
+        class Extended(ctypes.Structure):
+            _fields_ = [("BasicLimitInformation", Basic), ("IoInfo", IO)] + [
+                (name, ctypes.c_size_t)
+                for name in (
+                    "ProcessMemoryLimit",
+                    "JobMemoryLimit",
+                    "PeakProcessMemoryUsed",
+                    "PeakJobMemoryUsed",
+                )
+            ]
+
+        self.api = ctypes.WinDLL("kernel32", use_last_error=True)
+        for name, args, restype in (
+            ("CreateJobObjectW", [w.LPVOID, w.LPCWSTR], w.HANDLE),
+            ("SetInformationJobObject", [w.HANDLE, ctypes.c_int, w.LPVOID, w.DWORD], w.BOOL),
+            ("AssignProcessToJobObject", [w.HANDLE, w.HANDLE], w.BOOL),
+            ("OpenProcess", [w.DWORD, w.BOOL, w.DWORD], w.HANDLE),
+            ("CloseHandle", [w.HANDLE], w.BOOL),
+        ):
+            function = getattr(self.api, name)
+            function.argtypes, function.restype = args, restype
+        self.handle = self.api.CreateJobObjectW(None, None)
+        if not self.handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        limits = Extended()
+        limits.BasicLimitInformation.LimitFlags = 0x2000  # KILL_ON_JOB_CLOSE
+        if not self.api.SetInformationJobObject(
+            self.handle, 9, ctypes.byref(limits), ctypes.sizeof(limits)
+        ):
+            error = ctypes.get_last_error()
+            self.api.CloseHandle(self.handle)
+            self.handle = None
+            raise ctypes.WinError(error)
+        return self
+
+    def attach(self, process):
+        if self.handle is None:
+            return
+        import ctypes
+
+        handle = self.api.OpenProcess(0x0101, False, process.pid)  # SET_QUOTA | TERMINATE
+        try:
+            if not handle or not self.api.AssignProcessToJobObject(self.handle, handle):
+                error = ctypes.get_last_error()
+                process.terminate()
+                process.wait()
+                raise ctypes.WinError(error)
+        finally:
+            if handle:
+                self.api.CloseHandle(handle)
+
+    def __exit__(self, *_):
+        if self.handle:
+            self.api.CloseHandle(self.handle)
+            self.handle = None
+
+
 def supervise(command, root: Path, *, desktop=False):
     """O processo externo conserva o diagnóstico mesmo se uma biblioteca nativa cair."""
     print("Iniciando Goener. Preparando o Python e carregando as dependências...", flush=True)
@@ -43,7 +136,7 @@ def supervise(command, root: Path, *, desktop=False):
         "GOENER_INTERACTIVE": "1" if desktop else "0",
     }
     code = 1
-    with path.open("w", encoding="utf-8") as log:
+    with path.open("w", encoding="utf-8") as log, ProcessTree() as tree:
         log.write(f"INICIO {datetime.now().isoformat()}\n")
         log.flush()
         process = None
@@ -57,6 +150,7 @@ def supervise(command, root: Path, *, desktop=False):
                 errors="replace",
                 env=environment,
             )
+            tree.attach(process)
             for line in process.stdout:
                 log.write(line)
                 log.flush()

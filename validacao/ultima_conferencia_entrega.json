@@ -9,13 +9,15 @@
   },
   "panel_routes": 5,
   "review_sync": "Excel e HTML do mesmo fechamento atualizados; teste apenas na cópia temporária",
-  "tests_passed": 162,
+  "tests_passed": 163,
   "excel_desktop": {
     "opened_without_repair": true,
     "included": 12,
     "excluded": 3,
     "pending": 2,
     "received": 17,
-    "calculated_balance": "4114372.29"
-  }
+    "calculated_balance": "4114372.29",
+    "visible_status_columns": 1
+  },
+  "windows_process_tree_kill_test": "Supervisor encerrado abruptamente; trabalhador e subprocesso auxiliar terminaram pelo Job Object"
 }
