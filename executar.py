@@ -13,7 +13,7 @@ from pathlib import Path
 
 def supervise(command, root: Path, *, desktop=False):
     """O processo externo conserva o diagnóstico mesmo se uma biblioteca nativa cair."""
-    folder = root / "resultados/historico/diagnosticos"
+    folder = root / ".local/runtime/diagnosticos"
     try:
         folder.mkdir(parents=True, exist_ok=True)
     except OSError:

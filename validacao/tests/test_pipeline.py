@@ -89,7 +89,7 @@ def test_failed_publication_does_not_advance_latest(config, monkeypatch):
     out, _, _ = run(config)
     latest = (config.output_dir / "historico/latest.json").read_bytes()
 
-    def denied(*args):
+    def denied(*args, **kwargs):
         raise PermissionError("Destino indisponível")
 
     monkeypatch.setattr("goener.pipeline.write_workbook", denied)
@@ -415,9 +415,9 @@ def test_workbook_is_compact_but_keeps_full_evidence_outside_cells(config):
     wb = load_workbook(path)
     ws = wb["Consolidado"]
     assert wb.sheetnames == ["Consolidado", "Revisões"]
-    assert len(ws["H8"].value) < 300
+    assert "Recomendação extensa" in ws["H8"].value
     assert "fora do total" in ws["H8"].value
-    assert "IA: recomenda conferir" in ws["H8"].value
+    assert "Análise da IA:" in ws["H8"].value
     assert "gemini-modelo-tecnico" not in ws["H8"].value
     assert len(r.observation) > 1000  # O resumo não altera a evidência original.
     assert [c.value for c in ws[7]] == HEADERS
@@ -500,3 +500,13 @@ def test_first_panel_open_processes_inputs_then_serves_results(config, monkeypat
     monkeypatch.setattr("goener.painel.serve", serve)
     assert main(["--panel"]) == 0
     assert opened == ["225934.57"]
+
+
+def test_unpublished_session_does_not_replace_current_session(config):
+    from goener.sessao import remember_session
+
+    config.runtime_dir.mkdir()
+    pointer = config.runtime_dir / "sessao_atual.json"
+    pointer.write_text('{"folder":"anterior"}', encoding="utf-8")
+    remember_session(config, config.output_dir.parent)
+    assert json.loads(pointer.read_text(encoding="utf-8")) == {"folder": "anterior"}

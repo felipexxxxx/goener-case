@@ -187,7 +187,7 @@ def write_reviews(wb, results, previous, period):
     ws.row_dimensions[1].height = 40
     ws.merge_cells("A2:K2")
     ws["A2"] = (
-        "Preencha as células amarelas. Depois salve, feche e reexecute o robô para atualizar Excel e HTML."
+        "Preencha as células amarelas. Salve, feche e abra Aplicar revisoes.cmd nesta pasta para atualizar Excel e HTML."
     )
     ws["A2"].alignment = Alignment(wrap_text=True, vertical="center")
     ws.row_dimensions[2].height = 34

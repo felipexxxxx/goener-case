@@ -114,3 +114,10 @@ A saída passou de quatro para duas abas, mantendo os 17 arquivos e as oito colu
 ## Iniciador sem parâmetros 1.12.0
 
 Executar automacao.cmd foi chamado sem argumentos e abriu automaticamente o painel local no Chrome. A publicação existente permaneceu a mesma; a resposta HTTP 200 continha a sessão de revisão. O teste unitário impede reprocessamento e leitura de Revisões na abertura de um resultado existente. Outro teste cobre a primeira abertura sem resultados: processa o extrato e depois serve o painel. 138 testes passaram e Ruff passou. A aplicação das revisões salvas no Excel continua explícita com --update-reviews, opcionalmente junto de --panel; as decisões no formulário continuam sendo aplicadas por Salvar e atualizar. Registro em cmd_painel.json.
+
+
+## Fechamentos independentes 1.13.0
+
+141 testes passaram (53,99 s), com isolamento entre duas sessões, atualização da consulta estática do fechamento revisado e abertura do resultado de referência sem índice. A pasta resultados contém fechamentos com nomes legíveis; os atalhos Abrir painel.cmd e Aplicar revisoes.cmd selecionam a própria pasta. A observação traz o motivo da IA, sem inventar confirmação. A suíte também impede que um resultado não publicado substitua a preferência do último fechamento válido.
+
+No Excel Desktop, uma cópia da planilha abriu sem reparo, com R$ 4.114.372,29 e o motivo da IA visível. O link Revisões!A3 abriu o HTML em file:/// no Chrome, sem redirecionamento ao OneDrive; o Office solicitou confirmação de abertura do arquivo local. O link é atualizado para a localização atual ao abrir o painel, se o Excel estiver fechado. O iniciador Aplicar revisoes.cmd foi executado da pasta do fechamento sem argumentos. Evidência resumida em sessoes.json. Os dados financeiros do responsável não foram corrigidos durante esses ensaios.

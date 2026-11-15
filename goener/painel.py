@@ -40,9 +40,18 @@ def make_server(config, *, port=0):
             self.wfile.write(data)
 
         def latest(self):
-            pointer = json.loads(latest_pointer(config.output_dir).read_text(encoding="utf-8"))
             directory = publication_directory(config.output_dir)
-            if directory.parent not in (
+            pointer_path = latest_pointer(config.output_dir)
+            pointer = (
+                json.loads(pointer_path.read_text(encoding="utf-8"))
+                if pointer_path.exists()
+                else {
+                    "run_id": json.loads((directory / "resumo.json").read_text(encoding="utf-8"))[
+                        "run_id"
+                    ]
+                }
+            )
+            if directory != config.output_dir.resolve() and directory.parent not in (
                 config.output_dir.resolve(),
                 (config.output_dir / "historico").resolve(),
             ):
@@ -233,6 +242,23 @@ def make_server(config, *, port=0):
 
 
 def serve(config):
+    # URI local explícita evita a resolução de links relativos pelo OneDrive.
+    operational = config.output_dir / "consolidado.xlsx"
+    if operational.exists():
+        try:
+            read_reviews(operational)  # Não sobrescrever um Excel aberto.
+            wb = load_workbook(operational, keep_links=False)
+            target = (config.output_dir / "relatorio.html").resolve().as_uri()
+            link = wb["Revisões"]["A3"].hyperlink
+            if link is None or link.target != target:
+                wb["Revisões"]["A3"].hyperlink = target
+                wb.save(operational)
+            wb.close()
+        except PermissionError:
+            print(
+                "Excel aberto: o link local será atualizado na próxima abertura do painel com o Excel fechado.",
+                flush=True,
+            )
     with make_server(config) as server:
         url = f"http://127.0.0.1:{server.server_port}/"
         print(

@@ -1,146 +1,111 @@
-# Goener — consolidação de saldos bancários
+# Goener — consolidação bancária
 
-Automação em Python que lê uma pasta de extratos e publica Excel, HTML, logs e evidências. O fluxo principal termina sem intervenção manual entre etapas. Regras financeiras fazem a primeira conferência; o Gemini complementa as exceções. A revisão posterior é opcional e fica registrada.
+Versão **1.13.0**. Automação Python de ponta a ponta: lê PDF, imagem e Excel, confere os saldos e publica planilha, relatório e logs. O Gemini ajuda a analisar exceções; regras obrigatórias do Python continuam valendo. No lote fornecido: **17 arquivos, 12 ok, 4 revisar, 1 falhou e R$ 4.114.372,29 no total**. Dados fictícios.
 
-**Versão 1.12.0.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
+## 1. Usar sem conhecer o código
 
-Três níveis de leitura:
+### Preparar uma vez
 
-1. **[Usar e avaliar](#1-usar-e-avaliar):** execução, entregáveis e revisões, sem conhecer o código.
-2. **[Metodologia e regras](#2-metodologia-e-regras):** mapeamento, premissas, exceções, IA e horas estimadas.
-3. **[Referência técnica](#3-referência-técnica):** stack, arquitetura, OCR, HTTP/JSON, caches, parâmetros e validação.
-
-## 1. Usar e avaliar
-
-### Executar no Windows — Python convencional
-
-A versão atual **não distribui EXE nem usa PyInstaller**. Instale Python 3.12 uma vez, extraia todo o ZIP e entre na pasta `goener-case/`. No terminal dessa pasta, instale as dependências:
+Instale Python 3.12, extraia o ZIP completo e, no terminal da pasta, execute:
 
 ```powershell
 py -3.12 -m pip install -r requirements-lock.txt
 ```
 
-Depois, dê duplo clique em **Executar automacao.cmd**. Ele abre automaticamente o painel interativo no navegador, sem pedir parâmetros. Se ainda não houver resultados, processa os extratos primeiro; se já houver, abre a publicação existente sem reprocessar nem chamar a IA. Mantenha o console aberto enquanto usa o formulário. Não há criação de ambiente virtual. Se faltar Python, o CMD informa o requisito e não fecha imediatamente. Em caso de erro, o console fica aberto e informa o caminho do diagnóstico.
+A chave Gemini fica no `.env` ao lado de `config.toml`. Não vai para o Git. A leitura é automática; não depende de navegador logado. Falha ou ausência de IA não impede a consolidação pelas regras, mas pode deixar pendências. Faturamento e cotas dependem do projeto do provedor; não há promessa de disponibilidade externa.
 
-Para usar o sistema, abra **Executar automacao.cmd**. **resultados/consolidado.xlsx** é a planilha operacional; o HTML é uma saída de consulta e não precisa ser aberto manualmente. **resultados/historico/** agrupa snapshots, destaques, índices e diagnósticos; não edite o Excel do histórico.
+### Abrir e revisar um fechamento
 
-### Executar pelo código-fonte
+Dê dois cliques em **Executar automacao.cmd**, na raiz. Ele abre o fechamento mais recente; se não houver resultado, processa os extratos e depois abre o painel. Mantenha a janela do robô aberta.
 
-Você também pode executar diretamente pelo terminal. Instale o **Python 3.12**, abra o terminal na pasta do projeto e execute:
+Cada fechamento tem uma pasta identificada por mês, data e horário dentro de `resultados/`. Não existem mais Excel e HTML soltos nessa raiz.
 
-```powershell
-py -3.12 -m pip install -r requirements-lock.txt
-py -3.12 executar.py
+```text
+resultados/
+  Fechamento 2026-10 -- 15-11-2026 12h01m00s -- abcd/
+    Abrir painel.cmd        abre e edita ESTE fechamento
+    Aplicar revisoes.cmd    aplica o Excel salvo DESTE fechamento e abre o painel
+    consolidado.xlsx        planilha operacional
+    relatorio.html          consulta atualizada após salvar uma revisão
+    historico/              versões e evidências técnicas; não edite os snapshots
 ```
 
-O primeiro comando instala as dependências; o segundo executa a automação completa, com os arquivos e `.env` do projeto. O CMD sem argumentos prioriza abrir o painel já gerado; este comando Python executa o processamento completo. Não basta instalar as dependências: é necessário executar `executar.py`. Nas próximas vezes, basta o segundo comando.
+**Para retomar um fechamento específico:** abra **Abrir painel.cmd dentro daquela pasta**. O atalho acompanha a pasta; não contém nome de usuário nem unidade fixa. Não seleciona outra sessão e não extrai tudo novamente. Mantenha a pasta dentro do projeto completo.
 
-`py -3.12 -m goener` é uma entrada equivalente. No Linux/macOS, use um Python compatível e `python3 -m goener`; o CMD é exclusivo de Windows, mas o código Python é multiplataforma. Não há criação de ambiente virtual. Para configurar a IA, copie `.env.example` como `.env`, ao lado de `config.toml`:
+**No painel:** Conferir arquivos → expanda um arquivo → Revisar este arquivo → escolha a decisão e preencha os campos → Salvar e atualizar. Isso grava a revisão no Excel e atualiza a consulta HTML **do mesmo fechamento**. As versões anteriores permanecem no histórico. Para atualizar uma consulta já aberta em um snapshot antigo, reabra relatorio.html na pasta do fechamento. O formulário exige Excel fechado ao salvar.
 
-```dotenv
-GEMINI_API_KEY=sua_chave_aqui
-```
+**Se preferir o Excel:** na aba Revisões, preencha as células amarelas, salve e feche. Dê dois cliques em **Aplicar revisoes.cmd na mesma pasta**. Não precisa digitar parâmetros. Não foi criado botão de macro dentro do Excel.
 
-O Python lê esse arquivo automaticamente, com prioridade sobre variáveis do processo, sem sessão de navegador ou busca da chave no usuário do Windows. O Git ignora `.env`; somente o exemplo vazio é versionado. O robô não ativa faturamento. O projeto usado nos ensaios estava no Free Tier; o plano e as cotas efetivas devem ser conferidos no Google AI Studio.
+A aba Consolidado tem resumo no topo e as oito colunas do enunciado a partir da linha 7: Arquivo, Banco, Conta, Período, Saldo final, Formato de origem, Status, Observação. Uma linha por arquivo, inclusive cópias e falhas. Revisões mostra pendências e decisões/rascunhos preenchidos; identificadores técnicos ficam ocultos. Nas pendências, a observação inclui **o motivo retornado pela IA**, quando disponível, e não apenas a decisão genérica. Ela é uma recomendação, não comprovação de que o documento está correto.
 
-Parâmetros operacionais, válidos também para `Executar automacao.cmd`:
+O link **Abrir relatório com detalhes** na aba Revisões usa URI local explícita para evitar a resolução relativa do Office pelo OneDrive. Ao abrir o painel, o robô atualiza o link para a localização atual do projeto, se o Excel estiver fechado. Após mover/extrair o projeto em outro computador, abra primeiro Abrir painel.cmd para atualizar esse vínculo. A consulta HTML é local; a edição exige o painel em execução. O Office pode pedir confirmação ao abrir o arquivo local; não é um redirecionamento para o OneDrive.
 
-```powershell
-py -3.12 executar.py --ai-mode consultivo --ai-scope todos
-py -3.12 executar.py --ai-mode off
-py -3.12 executar.py --no-cache
-py -3.12 executar.py --no-ocr
-py -3.12 executar.py --strict
-```
+### Decisões e efeitos
 
-`config.toml` define entrada, saída, competência e limites. Os caminhos são relativos a esse arquivo. O case usa outubro de 2026; sem competência configurada, o Python usa o mês anterior em São Paulo.
-
-### O que é entregue
-
-O enunciado pede automação funcionando, planilha consolidada e **documentação de uma página** com fluxo, premissas, ganho em horas por mês com conta explicada e até três próximos passos.
-
-A pasta `entrega/` mantém três arquivos: **ZIP da automação, consolidado Excel e documentação de uma página**. O ZIP inclui o iniciador CMD, fonte, README, configuração, entradas e resultado de referência em `resultado/`. Essa pasta singular é um exemplo consultável; a primeira execução cria a base operacional em `resultados/`. Testes, logs e evidências técnicas ficam agrupados em `validacao/`, inclusive no Git, separados da operação. HTML, Excel e PDF gerados ficam apenas na entrega local e no ZIP privado; não são mais versionados. Os commits antigos continuam no histórico.
-
-| Saída por execução | Finalidade |
+| Decisão | Efeito |
 | --- | --- |
-| `consolidado.xlsx` | Duas abas: Consolidado com resumo e as oito colunas obrigatórias; Revisões para pendências e decisões já registradas. |
-| `relatorio.html` | Visão geral financeira, composição do saldo por banco, busca, filtros, IA, medidas aplicadas e acesso ao original. Sem análise de tempo. |
-| `execucao.log` e `execucao.jsonl` | Eventos, duração, tentativas e conclusão por arquivo. |
-| `evidencias.json` | Extração, conciliação, origem dos valores e resposta validada da IA. |
-| `resumo.json` | Quantidades, saldo considerado, tempo, configuração e consumo de chamadas. |
-| `manifesto.json` | Hashes dos documentos e das saídas para integridade. |
+| Pendente | Mantém as regras; não aplica decisão humana. |
+| Liberar | Inclui o saldo original após conferência registrada. |
+| Corrigir e liberar | Usa o saldo confirmado, inclusive zero; preserva o original. |
+| Excluir | Mantém registro e histórico; saldo fora do total. |
 
-As oito colunas são **Arquivo, Banco, Conta, Período, Saldo final, Formato de origem, Status e Observação**. Uma linha por arquivo, inclusive cópias e falhas. Status: `ok`, `revisar` ou `falhou`.
+Justificativa, responsável e data são obrigatórios. Cópia idêntica, outro mês ou documento sem dados essenciais não podem ser liberados como válidos: substitua o documento ou refaça o fechamento correto. Uma divergência matemática exige revisão humana explícita para liberação; a IA sozinha não ultrapassa esse bloqueio.
 
-O lote fornecido contém **17 arquivos: 12 ok, 4 revisar e 1 falhou**, com saldo aprovado de **R$ 4.114.372,29**. `EXT_102026_LagoaAzul (1).pdf` é cópia exata do original sem sufixo, identificada por SHA-256; permanece registrada e fora da soma. Também há possível lançamento repetido, divergência de R$ 1.080,00 em Sol do Sertão, extrato de setembro num lote de outubro e comunicado sem saldo. Nenhum saldo é corrigido para fazer a conciliação fechar.
+**Saldo exibido não significa saldo aprovado:** os R$ 457.179,12 declarados versus R$ 456.099,12 calculados do exemplo continuam fora da soma. O cartão informa contribuição **R$ 0,00**, aguardando revisão. Nenhum dos dois é escolhido automaticamente.
 
-### Painel interativo
+### Recursos do relatório
 
-
-Dê duplo clique em **Executar automacao.cmd**. Ele abre o painel existente; na primeira vez, processa os extratos antes. Você não precisa digitar parâmetros nem procurar um HTML. Para processar uma pasta alterada, a entrada técnica continua sendo `py -3.12 executar.py`. No painel, clique em **Revisar este arquivo**, preencha a decisão e clique em **Salvar e atualizar**. O programa mantém o Excel e o HTML sincronizados. Deixe a janela do robô aberta enquanto usa esses botões. A execução automática pela pasta continua disponível pelos mesmos parâmetros de terminal, sem intervenção manual entre etapas.
-
-### Recursos do HTML: onde clicar
-
-| Recurso | Como usar / resultado |
+| Onde clicar | Para que serve |
 | --- | --- |
-| **Visão geral** | Mostra saldo considerado, situação dos arquivos, saldo por banco e pontos que precisam de atenção. |
-| **Conferir arquivos** | Abre a lista; clique no cartão de um arquivo para ver regras, recomendação da IA, onde conferir e medida aplicada. |
-| **Filtros** | Escolha Com ressalvas, Todos, Sem ressalvas, IA analisou ou IA indisponível. Os atalhos de pendências da visão geral também levam aos arquivos. |
-| **Busca** | Digite parte do nome do arquivo, banco ou conta. A busca funciona junto com o filtro escolhido. |
-| **Expandir os arquivos visíveis** | Abre de uma vez os cartões que passaram pelo filtro e pela busca; o botão também permite recolhê-los. |
-| **Abrir documento de origem** | Abre o arquivo original, na página indicada quando houver referência de PDF. O original não é alterado. |
-| **Abrir cópia destacada** | Abre uma cópia PDF com grifos numerados e explicações, quando foi possível localizar os trechos com segurança. Sem marcação segura, o cartão informa a limitação. |
-| **Baixar Excel** | Obtém uma cópia da planilha. Para registrar revisões pelo Excel, use a base operacional `resultados/consolidado.xlsx`. |
-| **Log da execução** | Link no rodapé: abre o registro legível do processamento, avisos e erros daquela publicação. |
-| **Baixar evidências (JSON)** | Link no rodapé: acessa os dados técnicos completos da leitura, validações e análise da IA. JSON é um arquivo de dados; não é outra tela do painel. |
-| **Verificação de integridade** | Link no rodapé: abre o manifesto com hashes dos arquivos e saídas. Serve para conferir se o conteúdo mudou; não comprova autenticidade bancária. |
-| **Revisar este arquivo** | Disponível no painel local: abre o formulário com decisão, saldo confirmado quando necessário, justificativa, responsável e data. As decisões e restrições estão na tabela abaixo. |
-| **Salvar e atualizar** | Valida a decisão, registra na aba Revisões e regenera Excel e HTML juntos. Mantém o histórico e não chama a IA novamente. Se a revisão for recusada, o painel mostra o motivo. |
-| **Cancelar** | Fecha o formulário sem registrar a revisão. |
+| Visão geral | Saldo incluído, composição por banco e pendências. |
+| Conferir arquivos | Regras, análise da IA, localização e medida aplicada por arquivo. |
+| Filtros e busca | Separar ressalvas/IA e buscar arquivo, conta ou banco. |
+| Expandir arquivos visíveis | Abrir/recolher os cartões filtrados. |
+| Abrir documento de origem | Consultar o original, preservado. |
+| Abrir cópia destacada | PDF com grifos numerados e explicações, quando localizáveis com segurança. |
+| Revisar este arquivo | Formulário de decisão no painel; desabilitado na consulta HTML aberta diretamente. |
+| Salvar e atualizar | Atualiza Excel e HTML da sessão, sem nova chamada de IA. |
+| Baixar Excel | Cópia da planilha; edite a operacional na pasta do fechamento. |
+| Log da execução | Eventos, avisos e erros daquela publicação. |
+| Baixar evidências (JSON) | Extração, validações e resposta da IA em dados estruturados. |
+| Verificação de integridade | Manifesto SHA-256; detecta alterações, não autentica o banco emissor. |
 
-**Para consultar e editar:** dê duplo clique em **Executar automacao.cmd** e use a página aberta automaticamente. Mantenha a janela do robô aberta; feche o Excel somente quando for salvar uma revisão. Não precisa localizar o HTML nem digitar parâmetros. Sem uma publicação anterior, o próprio CMD processa os extratos antes de abrir o painel. Abrir o HTML diretamente pelo Explorer permite consulta, busca, filtros e acesso aos arquivos; a edição pelo formulário depende do painel local. No arquivo HTML aberto diretamente, o botão Revisar este arquivo fica desabilitado e a faixa orienta abrir Executar automacao.cmd. No painel, expanda o cartão do documento: o botão fica junto aos links do original e da cópia destacada.
+As cópias destacadas são PDFs visuais; não alteram o original nem preservam a assinatura/camada textual dele. Sem localização segura, o relatório avisa e não inventa coordenadas. Excel é referenciado por aba/célula; não se promete grifo visual de XLSX.
 
-### Conferir e corrigir sem perder o histórico
+## 2. Entender o processo
 
-Use sempre **`resultados/consolidado.xlsx`** como planilha de trabalho. A aba **Consolidado** reúne o resumo com fórmulas no topo e a tabela de oito colunas a partir da linha 7. **Revisões** mostra pendências e decisões já preenchidas; arquivos sem ressalvas não exigem revisão. Os registros de todas as entradas continuam no Consolidado.
+### Fluxo principal
 
-1. No HTML, clique em **Abrir cópia destacada**. Os trechos numerados têm explicação visível ao lado. O original não é alterado.
-2. Na aba **Revisões**, encontre o arquivo e preencha somente as colunas amarelas **F a J**: decisão, saldo confirmado quando necessário, justificativa, responsável e data.
-3. **Salve e feche o Excel.** Execute `& ".\Executar automacao.cmd" --update-reviews --panel` para aplicar revisões e abrir o painel, ou `& ".\Executar automacao.cmd" --update-reviews` para atualizar sem abrir o navegador.
-4. No painel, clique em **Salvar e atualizar** após preencher o formulário, ou execute `--update-reviews` se a decisão já foi registrada no Excel. O robô valida as decisões e publica Excel e HTML atualizados juntos em uma nova pasta do histórico. Abra `resultados/relatorio.html` ou use o link na célula A3 da aba Revisões.
-
-| Decisão | Resultado após atualizar |
-| --- | --- |
-| Pendente | Mantém o resultado das regras e da IA, sem aplicar uma decisão humana. |
-| Liberar | Inclui o saldo original após conferência registrada. Deixe Saldo confirmado vazio. |
-| Corrigir e liberar | Usa o Saldo confirmado, inclusive zero, preservando o original e a justificativa. |
-| Excluir | Mantém o registro e o histórico, sem incluir o saldo nos totais. |
-
-Justificativa, responsável e data são obrigatórios para decisões diferentes de Pendente. Data aceita célula de data do Excel, `DD/MM/AAAA` ou ISO. Cópias exatas, outro mês e documentos sem identificação/saldo válidos não podem ser liberados por essa aba: substitua o documento ou ajuste a competência do processamento completo. Uma divergência pode ser liberada ou corrigida **por decisão humana explícita**; a IA sozinha não pode superar esse bloqueio.
-
-O comando equivalente, sem atalho, é:
-
-```powershell
-py -3.12 executar.py --update-reviews
+```mermaid
+flowchart TD
+    A[Receber arquivos na pasta extratos] --> B[Ler texto, Excel ou imagem com OCR]
+    B --> C[Conferir campos, mês, cópias e saldos]
+    C --> D{Há exceção no escopo da IA?}
+    D -- Não --> E[Manter resultado das regras]
+    D -- Sim --> F[Gemini analisa documento e contexto]
+    F --> G[Validar resposta JSON e respeitar bloqueios]
+    G --> H[Gerar fechamento: Excel, HTML e logs]
+    E --> H
+    H --> I[Abrir painel do fechamento]
 ```
 
-Essa atualização reaproveita a extração e a análise anteriores, **sem novas chamadas à IA nem nova extração financeira**. Confere os hashes dos documentos, lê Revisões e regenera fórmulas, relatório e cópias visuais; PDF digitalizado pode exigir OCR somente para localizar as marcações. Se houver documento novo, removido ou alterado, competência ou modo de IA diferente, execute o fluxo completo. Revisões anteriores só valem para o mesmo nome, SHA-256 e fechamento; versões antigas permanecem na aba como histórico.
+A geração termina mesmo que haja pendências; revisar é uma etapa posterior, sem interromper a automação inicial.
 
-Você também pode revisar **diretamente no painel interativo**: dê duplo clique em **Executar automacao.cmd** e mantenha a janela aberta. O painel usa somente `127.0.0.1`, na própria máquina, sem nuvem, login de navegador ou dependências web adicionais. Escolha o arquivo, clique em **Revisar este arquivo**, preencha o formulário e salve. Ele registra a decisão na aba Revisões e chama o mesmo pipeline com `reviews_only=True`. O Excel precisa estar fechado. Uma cópia baixada pelo navegador é somente uma cópia: a base operacional continua em `resultados/consolidado.xlsx`.
+### Fluxo da revisão — separado da extração
 
-Abrir o HTML diretamente pelo Explorer continua sendo consulta: os botões de edição só aparecem no painel servido pelo robô. O painel não modifica código nem pede à IA para programar; as opções são fixas e validadas. O endpoint exige token por sessão e origem local, bloqueia acesso a `.env` e rejeita envio de uma tela antiga. O modo de revisão não faz novas chamadas à IA. Não exponha esse servidor na rede: ele foi feito para uso local por um operador.
+```mermaid
+flowchart TD
+    A[Abrir painel.cmd da pasta escolhida] --> B[Consultar motivo e cópia destacada]
+    B --> C{Como registrar a decisão?}
+    C -- No painel --> D[Preencher formulário e salvar]
+    C -- No Excel --> E[Salvar, fechar e abrir Aplicar revisoes.cmd]
+    D --> F[Validar decisão e integridade dos originais]
+    E --> F
+    F --> G[Atualizar Excel e consulta HTML da mesma pasta]
+    G --> H[Preservar versão anterior no histórico]
+```
 
-Uma célula do Excel não executa esse processo automaticamente: isso exigiria macro ou abertura de programa externo, com permissões próprias do Excel. O atalho evita macros. Não é necessário recompilar nem empacotar para aplicar decisões. O código é executado diretamente pelo Python.
-
-Editar diretamente os dados da tabela **Consolidado** recalcula o resumo no topo da mesma aba, mas essas edições não são importadas pelo robô. Para manter o HTML sincronizado, registre a mudança em **Revisões**. A célula B2 do Consolidado permite simular outro mês apenas dentro do Excel; o fechamento do robô continua definido no config.
-
-### Como funcionam os destaques
-
-As cópias ficam em `resultados/historico/<execução>/destaques/`. PDFs e imagens recebem uma cópia PDF visual rasterizada, com grifos numerados e um quadro lateral de explicações; não substitui o arquivo original nem conserva suas assinaturas digitais ou a camada de texto original. Em PDF com texto, as posições vêm da extração local; nos digitalizados, do OCR, aceitando somente leituras com confiança de pelo menos 90%. Esse limiar não garante acerto. Sem referência localizável, o relatório informa que não há marcação segura. Nenhuma região é grifada por coordenada inventada pela IA.
-
-No caso Sol do Sertão, a cópia marca o último saldo das movimentações (**R$ 456.099,12**) e o saldo final declarado (**R$ 457.179,12**). A diferença de R$ 1.080,00 é uma inconsistência a conferir, não prova de qual valor deveria ser corrigido. Para Excel de origem, a cópia destaca e comenta a célula do saldo quando a extração fornece aba e endereço.
-
-## 2. Metodologia e regras
+Não são refeitos extração financeira e HTTP de IA na revisão. OCR pode ser necessário apenas para localizar grifos. Mudanças nos documentos bloqueiam reaproveitamento e exigem processamento completo.
 
 ### Do problema à implementação
 
@@ -197,35 +162,6 @@ No escopo padrão de exceções, os 12 regulares do lote dispensam IA; cinco rec
 `off` usa apenas regras locais; `consultivo` registra orientação sem mudar sua seleção; `automatico` aplica retenção/exclusão no escopo analisado. A IA não remove bloqueios obrigatórios nem corrige campos extraídos. **Uma revisão humana explícita é um caminho separado**, com justificativa e integridade verificadas.
 
 O modelo não aprende automaticamente com revisões nem recebe treinamento de pesos. As decisões registradas permitem avaliação supervisionada futura com a gestão. Hoje a reutilização é por cache compatível, não por aprendizado automático.
-
-### Fluxo de ponta a ponta
-
-```mermaid
-flowchart TD
-    A[Pasta com os documentos] --> B[Limites e SHA-256]
-    B --> C[Leitura direta ou OCR; cache quando compatível]
-    C --> D[Regras: campos, competência, conciliação e duplicidade]
-    D --> E{Exceção ou escopo todos?}
-    E -- Não / IA desligada --> I[Aplicar regras financeiras]
-    E -- Sim --> F[Um documento por chamada; cache individual]
-    F --> G[Gemini 3.8 → 3.5 Lite → 3.1 Lite]
-    G --> H[Validar JSON e comparar leitura com o original]
-    H --> I
-    G -- Sem resposta válida --> J[Registrar indisponibilidade; reter no automático]
-    J --> I
-    I --> R[Validar revisões humanas por documento, hash e mês]
-    R --> K[Excel com fórmulas, HTML, destaques, logs e evidências]
-    K --> L[Validar e publicar sem aprovação manual entre etapas]
-    L --> M[Opcional: conferir ressalvas e preencher Revisões]
-    M --> N[Salvar e fechar Excel; atualizar com --update-reviews]
-    N --> R
-    L --> O[Painel local: formulário Revisar este arquivo]
-    O --> R
-```
-
-O processamento é sequencial, sem chamadas paralelas. `Decimal` preserva os centavos. A conciliação compara saldo inicial + movimentos com o saldo final declarado. Cópias exatas e competência diferente são excluídas dos totais, sem apagar linhas ou originais. Suspeitas e divergências ficam retidas com explicação; o fluxo não espera intervenção humana para terminar.
-
-O bloqueio do sistema operacional evita execuções concorrentes e é liberado se o processo terminar. Uma trava antiga só é recuperada automaticamente quando o PID anterior está encerrado; processo ativo ou não verificável continua bloqueando a execução. As saídas são montadas temporariamente e publicadas após validação. Para parar entre arquivos, crie `.local/runtime/STOP`; remova para uma nova execução. Metadados inválidos ou processo não verificável exigem conferência, sem apagar a trava automaticamente. Códigos de saída: `0` publicado, `1` infraestrutura/configuração, `2` pendências em modo estrito, `3` parada, `130` interrupção.
 
 ### Tempo: cálculo por atividade, mês e ano
 
@@ -290,25 +226,39 @@ flowchart TD
 
 Este desenho é futuro. O processo só inclui recebimento sem trabalho manual se a origem abastecer a pasta automaticamente. Ausência de mudanças não significa que todos os documentos chegaram. O robô não autentica extratos nem substitui conciliação com o razão contábil.
 
+
 ## 3. Referência técnica
 
-### Arquitetura e stack
+### Componentes
 
-```mermaid
-flowchart LR
-    A[CLI / executar.py / Python] --> B[pipeline.py: orquestração e publicação]
-    B --> C[readers.py: pdfplumber, openpyxl, RapidOCR e ONNX CPU]
-    B --> D[core.py: modelo, Decimal e regras]
-    B --> E[ai.py: HTTPS, JSON, cotas e failover]
-    B --> F[revisoes.py: decisões e destaques ReportLab]
-    B --> G[reporting.py: Excel e HTML/CSS/JavaScript]
-    H[painel.py: HTTPServer local] --> B
-    H --> G
-    B --> I[sqlite3: caches / hashlib: SHA-256]
-    J[entrega.py: documento PDF e ZIP] --> G
+| Parte | Responsabilidade |
+| --- | --- |
+| executar.py / CMD | Inicialização, diagnósticos e erros visíveis. |
+| sessao.py | Seleção do fechamento e atalhos portáteis por pasta. |
+| pipeline.py | Orquestração, publicação, trava e retomada. |
+| readers.py | pdfplumber, openpyxl, RapidOCR/ONNX em CPU. |
+| core.py | Decimal, regras financeiras e estrutura dos dados. |
+| ai.py | HTTPS, contexto/documento, contrato JSON, retries e failover. |
+| reporting.py / revisoes.py | Planilha, HTML, decisões e destaques. |
+| painel.py | Servidor local 127.0.0.1; não é hospedagem pública. |
+| entrega.py | ZIP privado e documento de uma página. |
+
+### Comandos para uso técnico
+
+```powershell
+# Novo processamento completo: cria outro fechamento
+py -3.12 executar.py
+# Abrir o fechamento mais recente, sem reprocessar
+py -3.12 executar.py --panel
+# Abrir um fechamento específico
+py -3.12 executar.py --session "resultados/PASTA DO FECHAMENTO" --panel
+# Aplicar o Excel salvo de um fechamento
+py -3.12 executar.py --session "resultados/PASTA DO FECHAMENTO" --update-reviews --panel
 ```
 
-Python 3.12 é a versão dos ensaios. As dependências estão fixadas. O painel não exige React, Node, hospedagem ou banco remoto. A automação usa código e bibliotecas de leitura diretamente, evitando clicar em interfaces bancárias ou depender de Selenium para interpretar os arquivos.
+Também disponíveis: --ai-mode off/consultivo/automatico, --ai-scope excecoes/todos, --period AAAA-MM, --no-cache, --no-ocr e --strict. O CMD aceita parâmetros explícitos, mas os atalhos das pastas dispensam isso para o usuário comum. O fechamento mantém competência e modo originais ao ser reaberto pelo seu atalho.
+
+config.toml usa caminhos relativos ao projeto. O índice do fechamento mais recente fica em .local/runtime/sessao_atual.json, separado dos resultados. Cache, logs de abertura e trava também ficam em .local/runtime. Cada fechamento tem sua própria base operacional; o painel não segue o índice global após abrir.
 
 ### Contrato de resposta da IA
 
@@ -384,144 +334,19 @@ Nos cinco documentos do ensaio, o total passou de **23.382 tokens em low para 27
 
 `ai_batch_size = 5` permanece como opção de agrupamento. Nesse modo, IDs associam cada resultado ao documento; uma falha exige reenviar o grupo completo. O padrão individual foi escolhido para reduzir retrabalho e facilitar retomadas.
 
-### Estrutura e validação
 
-```text
-executar.py          entrada simples e ponto de empacotamento
-config.toml          parâmetros
-modelo.xlsx          modelo fornecido
-extratos/            documentos fictícios de entrada
-goener/              leitura, regras, IA, relatórios e empacotamento
-validacao/           testes, execuções anteriores, logs e evidências
-entrega/             ZIP, consolidado e documentação de uma página
-.local/              execução e construção locais; fora do Git
-```
+## 4. Validação e entrega
 
-`goener/` mantém sete módulos operacionais: `core.py`, `readers.py`, `ai.py`, `reporting.py`, `pipeline.py`, `revisoes.py` e `painel.py`; `report.html` é a apresentação e `entrega.py` prepara os arquivos de envio. A integração contínua está em `.github/`. O painel usa o servidor HTTP da biblioteca padrão do Python, apenas local. Não há hospedagem, banco remoto ou instalação de serviço Windows.
-
-Veja **[validacao/README.md](validacao/README.md)** para o histórico selecionado e como reproduzir os testes. Os registros antigos preservam as configurações, commits, logs e resultados das respectivas rodadas. A migração para o executável tem evidência própria; não se presume funcionamento apenas porque o empacotamento terminou.
-
-### Gerar a entrega
-
-```powershell
-py -3.12 -m goener.entrega --include-env
-```
-
-O ZIP inclui código, dependências declaradas, CMD, configuração, modelo, entradas e resultado de referência. Não inclui interpretador Python, EXE ou caches. O avaliador instala Python 3.12 e as dependências uma vez. `--include-env` inclui a chave no pacote privado autorizado; sem essa opção, não inclui a credencial.
-
-### Parâmetros operacionais
-
-Os mesmos parâmetros funcionam em `Executar automacao.cmd` e `py -3.12 executar.py`:
-
-| Parâmetro | Uso |
-| --- | --- |
-| `--panel` | Aplicar revisões existentes e abrir painel local. |
-| `--update-reviews` | Regenerar com decisões, sem nova chamada à IA. |
-| `--ai-mode off/consultivo/automatico` | Atuação da IA. |
-| `--ai-scope excecoes/todos` | Arquivos que recebem análise. |
-| `--period 2026-11` | Competência do processamento completo. |
-| `--input`, `--output`, `--config` | Caminhos/configuração. |
-| `--no-cache` | Forçar nova extração/análise no fluxo completo, respeitando cotas. |
-| `--no-ocr` | Desligar OCR; imagens ficam como falha. |
-| `--strict` | Publicar e retornar 2 se houver revisar/falhou. |
-| `--version` | Versão. |
-
-### Integridade operacional e registros
-
-`--update-reviews` lê as evidências da última publicação, verifica seu hash no manifesto, compara nomes/hashes das entradas e exige mesma competência e modo de IA. Novas entradas, remoções ou alterações exigem o fluxo completo. Esse modo não refaz a extração financeira; PDF digitalizado ainda pode exigir OCR só para localizar grifos. Edição da planilha durante o processamento impede sobrescrita silenciosa.
-
-| Registro | Conteúdo |
-| --- | --- |
-| `execucao.log` / `execucao.jsonl` | Eventos legíveis/estruturados por execução e documento. |
-| `evidencias.json` | Extração, conciliação, referências, decisões e saldo original/efetivo. |
-| `resumo.json` | Quantidades, duração, versão/commit, configuração, cache e tentativas HTTP. |
-| `manifesto.json` | SHA-256 de entradas, modelo e saídas, inclusive destaques. |
-
-O manifesto permite verificar integridade; não autentica o banco emissor. Saída 0 significa publicação concluída, não que todos os documentos estejam corretos. O painel exige origem local e token da sessão, rejeita telas antigas e não serve `.env`. O campo Responsável é declarado, não autenticação corporativa; o servidor é para uso local por um operador.
-
-### Conferência do pacote de envio
-
-A distribuição atual é somente Python/CMD. Ensaios anteriores de EXE são históricos e não fazem parte do modo atual.
-
-### O que foi validado e o que ainda exige homologação
-
-
-**138 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
-
-Na versão **1.10.2**, a planilha também foi aberta no **Excel Desktop**: sem pedido de reparo, com total de R$ 4.114.372,29 e contagens 12 ok / 4 revisar / 1 falhou. Em cópia descartável, aumentar um saldo em R$ 1 atualizou o resumo para R$ 4.114.373,29; a alteração foi desfeita. A competência também foi alterada e restaurada em outra cópia para verificar o recálculo. Registro em `validacao/excel_desktop.json`.
-
-**Correção de compatibilidade:** antes havia AutoFilter da planilha e da tabela sobre a mesma área. O Excel removia a tabela ao reparar o arquivo, deixando as referências das fórmulas como `#REF!`. Agora o filtro fica somente na tabela; um teste verifica também o XML do XLSX. Os testes anteriores com openpyxl não haviam detectado essa incompatibilidade. Se estiver com uma versão antiga aberta como “Reparado”, feche-a e abra o novo `resultados/consolidado.xlsx`; salvar a cópia reparada não restaura a tabela removida. A coluna do total também foi ampliada para exibir o saldo sem `#####`.
-
-
-Git registra fonte, configuração e evidências técnicas; credenciais, caches, ZIP e relatórios gerados não entram no versionamento atual. Commits descrevem alterações objetivas. O workflow `.github/workflows/ci.yml` configura lint, testes e execução em Windows/Linux, com logs/JSON como artefatos; seu resultado precisa ser consultado, não presumido pela presença da configuração.
+Testes e registros ficam em validacao/. A suíte cobre regras financeiras, duplicidade, OCR, JSON, retries, fórmulas, segurança de entrada, publicação, revisão, arquivos alterados e isolamento entre dois fechamentos. A abertura no Excel Desktop e a navegação do link são verificadas separadamente; abrir com openpyxl não basta para comprovar compatibilidade.
 
 ```powershell
 py -3.12 -m ruff check goener executar.py validacao
 py -3.12 -m pytest -q
-```
-
-Para atualizar o pacote:
-
-```powershell
 py -3.12 -m goener.entrega --include-env
 ```
 
-O gerador usa arquivos rastreados pelo Git; adicione fontes novas antes de empacotar. O padrão seleciona a publicação em `latest.json`; `--run` escolhe outra. A primeira execução do ZIP cria `resultados/` e caches próprios; `resultado/` contém apenas a referência consultável. Não copie caches do desenvolvedor para apresentar um ensaio como primeira execução.
+A entrega tem três arquivos: goener_automacao.zip, consolidado.xlsx e documentacao_1_pagina.pdf. O ZIP contém o projeto e um resultado de referência em resultado/, com Abrir painel.cmd e Aplicar revisoes.cmd próprios. Novos fechamentos são criados em resultados/. O empacotamento compara fontes atuais e preserva os artefatos da execução escolhida. Não há EXE/PyInstaller nem macros.
 
-## Referências
+Fonte, configuração e validação são versionados. Relatórios, ZIP, cache e .env não vão para o Git. O ZIP privado inclui .env somente por solicitação explícita do responsável; quem receber a chave poderá consumir a cota dela. Não publique esse pacote privado em repositório aberto.
 
-- [RapidOCR](https://rapidai.github.io/RapidOCRDocs/main/en/install_usage/rapidocr/usage/)
-- [Gemini: documentos e Base64](https://aistudio.google.com/docs/document-processing)
-- [Gemini: thinking e consumo](https://aistudio.google.com/docs/thinking)
-- [Gemini: resolução de mídia](https://aistudio.google.com/docs/media-resolution)
-- [Gemini: cotas](https://aistudio.google.com/docs/rate-limits)
-- [Gemini: faturamento](https://aistudio.google.com/docs/billing)
-
-
-### Diagnóstico de abertura — versão 1.9.2
-
-Sem mensagens de andamento adicionais. A abertura por `Executar automacao.cmd` ou `executar.py` usa um supervisor leve: registra stdout/stderr e o código de saída, inclusive se o processo de trabalho encerrar abruptamente. Na abertura interativa sem parâmetros, uma falha mantém o console aguardando Enter. Pelo terminal, o código é retornado; o CMD mantém a janela aberta em erro. Não há reinício automático do lote.
-
-Os diagnósticos de abertura ficam em `resultados/historico/diagnosticos/`; o caminho exato aparece no erro. Se esse diretório não permitir escrita, usa uma pasta temporária e informa o caminho. O arquivo `_nativo.log` usa faulthandler quando o Python consegue capturar a falha nativa; nem todo encerramento do Windows produz uma pilha. Se o próprio Python ou CMD for bloqueado antes de iniciar, o programa não consegue gerar seu log. Os eventos por documento continuam em `.local/runtime/logs` e no histórico publicado.
-
-Em `resultados`, use somente `consolidado.xlsx` e `relatorio.html`. O índice técnico `latest.json`, snapshots e demais artefatos ficam em `historico`. O snapshot do Excel é intencional para preservar o que foi publicado antes de alterações manuais. Feche a planilha operacional antes de atualizar.
-
-
-
-### Distribuição Python 1.10.0
-
-Os registros antigos de EXE permanecem somente em validacao como histórico; não homologam nem integram a distribuição atual. O empacotamento de binários foi retirado. O CMD atual chama o Python e mantém erros visíveis. Sem argumentos, abre o painel automaticamente; parâmetros explícitos continuam sendo repassados. Para aplicar revisões salvas no Excel e abrir o painel, use `& ".\Executar automacao.cmd" --update-reviews --panel`; para atualizar sem abrir painel, use `& ".\Executar automacao.cmd" --update-reviews`.
-
-
-### Relatório, evidências e portabilidade de caminhos
-
-Abra `resultados/relatorio.html`, o painel pelo CMD ou o exemplo `resultado/relatorio.html` do ZIP extraído. `goener/report.html` é o template de código; abri-lo diretamente agora mostra um aviso com acesso ao resultado, sem oferecer links de evidências que não existem naquela pasta.
-
-Os links de Excel, evidências, log e manifesto são relativos à publicação; não contêm um usuário Windows fixo. O índice `resultados/historico/latest.json` grava o diretório como identificador relativo. Índices antigos com caminho absoluto são resolvidos novamente pelo identificador local validado quando a pasta é movida. O CMD usa `%~dp0` para entrar na pasta onde ele está; não precisa substituir `%USERNAME%`. Os caminhos padrão do config são relativos ao config, e o projeto pode ficar em outra unidade ou perfil. Registros históricos podem conter caminhos absolutos como proveniência da execução, não como dependência de abertura dos links. Configurações absolutas personalizadas devem ser ajustadas se o usuário escolher usá-las.
-
-
-### Planilha simplificada — versão 1.11.0
-
-São apenas duas abas. **Consolidado** abre com saldo considerado, mês e contagens; abaixo ficam os oito campos exigidos, com filtros. As observações usam frases curtas, como “Cópia idêntica; não entra no total” ou “Saldo final não confere com as movimentações; fora do total”, com referência para conferir e indicação breve da IA quando disponível. Recomendação da IA não equivale a liberação: a frase informa o efeito efetivo no total. Detalhes completos, motivos, modelos e evidências continuam no HTML/JSON.
-
-**Revisões** contém as pendências, decisões anteriores e rascunhos já preenchidos. Uma revisão parcial não é apagada. As colunas técnicas de identificação/fechamento e o resultado detalhado ficam ocultos; continuam no arquivo para validar a sincronização. Preencha as células amarelas, salve, feche e reexecute. As abas separadas Resumo e Instruções foram retiradas da saída; o modelo original permanece intacto.
-
-As fórmulas continuam ligadas à tabela Extratos e o filtro fica somente na tabela, preservando a correção de compatibilidade com o Excel Desktop.
-
-A versão simplificada foi aberta no Excel Desktop sem pedido de reparo: R$ 4.114.372,29, 12 incluídos, 4 para conferir, 1 falha e 17 arquivos registrados. Em uma cópia, aumentar E8 em R$ 1 aumentou o total E2 em R$ 1; a edição foi desfeita. Os 134 testes passaram, incluindo o fluxo de revisão pelo painel. Registro em `validacao/excel_simples.json`.
-
-
-### Saldo exibido não significa saldo aprovado
-
-Quando um extrato apresenta divergência, o cartão pode mostrar o valor declarado no documento para permitir a conferência. A legenda **Valor de referência · fora do total** e a linha **Contribuição deste arquivo no total: R$ 0,00** deixam explícito que esse valor não foi somado. Por exemplo: R$ 457.179,12 declarado versus R$ 456.099,12 calculado ficam pendentes; nenhum é escolhido automaticamente para o fechamento. Uma revisão humana registrada pode liberar o original, corrigir e liberar ou manter a exclusão, conforme as regras.
-
-Para revisar no navegador, dê duplo clique em **Executar automacao.cmd** e use a página que ele abrir automaticamente. Abas antigas e relatórios dentro do histórico preservam a execução anterior. Expanda o arquivo e clique em **Revisar este arquivo**, ao lado da cópia destacada. Mantenha o terminal aberto. Abrir `resultados/relatorio.html` pelo Explorer permite consulta; salvar decisões exige o painel local.
-
-
-### Abertura simples — versão 1.12.0
-
-**Uso diário: dois cliques em Executar automacao.cmd.** O painel abre no navegador e o botão Revisar este arquivo fica disponível nos cartões expandidos. O terminal precisa permanecer aberto enquanto o painel estiver em uso.
-
-Na primeira abertura sem resultados, o robô processa os extratos e abre o painel. Nas demais, abre o resultado existente sem OCR, chamadas de IA ou nova publicação. Para apenas consultar, o Excel pode estar aberto; feche-o antes de salvar decisões pelo painel. Os arquivos HTML do histórico continuam como registros de consulta.
-
-**Referência técnica:** o CMD sem argumentos chama internamente `py -3.12 executar.py --panel`. Argumentos fornecidos explicitamente continuam sendo repassados. `--panel` abre a publicação existente; `--update-reviews --panel` aplica as revisões salvas no Excel antes de abrir. Para arquivos novos ou alterados na pasta, execute o processamento completo com `py -3.12 executar.py`. Abrir um resultado existente não implica reprocessar as entradas.
+O servidor aceita somente origem local e token da sessão, rejeita tela antiga e não serve .env. Responsável é informado pelo operador, não autenticação corporativa. Não exponha o painel na rede. Hash detecta diferença de conteúdo, não garante autenticidade ou qualidade da leitura. Os testes nesta máquina não substituem homologação de novos formatos ou de outro Excel.

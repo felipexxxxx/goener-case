@@ -50,6 +50,8 @@ def publication_directory(output_dir):
 
     output_dir = Path(output_dir).resolve()
     pointer = latest_pointer(output_dir)
+    if not pointer.exists() and (output_dir / "resumo.json").is_file():
+        return output_dir
     data = json.loads(pointer.read_text(encoding="utf-8"))
     run_id = data["run_id"]
     if not isinstance(run_id, str) or not re.fullmatch(r"[0-9]{8}T[0-9]{6}Z_[0-9a-f]{8}", run_id):
@@ -173,11 +175,13 @@ def estimate_effort(results, summary):
 def workbook_note(result):
     """Resumo operacional; a evidência completa permanece no HTML e no JSON."""
     if result.human_review.get("state") == "applied":
-        return (
+        note = (
             "Excluído do total após revisão."
             if result.human_review["decision"] == "Excluir"
             else "Saldo confirmado em revisão e incluído no total."
         )
+        reason = result.ai.get("reason") or result.ai.get("message")
+        return note + ("\nAnálise da IA: " + human_text(reason) if reason else "")
     codes = {i.code for i in result.statement.issues}
     if result.duplicate_of:
         problem = "Cópia idêntica; não entra no total."
@@ -204,19 +208,10 @@ def workbook_note(result):
     if result.status != "ok" or result.ai.get("source_disagreements"):
         where = result.review_reference["where"]
         problem += " Confira: " + where[:100] + "."
-    decision = result.ai.get("decision")
-    if decision in ("considerar", "nao_considerar", "revisar"):
-        problem += (
-            " IA: "
-            + {
-                "considerar": "recomenda incluir",
-                "nao_considerar": "recomenda excluir",
-                "revisar": "recomenda conferir",
-            }[decision]
-            + "."
-        )
-    elif decision == "indisponivel":
-        problem += " IA indisponível."
+    if needs_attention(result) and result.ai:
+        reason = result.ai.get("reason") or result.ai.get("message")
+        if reason:
+            problem += "\nAnálise da IA: " + human_text(reason)
     return problem
 
 
@@ -274,6 +269,7 @@ def write_workbook(
     results: list[Result],
     period: str | None = None,
     review_rows: list | None = None,
+    report_path: Path | None = None,
 ) -> None:
     wb = load_workbook(template, keep_links=False)
     try:
@@ -327,7 +323,7 @@ def write_workbook(
             lines = sum(
                 max(1, math.ceil(len(line) / 64)) for line in workbook_note(result).splitlines()
             )
-            ws.row_dimensions[row_number].height = min(96, max(40, lines * 13 + 10))
+            ws.row_dimensions[row_number].height = min(409, max(40, lines * 13 + 10))
         for col, width in zip("ABCDEFGH", (37, 22, 16, 14, 21, 19, 13, 66), strict=True):
             ws.column_dimensions[col].width = width
         ws.freeze_panes = "C8"
@@ -379,6 +375,9 @@ def write_workbook(
         from .revisoes import write_reviews
 
         write_reviews(wb, results, review_rows or [], period or "")
+        wb["Revisões"]["A3"].hyperlink = (
+            (report_path or destination.parent / "relatorio.html").resolve().as_uri()
+        )
         wb.calculation = CalcProperties(
             calcId=0, fullCalcOnLoad=True, forceFullCalc=True, calcMode="auto"
         )
@@ -415,7 +414,7 @@ def write_workbook(
         check.close()
 
 
-def write_html(path: Path, summary: dict, results: list[Result]) -> None:
+def write_html(path: Path, summary: dict, results: list[Result], *, source_directory=None) -> None:
     def br(value):
         return f"{float(value):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
@@ -442,7 +441,7 @@ def write_html(path: Path, summary: dict, results: list[Result]) -> None:
     rows, bank_totals, bank_counts, attention_links = [], {}, Counter(), []
     cfg = summary.get("configuration", {})
     input_dir = Path(cfg.get("input_dir", path.parent))
-    source_base = source_root(path.parent, input_dir)
+    source_base = source_root(source_directory or path.parent, input_dir)
     decisions = {
         "considerar": "IA sugere considerar",
         "revisar": "IA sugere revisão",

@@ -1,0 +1,24 @@
+{
+  "version": "1.13.0",
+  "tests": {
+    "passed": 141,
+    "seconds": 53.99,
+    "ruff": "passed"
+  },
+  "isolation": "Dois fechamentos reais em pasta temporária; POST revisa o primeiro, atualiza o seu HTML de consulta e mantém o Excel do segundo intacto.",
+  "reference_without_index": "Resposta HTTP 200 para resultado empacotado/snapshot sem latest.json.",
+  "native_excel": {
+    "copy": "sessao.xlsx",
+    "repair_prompt": false,
+    "balance": "4114372.29",
+    "ai_reason_visible": true,
+    "link_clicked": "Revisões!A3",
+    "destination_scheme": "file",
+    "destination": "Fechamento 2026-10 -- 15-11-2026 12h01 -- migrado/historico/20261115T150414Z_abe04fa0/relatorio.html",
+    "onedrive_redirect": false,
+    "office_confirmation": true
+  },
+  "cmd_test": "Aplicar revisoes.cmd executado da pasta de fechamento, sem parâmetros do operador; abriu painel local.",
+  "historical_data": "Execuções anteriores preservadas dentro do fechamento migrado; iniciadores e diagnósticos legados em .local/legado.",
+  "external_ai_calls": 0
+}

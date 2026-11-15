@@ -149,6 +149,9 @@ def one_page(path: Path, summary: dict) -> None:
 def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
     if include_env and not (ROOT / ".env").is_file():
         raise ValueError("Arquivo .env não encontrado para inclusão no pacote privado")
+    from .sessao import write_launchers
+
+    write_launchers(run_dir)
     summary = json.loads((run_dir / "resumo.json").read_text(encoding="utf-8"))
     destination.mkdir(parents=True, exist_ok=True)
     shutil.copy2(run_dir / "consolidado.xlsx", destination / "consolidado.xlsx")
@@ -161,7 +164,12 @@ def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
     archive = destination / "goener_automacao.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
         for name in names:
-            if name and not name.startswith("entrega/") and Path(name).name != ".env":
+            if (
+                name
+                and not name.startswith("entrega/")
+                and Path(name).name != ".env"
+                and (ROOT / name).is_file()
+            ):
                 z.write(ROOT / name, "goener-case/" + name)
         if include_env:
             z.write(ROOT / ".env", "goener-case/.env")
@@ -204,5 +212,9 @@ if __name__ == "__main__":
         help="Inclui a credencial .env no ZIP privado, por solicitação explícita",
     )
     args = parser.parse_args()
-    selected = args.run or publication_directory(load_config(ROOT / "config.toml").output_dir)
+    from .sessao import select_session
+
+    selected = args.run or publication_directory(
+        select_session(load_config(ROOT / "config.toml")).output_dir
+    )
     print(build(selected, args.destination, include_env=args.include_env))

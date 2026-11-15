@@ -340,7 +340,7 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
         previous_results = {}
         if reviews_only:
             previous_dir = publication_directory(config.output_dir)
-            if previous_dir.parent not in (
+            if previous_dir != config.output_dir.resolve() and previous_dir.parent not in (
                 config.output_dir.resolve(),
                 (config.output_dir / "historico").resolve(),
             ):
@@ -493,15 +493,28 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
             }
             stage = config.output_dir / f".{run_id}.pending"
             stage.mkdir()
+            from .sessao import write_launchers
+
+            write_launchers(stage)
             write_highlights(stage, results, config, ocr, log)
             write_workbook(
-                config.template, stage / "consolidado.xlsx", results, config.period, review_rows
+                config.template,
+                stage / "consolidado.xlsx",
+                results,
+                config.period,
+                review_rows,
+                report_path=config.output_dir / "relatorio.html",
             )
             atomic_json(stage / "evidencias.json", [r.to_dict() for r in results])
             summary["duration_seconds"] = round(time.perf_counter() - start, 3)
             summary["time_estimate"] = estimate_effort(results, summary)
             atomic_json(stage / "resumo.json", summary)
-            write_html(stage / "relatorio.html", summary, results)
+            write_html(
+                stage / "relatorio.html",
+                summary,
+                results,
+                source_directory=config.output_dir / "historico" / run_id,
+            )
             log.event(
                 "ARTIFACTS_VALIDATED",
                 rows=len(results),
@@ -587,6 +600,7 @@ def main(argv=None) -> int:
         action="store_true",
         help="Abre painel local para revisar pelo HTML; mantenha o processo aberto",
     )
+    parser.add_argument("--session", type=Path, help="Pasta de um fechamento específico")
     args = parser.parse_args(argv)
     try:
         config = load_config(
@@ -600,20 +614,33 @@ def main(argv=None) -> int:
             ai_mode=args.ai_mode,
             ai_scope=args.ai_scope,
         )
+        from .sessao import remember_session, select_session
+
+        session_root = config.output_dir
+        config = select_session(
+            config, args.session, create=not (args.panel or args.update_reviews or args.session)
+        )
         if args.panel:
             from .painel import serve
 
             if args.update_reviews:
                 run(config, reviews_only=True)
-            elif not latest_pointer(config.output_dir).exists():
+            elif (
+                not latest_pointer(config.output_dir).exists()
+                and not (config.output_dir / "resumo.json").exists()
+            ):
                 run(config)
             else:
                 # Abrir resultados existentes não deve exigir fechar o Excel,
                 # reprocessar documentos ou consumir IA.
                 publication_directory(config.output_dir)
+            if not args.session:
+                remember_session(config, session_root)
             serve(config)
             return 0
         directory, summary, code = run(config, reviews_only=args.update_reviews)
+        if not args.session:
+            remember_session(config, session_root)
         print(
             json.dumps(
                 {

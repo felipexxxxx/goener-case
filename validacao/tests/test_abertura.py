@@ -11,7 +11,7 @@ def test_supervisor_records_abrupt_exit_and_waits_for_desktop(tmp_path, monkeypa
     monkeypatch.setattr("builtins.input", lambda message: prompts.append(message))
     code = supervise([sys.executable, "-c", "import os;os._exit(37)"], tmp_path, desktop=True)
     assert code == 37 and prompts
-    logs = list((tmp_path / "resultados/historico/diagnosticos").glob("*.log"))
+    logs = list((tmp_path / ".local/runtime/diagnosticos").glob("*.log"))
     assert "codigo=37" in logs[0].read_text(encoding="utf-8")
 
 

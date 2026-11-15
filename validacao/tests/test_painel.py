@@ -86,3 +86,76 @@ def test_local_panel_validates_token_and_updates_both_outputs(config, name):
         finally:
             server.shutdown()
             thread.join(timeout=5)
+
+
+def test_editing_pinned_session_updates_its_static_html_and_not_other_session(config):
+    from goener.sessao import remember_session, select_session
+
+    shutil.copyfile(ROOT / "extratos" / NAME, config.input_dir / NAME)
+    first = select_session(config, create=True)
+    first_dir, _, _ = run(first)
+    second = select_session(config, create=True)
+    second_dir, _, _ = run(second)
+    remember_session(second, config.output_dir)
+    second_before = (second.output_dir / "consolidado.xlsx").read_bytes()
+    static_before = (first.output_dir / "relatorio.html").read_bytes()
+    with make_server(first) as server:
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        origin = f"http://127.0.0.1:{server.server_port}"
+        try:
+            with urlopen(origin) as response:
+                page = response.read().decode()
+            token = re.search("const token='([^']+)'", page)[1]
+            evidence = json.loads((first_dir / "evidencias.json").read_text(encoding="utf-8"))[0]
+            summary = json.loads((first_dir / "resumo.json").read_text(encoding="utf-8"))
+            payload = {
+                "file": NAME,
+                "sha256": evidence["sha256"],
+                "run_id": summary["run_id"],
+                "decision": "Corrigir e liberar",
+                "balance": "456099.12",
+                "reason": "Conferido",
+                "reviewer": "Teste",
+                "date": "2026-11-15",
+            }
+            request = Request(
+                origin + "/api/review",
+                data=json.dumps(payload).encode(),
+                headers={
+                    "Content-Type": "application/json",
+                    "Origin": origin,
+                    "X-Goener-Token": token,
+                },
+            )
+            with urlopen(request) as response:
+                assert response.status == 200
+            assert (first.output_dir / "relatorio.html").read_bytes() != static_before
+            with urlopen(origin) as response:
+                assert "Revisão humana registrada" in response.read().decode()
+            assert (second.output_dir / "consolidado.xlsx").read_bytes() == second_before
+            assert select_session(config).output_dir == second.output_dir
+            assert (first.output_dir / "Abrir painel.cmd").is_file()
+            assert (first.output_dir / "Aplicar revisoes.cmd").is_file()
+        finally:
+            server.shutdown()
+            thread.join(timeout=5)
+
+
+def test_packaged_reference_or_snapshot_can_open_without_latest_index(config):
+    from dataclasses import replace
+
+    shutil.copyfile(ROOT / "extratos" / NAME, config.input_dir / NAME)
+    directory, _, _ = run(config)
+    reference_config = replace(config, output_dir=directory)
+    assert not (directory / "latest.json").exists()
+    with make_server(reference_config) as server:
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            with urlopen(f"http://127.0.0.1:{server.server_port}/") as response:
+                assert response.status == 200
+                assert NAME in response.read().decode()
+        finally:
+            server.shutdown()
+            thread.join(timeout=5)

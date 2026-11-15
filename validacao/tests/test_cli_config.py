@@ -32,6 +32,8 @@ def test_cli_forwards_operational_switches(monkeypatch, tmp_path, capsys):
         )
 
     monkeypatch.setattr("goener.pipeline.run", fake_run)
+    monkeypatch.setattr("goener.sessao.select_session", lambda cfg, *a, **k: cfg)
+    monkeypatch.setattr("goener.sessao.remember_session", lambda *a, **k: None)
     assert (
         main(
             [
