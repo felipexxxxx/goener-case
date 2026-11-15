@@ -2,7 +2,7 @@
 
 Automação em Python que lê uma pasta de extratos e publica Excel, HTML, logs e evidências. O fluxo principal termina sem intervenção manual entre etapas. Regras financeiras fazem a primeira conferência; o Gemini complementa as exceções. A revisão posterior é opcional e fica registrada.
 
-**Versão 1.9.2.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
+**Versão 1.10.0.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
 
 Três níveis de leitura:
 
@@ -12,44 +12,30 @@ Três níveis de leitura:
 
 ## 1. Usar e avaliar
 
-### Executar no Windows, sem instalar Python
+### Executar no Windows — Python convencional
 
-1. Extraia **todo o ZIP** `entrega/goener_automacao.zip` em uma pasta com permissão de escrita.
-2. Entre na pasta `goener-case/` extraída. Mantenha `Goener.exe`, `config.toml`, `modelo.xlsx`, `.env` e a pasta `extratos/` juntos.
-3. Coloque os documentos em `extratos/` e execute `Goener.exe`.
-
-Também é possível executar pelo PowerShell, mantendo as mensagens visíveis:
+A versão atual **não distribui EXE nem usa PyInstaller**. Instale Python 3.12 uma vez, extraia todo o ZIP e entre na pasta `goener-case/`. No terminal dessa pasta, instale as dependências:
 
 ```powershell
-.\Goener.exe
-.\Goener.exe --ai-mode off
-.\Goener.exe --period 2026-11
+py -3.12 -m pip install -r requirements-lock.txt
 ```
 
-O executável inclui o interpretador Python, bibliotecas e modelos OCR. Foi construído para **Windows x64**; não é um executável de Linux ou macOS. O modo de arquivo único extrai bibliotecas temporariamente na inicialização, por isso existe um tempo de abertura além do processamento medido. Não precisa executar pip nem ativar ambiente. OCR e regras rodam localmente; a IA precisa de internet e chave válida. O pacote privado inclui `.env`; não publique esse ZIP, pois ele contém a credencial autorizada para a avaliação.
+Depois, dê duplo clique em **Executar automacao.cmd**. Ele chama o Python, processa os arquivos e abre o painel. Mantenha o console aberto enquanto usa o formulário. Não há criação de ambiente virtual. Se faltar Python, o CMD informa o requisito e não fecha imediatamente. Em caso de erro, o console fica aberto e informa o caminho do diagnóstico.
 
-**Se o Windows bloquear o EXE:** tente executá-lo novamente. Nesta máquina, a primeira tentativa foi bloqueada e a segunda funcionou com o mesmo arquivo. Isso não garante que o Windows deixe de bloquear nas próximas execuções ou em outros computadores. Se persistir, use o código Python, conforme os dois comandos abaixo; não é necessário desativar a proteção do Windows. O bloqueio acontece antes de o programa iniciar e não é uma regra da automação.
-
-**Onde estão os resultados?** Na pasta **`resultados/`**, na raiz do projeto:
-
-- **`relatorio.html`** abre o último relatório concluído, com filtros e detalhes das ressalvas.
-- **`consolidado.xlsx`** é a planilha operacional. Registre decisões na aba Revisões, salve e feche antes de atualizar.
-- A pasta **historico** agrupa as fotografias de cada execução, os destaques e arquivos técnicos. O Excel da raiz é a base de trabalho; o Excel do histórico é uma fotografia para auditoria, não outra base a editar. A planilha operacional aberta impede sua atualização; salve, feche e execute novamente.
-
-Por duplo clique no EXE, o painel local abre no navegador ao concluir. Mantenha o processo aberto para salvar revisões pelo formulário. O HTML salvo continua disponível para consulta sem o processo aberto. Pelo terminal, o programa informa os caminhos. `resultados/historico/latest.json` identifica a última publicação. Saídas antigas em `.local/outputs/` continuam preservadas; os relatórios gerados não são enviados ao Git. Não há agendamento nem monitoramento automático instalados nesta versão.
+Resultados principais: **resultados/consolidado.xlsx** é a planilha operacional e **resultados/relatorio.html** abre o último relatório. **resultados/historico/** agrupa snapshots, destaques, índices e diagnósticos; não edite o Excel do histórico.
 
 ### Executar pelo código-fonte
 
-Esta é também a alternativa caso o Windows bloqueie `Goener.exe`. Instale o **Python 3.12**, abra o terminal na pasta do projeto e execute:
+Você também pode executar diretamente pelo terminal. Instale o **Python 3.12**, abra o terminal na pasta do projeto e execute:
 
 ```powershell
 py -3.12 -m pip install -r requirements-lock.txt
 py -3.12 executar.py
 ```
 
-O primeiro comando instala as dependências; o segundo executa a automação completa, com os mesmos arquivos, `.env` e resultados do EXE. Não basta instalar as dependências: é necessário executar `executar.py`. Nas próximas vezes, basta o segundo comando.
+O primeiro comando instala as dependências; o segundo executa a automação completa, com os mesmos arquivos e `.env` usados pelo CMD. Não basta instalar as dependências: é necessário executar `executar.py`. Nas próximas vezes, basta o segundo comando.
 
-`py -3.12 -m goener` é uma entrada equivalente. No Linux/macOS, use um Python compatível e `python3 -m goener`; o executável distribuído continua sendo exclusivo de Windows. Não há criação de ambiente virtual. Para configurar a IA, copie `.env.example` como `.env`, ao lado de `config.toml`:
+`py -3.12 -m goener` é uma entrada equivalente. No Linux/macOS, use um Python compatível e `python3 -m goener`; o CMD é exclusivo de Windows, mas o código Python é multiplataforma. Não há criação de ambiente virtual. Para configurar a IA, copie `.env.example` como `.env`, ao lado de `config.toml`:
 
 ```dotenv
 GEMINI_API_KEY=sua_chave_aqui
@@ -57,7 +43,7 @@ GEMINI_API_KEY=sua_chave_aqui
 
 O Python lê esse arquivo automaticamente, com prioridade sobre variáveis do processo, sem sessão de navegador ou busca da chave no usuário do Windows. O Git ignora `.env`; somente o exemplo vazio é versionado. O robô não ativa faturamento. O projeto usado nos ensaios estava no Free Tier; o plano e as cotas efetivas devem ser conferidos no Google AI Studio.
 
-Parâmetros operacionais, válidos também para `Goener.exe`:
+Parâmetros operacionais, válidos também para `Executar automacao.cmd`:
 
 ```powershell
 py -3.12 executar.py --ai-mode consultivo --ai-scope todos
@@ -73,7 +59,7 @@ py -3.12 executar.py --strict
 
 O enunciado pede automação funcionando, planilha consolidada e **documentação de uma página** com fluxo, premissas, ganho em horas por mês com conta explicada e até três próximos passos.
 
-A pasta `entrega/` mantém três arquivos: **ZIP da automação, consolidado Excel e documentação de uma página**. O ZIP inclui o executável Windows, fonte, README, configuração, entradas e resultado de referência em `resultado/`. Essa pasta singular é um exemplo consultável; a primeira execução cria a base operacional em `resultados/`. Testes, logs e evidências técnicas ficam agrupados em `validacao/`, inclusive no Git, separados da operação. HTML, Excel e PDF gerados ficam apenas na entrega local e no ZIP privado; não são mais versionados. Os commits antigos continuam no histórico.
+A pasta `entrega/` mantém três arquivos: **ZIP da automação, consolidado Excel e documentação de uma página**. O ZIP inclui o iniciador CMD, fonte, README, configuração, entradas e resultado de referência em `resultado/`. Essa pasta singular é um exemplo consultável; a primeira execução cria a base operacional em `resultados/`. Testes, logs e evidências técnicas ficam agrupados em `validacao/`, inclusive no Git, separados da operação. HTML, Excel e PDF gerados ficam apenas na entrega local e no ZIP privado; não são mais versionados. Os commits antigos continuam no histórico.
 
 | Saída por execução | Finalidade |
 | --- | --- |
@@ -90,9 +76,8 @@ O lote fornecido contém **17 arquivos: 12 ok, 4 revisar e 1 falhou**, com saldo
 
 ### Painel interativo
 
-**Validação histórica da versão 1.9.1:** 124 testes passaram; a atualização e a abertura do painel por aquele EXE foram verificadas nesta máquina. A primeira tentativa do EXE foi bloqueada pelo Windows e a repetição concluiu, sem mudar proteções. O formulário completo foi testado em uma cópia separada; nenhuma correção de ensaio foi aplicada à base entregue.
 
-Execute **Goener.exe** para processar e abrir o painel; ou **Abrir painel.cmd** para abrir os resultados existentes. No painel, clique em **Revisar este arquivo**, preencha a decisão e clique em **Salvar e atualizar**. O programa mantém o Excel e o HTML sincronizados. Deixe a janela do robô aberta enquanto usa esses botões. A execução automática pela pasta continua disponível pelos mesmos parâmetros de terminal, sem intervenção manual entre etapas.
+Execute **Executar automacao.cmd** para processar e abrir o painel; ou `Executar automacao.cmd --panel` para abrir os resultados existentes. No painel, clique em **Revisar este arquivo**, preencha a decisão e clique em **Salvar e atualizar**. O programa mantém o Excel e o HTML sincronizados. Deixe a janela do robô aberta enquanto usa esses botões. A execução automática pela pasta continua disponível pelos mesmos parâmetros de terminal, sem intervenção manual entre etapas.
 
 ### Conferir e corrigir sem perder o histórico
 
@@ -100,7 +85,7 @@ Use sempre **`resultados/consolidado.xlsx`** como planilha de trabalho. A aba **
 
 1. No HTML, clique em **Abrir cópia destacada**. Os trechos numerados têm explicação visível ao lado. O original não é alterado.
 2. Na aba **Revisões**, encontre o arquivo e preencha somente as colunas amarelas **F a J**: decisão, saldo confirmado quando necessário, justificativa, responsável e data.
-3. **Salve e feche o Excel.** Execute **`Abrir painel.cmd`**, ao lado de `Goener.exe`. O atalho pede uma confirmação e abre o painel local (com alternativa pelo Python 3.12 se o EXE falhar), onde o botão **Revisar este arquivo** permite salvar e atualizar sem reexecução manual.
+3. **Salve e feche o Excel.** Execute `Executar automacao.cmd --panel` para aplicar revisões e abrir o painel, ou `Executar automacao.cmd --update-reviews` para atualizar sem abrir o navegador.
 4. No painel, clique em **Salvar e atualizar** após preencher o formulário, ou execute `--update-reviews` se a decisão já foi registrada no Excel. O robô valida as decisões e publica Excel e HTML atualizados juntos em uma nova pasta do histórico. Abra `resultados/relatorio.html` ou use o link na célula A3 da aba Revisões.
 
 | Decisão | Resultado após atualizar |
@@ -115,14 +100,14 @@ Justificativa, responsável e data são obrigatórios para decisões diferentes 
 O comando equivalente, sem atalho, é:
 
 ```powershell
-.\Goener.exe --update-reviews
+py -3.12 executar.py --update-reviews
 # Alternativa com Python:
 py -3.12 executar.py --update-reviews
 ```
 
 Essa atualização reaproveita a extração e a análise anteriores, **sem novas chamadas à IA nem nova extração financeira**. Confere os hashes dos documentos, lê Revisões e regenera fórmulas, relatório e cópias visuais; PDF digitalizado pode exigir OCR somente para localizar as marcações. Se houver documento novo, removido ou alterado, competência ou modo de IA diferente, execute o fluxo completo. Revisões anteriores só valem para o mesmo nome, SHA-256 e fechamento; versões antigas permanecem na aba como histórico.
 
-Você também pode revisar **diretamente no HTML interativo**: execute `Goener.exe --panel` ou `py -3.12 executar.py --panel` e mantenha a janela aberta. O painel usa somente `127.0.0.1`, na própria máquina, sem nuvem, login de navegador ou dependências web adicionais. Escolha o arquivo, clique em **Revisar este arquivo**, preencha o formulário e salve. Ele registra a decisão na aba Revisões e chama o mesmo pipeline com `reviews_only=True`. O Excel precisa estar fechado. Uma cópia baixada pelo navegador é somente uma cópia: a base operacional continua em `resultados/consolidado.xlsx`.
+Você também pode revisar **diretamente no HTML interativo**: execute `py -3.12 executar.py --panel` ou `py -3.12 executar.py --panel` e mantenha a janela aberta. O painel usa somente `127.0.0.1`, na própria máquina, sem nuvem, login de navegador ou dependências web adicionais. Escolha o arquivo, clique em **Revisar este arquivo**, preencha o formulário e salve. Ele registra a decisão na aba Revisões e chama o mesmo pipeline com `reviews_only=True`. O Excel precisa estar fechado. Uma cópia baixada pelo navegador é somente uma cópia: a base operacional continua em `resultados/consolidado.xlsx`.
 
 Abrir o HTML diretamente pelo Explorer continua sendo consulta: os botões de edição só aparecem no painel servido pelo robô. O painel não modifica código nem pede à IA para programar; as opções são fixas e validadas. O endpoint exige token por sessão e origem local, bloqueia acesso a `.env` e rejeita envio de uma tela antiga. O modo de revisão não faz novas chamadas à IA. Não exponha esse servidor na rede: ele foi feito para uso local por um operador.
 
@@ -292,7 +277,7 @@ Este desenho é futuro. O processo só inclui recebimento sem trabalho manual se
 
 ```mermaid
 flowchart LR
-    A[CLI / executar.py / EXE PyInstaller] --> B[pipeline.py: orquestração e publicação]
+    A[CLI / executar.py / Python] --> B[pipeline.py: orquestração e publicação]
     B --> C[readers.py: pdfplumber, openpyxl, RapidOCR e ONNX CPU]
     B --> D[core.py: modelo, Decimal e regras]
     B --> E[ai.py: HTTPS, JSON, cotas e failover]
@@ -397,22 +382,17 @@ entrega/             ZIP, consolidado e documentação de uma página
 
 Veja **[validacao/README.md](validacao/README.md)** para o histórico selecionado e como reproduzir os testes. Os registros antigos preservam as configurações, commits, logs e resultados das respectivas rodadas. A migração para o executável tem evidência própria; não se presume funcionamento apenas porque o empacotamento terminou.
 
-### Reconstruir o executável e a entrega
-
-Somente quem desenvolve precisa de Python e PyInstaller:
+### Gerar a entrega
 
 ```powershell
-py -3.12 -m pip install -r requirements-lock.txt
-py -3.12 -m pip install -e ".[build]" --no-build-isolation
-py -3.12 -m goener.entrega --build-exe --include-env
+py -3.12 -m goener.entrega --include-env
 ```
 
-PyInstaller e hooks são fixados no `pyproject.toml`. Intermediários ficam em `.local/build/`; o binário em `.local/bin/Goener.exe`. `--exe .local/bin/Goener.exe` reutiliza um binário já construído. Sem `--include-env`, a chave não entra no ZIP. Fonte e configurações ficam legíveis no repositório; o executável não é proteção do código. Ele deve ser reconstruído quando o código operacional mudar. Distribua sempre o ZIP completo, não apenas o EXE sem seus arquivos externos.
-
+O ZIP inclui código, dependências declaradas, CMD, configuração, modelo, entradas e resultado de referência. Não inclui interpretador Python, EXE ou caches. O avaliador instala Python 3.12 e as dependências uma vez. `--include-env` inclui a chave no pacote privado autorizado; sem essa opção, não inclui a credencial.
 
 ### Parâmetros operacionais
 
-Os mesmos parâmetros funcionam em `Goener.exe` e `py -3.12 executar.py`:
+Os mesmos parâmetros funcionam em `Executar automacao.cmd` e `py -3.12 executar.py`:
 
 | Parâmetro | Uso |
 | --- | --- |
@@ -442,34 +422,31 @@ O manifesto permite verificar integridade; não autentica o banco emissor. Saíd
 
 ### Conferência do pacote de envio
 
-O ZIP foi extraído em uma pasta separada e seu EXE executado com `--ai-mode off`, sem caches distribuídos. Reproduziu **17 arquivos, 12 ok, 4 revisar, 1 falhou e R$ 4.114.372,29**, em **38,124 segundos de processamento**, além da inicialização. Um reaproveitamento dentro do lote corresponde à cópia exata; não veio de cache prévio. Também foi executada a atualização pelo Python extraído, sem chamadas HTTP. README/fonte/EXE, contrato Excel, hashes da saída e PDF de uma página foram conferidos. Registros em `validacao/entrega.json`.
+A distribuição atual é somente Python/CMD. Ensaios anteriores de EXE são históricos e não fazem parte do modo atual.
 
 ### O que foi validado e o que ainda exige homologação
 
-A versão 1.9.1 foi executada pelo EXE com `--update-reviews`: modelo de tempo versão 3, 14 extratos únicos, três triagens, projeções mensal/anual e nenhuma chamada HTTP nova. As validações anteriores de interface e pacote permanecem históricas; a evidência atual de tempo está em `validacao/tempo.json`.
 
-**128 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; a última prova do EXE reutilizou cinco análises, sem nova chamada externa.
+**128 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
 
-O EXE 1.9.0 concluiu `--update-reviews` e iniciou `--panel` nesta máquina. O formulário completo foi testado em cópia isolada, preservando a base entregue. Não é teste em VM Windows limpa nem em todos os cenários possíveis. Regras são gerais, mas novos layouts, volumes e políticas de máquina exigem homologação.
 
-Git registra fonte, configuração e evidências técnicas; credenciais, caches, EXE, ZIP e relatórios gerados não entram no versionamento atual. Commits descrevem alterações objetivas. O workflow `.github/workflows/ci.yml` configura lint, testes e execução em Windows/Linux, com logs/JSON como artefatos; seu resultado precisa ser consultado, não presumido pela presença da configuração.
+Git registra fonte, configuração e evidências técnicas; credenciais, caches, ZIP e relatórios gerados não entram no versionamento atual. Commits descrevem alterações objetivas. O workflow `.github/workflows/ci.yml` configura lint, testes e execução em Windows/Linux, com logs/JSON como artefatos; seu resultado precisa ser consultado, não presumido pela presença da configuração.
 
 ```powershell
 py -3.12 -m ruff check goener executar.py validacao
 py -3.12 -m pytest -q
 ```
 
-Para atualizar só documentação/resultados no pacote, sem recompilar código operacional inalterado:
+Para atualizar o pacote:
 
 ```powershell
-py -3.12 -m goener.entrega --exe Goener.exe --include-env
+py -3.12 -m goener.entrega --include-env
 ```
 
 O gerador usa arquivos rastreados pelo Git; adicione fontes novas antes de empacotar. O padrão seleciona a publicação em `latest.json`; `--run` escolhe outra. A primeira execução do ZIP cria `resultados/` e caches próprios; `resultado/` contém apenas a referência consultável. Não copie caches do desenvolvedor para apresentar um ensaio como primeira execução.
 
 ## Referências
 
-- [PyInstaller: distribuição sem Python instalado](https://pyinstaller.org/en/stable/operating-mode.html)
 - [RapidOCR](https://rapidai.github.io/RapidOCRDocs/main/en/install_usage/rapidocr/usage/)
 - [Gemini: documentos e Base64](https://aistudio.google.com/docs/document-processing)
 - [Gemini: thinking e consumo](https://aistudio.google.com/docs/thinking)
@@ -480,10 +457,14 @@ O gerador usa arquivos rastreados pelo Git; adicione fontes novas antes de empac
 
 ### Diagnóstico de abertura — versão 1.9.2
 
-Sem mensagens de andamento adicionais. A abertura por `Goener.exe` ou `executar.py` usa um supervisor leve: registra stdout/stderr e o código de saída, inclusive se o processo de trabalho encerrar abruptamente. Na abertura interativa sem parâmetros, uma falha mantém o console aguardando Enter. Pelo terminal ou CMD, o código continua sendo retornado sem pausa adicional. Não há reinício automático do lote.
+Sem mensagens de andamento adicionais. A abertura por `Executar automacao.cmd` ou `executar.py` usa um supervisor leve: registra stdout/stderr e o código de saída, inclusive se o processo de trabalho encerrar abruptamente. Na abertura interativa sem parâmetros, uma falha mantém o console aguardando Enter. Pelo terminal, o código é retornado; o CMD mantém a janela aberta em erro. Não há reinício automático do lote.
 
 Os diagnósticos de abertura ficam em `resultados/historico/diagnosticos/`; o caminho exato aparece no erro. Se esse diretório não permitir escrita, usa uma pasta temporária e informa o caminho. O arquivo `_nativo.log` usa faulthandler quando o Python consegue capturar a falha nativa; nem todo encerramento do Windows produz uma pilha. Bloqueio do Windows antes de o EXE iniciar não pode gerar log do próprio programa. Os eventos por documento continuam em `.local/runtime/logs` e no histórico publicado.
 
 Em `resultados`, use somente `consolidado.xlsx` e `relatorio.html`. O índice técnico `latest.json`, snapshots e demais artefatos ficam em `historico`. O snapshot do Excel é intencional para preservar o que foi publicado antes de alterações manuais. Feche a planilha operacional antes de atualizar.
 
-A compilação 1.9.2 concluiu, mas o teste automático de inicialização do EXE nesta máquina recebeu bloqueio 4551 do Windows antes de executar o código. Os testes de recuperação e supervisor passaram pelo Python; a execução real desse novo binário fica pendente até o Windows permitir sua abertura. Não se deve confundir o bloqueio pré-inicialização com erro capturado pelo supervisor. Registro em validacao/abertura.json.
+
+
+### Distribuição Python 1.10.0
+
+Os registros antigos de EXE permanecem somente em validacao como histórico; não homologam nem integram a distribuição atual. O empacotamento de binários foi retirado. O CMD atual chama apenas `py -3.12 executar.py`, aceita os mesmos parâmetros e mantém erros visíveis. Para abrir somente os resultados e aplicar revisões existentes, use `Executar automacao.cmd --panel`; para atualizar sem abrir painel, use `Executar automacao.cmd --update-reviews`.

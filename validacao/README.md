@@ -80,3 +80,7 @@ O EXE 1.9.1 também concluiu `--update-reviews` na primeira tentativa deste ensa
 ## Abertura e organização 1.9.2
 
 128 testes passaram: supervisor conserva código/log após encerramento abrupto do filho, falha interativa aguarda Enter, sucesso não pausa, trava mantida pelo SO é recuperada após matar o processo e processo anterior ativo não é removido. O histórico agora fica agrupado em resultados/historico; a raiz contém apenas o Excel operacional, o HTML e esse diretório. Não foram adicionadas mensagens de progresso. O diagnóstico nativo é complementar e não garante capturar todo tipo de término forçado do Windows.
+
+## Distribuição Python 1.10.0
+
+PyInstaller e EXE foram retirados da entrega por decisão do responsável. Os registros de binários anteriores são históricos. A versão atual usa Python 3.12 e Executar automacao.cmd, preservando o supervisor, os diagnósticos, a recuperação de trava, as revisões e o histórico organizado. 128 testes passaram.

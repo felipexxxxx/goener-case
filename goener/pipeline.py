@@ -229,10 +229,6 @@ class Cache:
 
 
 def git_revision() -> str:
-    if getattr(sys, "frozen", False):
-        return json.loads(Path(__file__).with_name("build_info.json").read_text(encoding="utf-8"))[
-            "git_commit"
-        ]
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -630,7 +626,7 @@ def main(argv=None) -> int:
         )
         print(f"Relatório: {directory / 'relatorio.html'}")
         print(f"Planilha: {directory / 'consolidado.xlsx'}")
-        if getattr(sys, "frozen", False) and len(sys.argv) == 1:
+        if os.environ.get("GOENER_INTERACTIVE") == "1" and len(sys.argv) == 1:
             from .painel import serve
 
             serve(config)

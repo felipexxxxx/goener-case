@@ -5,10 +5,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import shutil
 import subprocess
-import sys
 import zipfile
 from pathlib import Path
 
@@ -69,7 +67,7 @@ def one_page(path: Path, summary: dict) -> None:
 
     paragraph("O que foi automatizado", True)
     paragraph(
-        "Um executável Windows sem instalação de Python, ou um comando, lê a pasta de entrada, extrai banco, conta, competência e saldo final de PDF, Excel e imagem e preenche o modelo fornecido. A execução gera planilha, log, evidências por arquivo e relatório filtrável. Aplica retenções e exclusões nos totais, preserva uma linha por arquivo e entrega as ressalvas sem aguardar intervenção humana. Os extratos originais são preservados. O painel local permite registrar revisões e atualizar Excel e HTML juntos; cópias destacadas facilitam localizar divergências."
+        "Um comando Python 3.12, iniciado pelo CMD, lê a pasta de entrada, extrai banco, conta, competência e saldo final de PDF, Excel e imagem e preenche o modelo fornecido. A execução gera planilha, log, evidências por arquivo e relatório filtrável. Aplica retenções e exclusões nos totais, preserva uma linha por arquivo e entrega as ressalvas sem aguardar intervenção humana. Os extratos originais são preservados. O painel local permite registrar revisões e atualizar Excel e HTML juntos; cópias destacadas facilitam localizar divergências."
     )
     paragraph("Fluxo e controles", True)
     gap, box_height = 9, 31
@@ -148,53 +146,7 @@ def one_page(path: Path, summary: dict) -> None:
     c.save()
 
 
-def build_executable() -> Path:
-    """Empacota interpretador, bibliotecas e modelos OCR; mantém configurações externas."""
-    from .pipeline import git_revision
-
-    workspace = ROOT / ".local/build"
-    workspace.mkdir(parents=True, exist_ok=True)
-    metadata = workspace / "build_info.json"
-    metadata.write_text(json.dumps({"git_commit": git_revision()}), encoding="utf-8")
-    args = [
-        sys.executable,
-        "-m",
-        "PyInstaller",
-        "--noconfirm",
-        "--clean",
-        "--onefile",
-        "--console",
-        "--noupx",
-        "--name",
-        "Goener",
-        "--distpath",
-        str(ROOT / ".local/bin"),
-        "--workpath",
-        str(workspace / "work"),
-        "--specpath",
-        str(workspace),
-        "--collect-all",
-        "rapidocr",
-        "--collect-all",
-        "onnxruntime",
-    ]
-    for name in ("openpyxl", "pdfplumber", "rapidocr", "onnxruntime", "Pillow"):
-        args += ["--copy-metadata", name]
-    for source, destination in [
-        (ROOT / "goener/report.html", "goener"),
-        (ROOT / "goener/core.py", "goener"),
-        (ROOT / "goener/readers.py", "goener"),
-        (metadata, "goener"),
-    ]:
-        args += ["--add-data", f"{source}{os.pathsep}{destination}"]
-    args += [str(ROOT / "executar.py")]
-    subprocess.run(args, cwd=ROOT, check=True)
-    return ROOT / ".local/bin/Goener.exe"
-
-
-def build(
-    run_dir: Path, destination: Path, include_env: bool = False, executable: Path | None = None
-) -> Path:
+def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
     if include_env and not (ROOT / ".env").is_file():
         raise ValueError("Arquivo .env não encontrado para inclusão no pacote privado")
     summary = json.loads((run_dir / "resumo.json").read_text(encoding="utf-8"))
@@ -213,8 +165,6 @@ def build(
                 z.write(ROOT / name, "goener-case/" + name)
         if include_env:
             z.write(ROOT / ".env", "goener-case/.env")
-        if executable:
-            z.write(executable, "goener-case/Goener.exe")
         payloads = {
             p.relative_to(run_dir).as_posix(): p.read_bytes()
             for p in sorted(run_dir.rglob("*"))
@@ -253,17 +203,10 @@ if __name__ == "__main__":
         action="store_true",
         help="Inclui a credencial .env no ZIP privado, por solicitação explícita",
     )
-    parser.add_argument(
-        "--build-exe",
-        action="store_true",
-        help="Gera executável Windows com PyInstaller e inclui no ZIP",
-    )
-    parser.add_argument("--exe", type=Path, help="Inclui um executável já construído")
     args = parser.parse_args()
     selected = args.run or Path(
         json.loads(
             latest_pointer(load_config(ROOT / "config.toml").output_dir).read_text(encoding="utf-8")
         )["directory"]
     )
-    executable = build_executable() if args.build_exe else args.exe
-    print(build(selected, args.destination, include_env=args.include_env, executable=executable))
+    print(build(selected, args.destination, include_env=args.include_env))

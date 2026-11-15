@@ -22,7 +22,12 @@ def supervise(command, root: Path, *, desktop=False):
     name = datetime.now().strftime("abertura_%Y%m%d_%H%M%S_%f")
     path = folder / (name + ".log")
     native = folder / (name + "_nativo.log")
-    environment = {**os.environ, "GOENER_NATIVE_LOG": str(native), "PYTHONIOENCODING": "utf-8"}
+    environment = {
+        **os.environ,
+        "GOENER_NATIVE_LOG": str(native),
+        "PYTHONIOENCODING": "utf-8",
+        "GOENER_INTERACTIVE": "1" if desktop else "0",
+    }
     code = 1
     with path.open("w", encoding="utf-8") as log:
         log.write(f"INICIO {datetime.now().isoformat()}\n")
@@ -61,7 +66,7 @@ def supervise(command, root: Path, *, desktop=False):
             "Os logs por arquivo ficam em .local/runtime/logs. Não houve reinício automático.",
             flush=True,
         )
-        if desktop and code != 130:
+        if desktop and code != 130 and os.environ.get("GOENER_CMD") != "1":
             try:
                 input("Pressione Enter para fechar esta janela...")
             except (EOFError, KeyboardInterrupt):
@@ -92,13 +97,10 @@ def worker():
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
-    frozen = getattr(sys, "frozen", False)
-    if frozen:
-        os.chdir(Path(sys.executable).resolve().parent)
     if sys.argv[1:2] == ["--_goener_worker"]:
         del sys.argv[1]
         raise SystemExit(worker())
-    command = [sys.executable] if frozen else [sys.executable, str(Path(__file__).resolve())]
+    command = [sys.executable, str(Path(__file__).resolve())]
     command += ["--_goener_worker", *sys.argv[1:]]
     desktop = len(sys.argv) == 1 and sys.stdin is not None and sys.stdin.isatty()
     raise SystemExit(supervise(command, Path.cwd(), desktop=desktop))
