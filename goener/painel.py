@@ -8,13 +8,12 @@ import os
 import secrets
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from openpyxl import load_workbook
 
 from .core import Result, Statement
-from .reporting import latest_pointer
+from .reporting import latest_pointer, publication_directory
 from .revisoes import apply_reviews, digest, read_reviews
 
 
@@ -42,7 +41,7 @@ def make_server(config, *, port=0):
 
         def latest(self):
             pointer = json.loads(latest_pointer(config.output_dir).read_text(encoding="utf-8"))
-            directory = Path(pointer["directory"]).resolve()
+            directory = publication_directory(config.output_dir)
             if directory.parent not in (
                 config.output_dir.resolve(),
                 (config.output_dir / "historico").resolve(),

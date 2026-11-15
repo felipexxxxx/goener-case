@@ -2,7 +2,7 @@
 
 Automação em Python que lê uma pasta de extratos e publica Excel, HTML, logs e evidências. O fluxo principal termina sem intervenção manual entre etapas. Regras financeiras fazem a primeira conferência; o Gemini complementa as exceções. A revisão posterior é opcional e fica registrada.
 
-**Versão 1.10.0.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
+**Versão 1.10.1.** Resultado do lote: **17 arquivos, 12 ok, 4 revisar e 1 falhou**, com **R$ 4.114.372,29 incluídos no fechamento**. Uma cópia exata foi identificada e excluída da soma. Os documentos são fictícios, fornecidos para o case.
 
 Três níveis de leitura:
 
@@ -427,7 +427,7 @@ A distribuição atual é somente Python/CMD. Ensaios anteriores de EXE são his
 ### O que foi validado e o que ainda exige homologação
 
 
-**128 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
+**131 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
 
 
 Git registra fonte, configuração e evidências técnicas; credenciais, caches, ZIP e relatórios gerados não entram no versionamento atual. Commits descrevem alterações objetivas. O workflow `.github/workflows/ci.yml` configura lint, testes e execução em Windows/Linux, com logs/JSON como artefatos; seu resultado precisa ser consultado, não presumido pela presença da configuração.
@@ -468,3 +468,10 @@ Em `resultados`, use somente `consolidado.xlsx` e `relatorio.html`. O índice t�
 ### Distribuição Python 1.10.0
 
 Os registros antigos de EXE permanecem somente em validacao como histórico; não homologam nem integram a distribuição atual. O empacotamento de binários foi retirado. O CMD atual chama apenas `py -3.12 executar.py`, aceita os mesmos parâmetros e mantém erros visíveis. Para abrir somente os resultados e aplicar revisões existentes, use `& ".\Executar automacao.cmd" --panel`; para atualizar sem abrir painel, use `& ".\Executar automacao.cmd" --update-reviews`.
+
+
+### Relatório, evidências e portabilidade de caminhos
+
+Abra `resultados/relatorio.html`, o painel pelo CMD ou o exemplo `resultado/relatorio.html` do ZIP extraído. `goener/report.html` é o template de código; abri-lo diretamente agora mostra um aviso com acesso ao resultado, sem oferecer links de evidências que não existem naquela pasta.
+
+Os links de Excel, evidências, log e manifesto são relativos à publicação; não contêm um usuário Windows fixo. O índice `resultados/historico/latest.json` grava o diretório como identificador relativo. Índices antigos com caminho absoluto são resolvidos novamente pelo identificador local validado quando a pasta é movida. O CMD usa `%~dp0` para entrar na pasta onde ele está; não precisa substituir `%USERNAME%`. Os caminhos padrão do config são relativos ao config, e o projeto pode ficar em outra unidade ou perfil. Registros históricos podem conter caminhos absolutos como proveniência da execução, não como dependência de abertura dos links. Configurações absolutas personalizadas devem ser ajustadas se o usuário escolher usá-las.

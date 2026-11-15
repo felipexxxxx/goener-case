@@ -20,7 +20,14 @@ from . import EXTRACTOR_VERSION, __version__
 from .ai import http_attempt_count, review
 from .core import Config, Result, Statement, classify_duplicates, load_config, validate
 from .readers import LocalOCR, extract
-from .reporting import estimate_effort, latest_pointer, status_counts, write_html, write_workbook
+from .reporting import (
+    estimate_effort,
+    latest_pointer,
+    publication_directory,
+    status_counts,
+    write_html,
+    write_workbook,
+)
 from .revisoes import apply_reviews, digest, read_reviews, write_highlights
 
 
@@ -332,8 +339,7 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
         ocr = LocalOCR()
         previous_results = {}
         if reviews_only:
-            pointer = json.loads(latest_pointer(config.output_dir).read_text(encoding="utf-8"))
-            previous_dir = Path(pointer["directory"]).resolve()
+            previous_dir = publication_directory(config.output_dir)
             if previous_dir.parent not in (
                 config.output_dir.resolve(),
                 (config.output_dir / "historico").resolve(),
@@ -526,7 +532,7 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
             publish_shortcuts(published, log, require_workbook=True, output_dir=config.output_dir)
             atomic_json(
                 history / "latest.json",
-                {"run_id": run_id, "directory": str(published), "exit_code": exit_code},
+                {"run_id": run_id, "directory": run_id, "exit_code": exit_code},
             )
             log.event(
                 "RUN_FINISHED",

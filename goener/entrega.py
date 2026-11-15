@@ -18,7 +18,7 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
 
 from .core import load_config
-from .reporting import latest_pointer, source_root
+from .reporting import publication_directory, source_root
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -204,9 +204,5 @@ if __name__ == "__main__":
         help="Inclui a credencial .env no ZIP privado, por solicitação explícita",
     )
     args = parser.parse_args()
-    selected = args.run or Path(
-        json.loads(
-            latest_pointer(load_config(ROOT / "config.toml").output_dir).read_text(encoding="utf-8")
-        )["directory"]
-    )
+    selected = args.run or publication_directory(load_config(ROOT / "config.toml").output_dir)
     print(build(selected, args.destination, include_env=args.include_env))
