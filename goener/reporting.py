@@ -202,7 +202,7 @@ def workbook_note(result):
         )
         problem += " Fora do total."
     else:
-        problem = "Conferido e incluído no total."
+        problem = "Validado pelas regras do robô e incluído no total."
     if result.human_review.get("state") == "invalid":
         problem += " Revisão não aplicada; confira a aba Revisões."
     if result.status != "ok" or result.ai.get("source_disagreements"):
