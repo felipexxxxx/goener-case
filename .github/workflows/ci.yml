@@ -39,10 +39,10 @@ jobs:
           name: validacao-${{ matrix.os }}
           include-hidden-files: true
           path: |
-            .local/outputs/*/execucao.log
-            .local/outputs/*/execucao.jsonl
-            .local/outputs/*/resumo.json
-            .local/outputs/*/evidencias.json
+            .local/outputs/historico/*/execucao.log
+            .local/outputs/historico/*/execucao.jsonl
+            .local/outputs/historico/*/resumo.json
+            .local/outputs/historico/*/evidencias.json
             test-results.xml
             coverage.xml
           retention-days: 14

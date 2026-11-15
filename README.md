@@ -448,7 +448,7 @@ O ZIP foi extraído em uma pasta separada e seu EXE executado com `--ai-mode off
 
 A versão 1.9.1 foi executada pelo EXE com `--update-reviews`: modelo de tempo versão 3, 14 extratos únicos, três triagens, projeções mensal/anual e nenhuma chamada HTTP nova. As validações anteriores de interface e pacote permanecem históricas; a evidência atual de tempo está em `validacao/tempo.json`.
 
-**124 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; a última prova do EXE reutilizou cinco análises, sem nova chamada externa.
+**128 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; a última prova do EXE reutilizou cinco análises, sem nova chamada externa.
 
 O EXE 1.9.0 concluiu `--update-reviews` e iniciou `--panel` nesta máquina. O formulário completo foi testado em cópia isolada, preservando a base entregue. Não é teste em VM Windows limpa nem em todos os cenários possíveis. Regras são gerais, mas novos layouts, volumes e políticas de máquina exigem homologação.
 
@@ -485,3 +485,5 @@ Sem mensagens de andamento adicionais. A abertura por `Goener.exe` ou `executar.
 Os diagnósticos de abertura ficam em `resultados/historico/diagnosticos/`; o caminho exato aparece no erro. Se esse diretório não permitir escrita, usa uma pasta temporária e informa o caminho. O arquivo `_nativo.log` usa faulthandler quando o Python consegue capturar a falha nativa; nem todo encerramento do Windows produz uma pilha. Bloqueio do Windows antes de o EXE iniciar não pode gerar log do próprio programa. Os eventos por documento continuam em `.local/runtime/logs` e no histórico publicado.
 
 Em `resultados`, use somente `consolidado.xlsx` e `relatorio.html`. O índice técnico `latest.json`, snapshots e demais artefatos ficam em `historico`. O snapshot do Excel é intencional para preservar o que foi publicado antes de alterações manuais. Feche a planilha operacional antes de atualizar.
+
+A compilação 1.9.2 concluiu, mas o teste automático de inicialização do EXE nesta máquina recebeu bloqueio 4551 do Windows antes de executar o código. Os testes de recuperação e supervisor passaram pelo Python; a execução real desse novo binário fica pendente até o Windows permitir sua abertura. Não se deve confundir o bloqueio pré-inicialização com erro capturado pelo supervisor. Registro em validacao/abertura.json.

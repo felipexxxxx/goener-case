@@ -1,0 +1,18 @@
+{
+  "version": "1.9.2",
+  "tests_passed": 128,
+  "compiled_checks": [],
+  "windows_error": 4551,
+  "exe_sha256": "edb876a047c16a0dd99f5c30359f2d8abf1e67bc8aca14b483053588e6e21e80",
+  "supervisor_abrupt_exit_test": true,
+  "desktop_pause_test": true,
+  "dead_lock_recovery_test": true,
+  "active_lock_protection_test": true,
+  "source_update_passed": true,
+  "root_results": [
+    "consolidado.xlsx",
+    "historico",
+    "relatorio.html"
+  ],
+  "compiled_status": "blocked_by_windows_before_start"
+}
