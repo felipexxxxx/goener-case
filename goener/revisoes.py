@@ -11,6 +11,7 @@ from xml.sax.saxutils import escape
 import pdfplumber
 from openpyxl import load_workbook
 from openpyxl.comments import Comment
+from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 from reportlab.lib.styles import ParagraphStyle
@@ -35,6 +36,7 @@ HEADERS = [
     "Resultado da revisão",
 ]
 DECISIONS = ("Pendente", "Liberar", "Corrigir e liberar", "Excluir")
+EXCEL_DECISIONS = ("Pendente", "Liberar saldo original", "Corrigir e liberar", "Excluir")
 
 
 def digest(path):
@@ -111,6 +113,8 @@ def apply_reviews(results, rows, period, log):
             continue
         row = matched[0]
         decision = row[5] or "Pendente"
+        if decision == "Liberar saldo original":
+            decision = "Liberar"
         if decision == "Pendente":
             if any(tuple(previous[:3]) != key for previous in old):
                 r.human_review = {
@@ -187,7 +191,7 @@ def write_reviews(wb, results, previous, period):
     ws.row_dimensions[1].height = 40
     ws.merge_cells("A2:K2")
     ws["A2"] = (
-        "Preencha as células amarelas. Salve, feche e abra Aplicar revisoes.cmd nesta pasta para atualizar Excel e HTML."
+        "1. Clique em Decisão e escolha na seta (Alt+↓). 2. Só preencha Saldo confirmado para Corrigir e liberar. 3. Justifique, identifique-se, salve e feche; abra Aplicar revisoes.cmd nesta pasta."
     )
     ws["A2"].alignment = Alignment(wrap_text=True, vertical="center")
     ws.row_dimensions[2].height = 34
@@ -240,6 +244,8 @@ def write_reviews(wb, results, previous, period):
                     row[9] = datetime.strptime(row[9], "%d/%m/%Y")
                 except ValueError:
                     pass
+        if row[5] == "Liberar":
+            row[5] = "Liberar saldo original"
         for j, value in enumerate(row, 1):
             c = ws.cell(i, j, value)
             if isinstance(value, str):
@@ -263,12 +269,32 @@ def write_reviews(wb, results, previous, period):
     ws.column_dimensions["K"].hidden = True
     ws.freeze_panes = "F5"
     ws.auto_filter.ref = f"A4:K{max(5, len(rows) + 4)}"
-    dv = DataValidation(type="list", formula1='"' + ",".join(DECISIONS) + '"', allow_blank=True)
+    dv = DataValidation(
+        type="list", formula1='"' + ",".join(EXCEL_DECISIONS) + '"', allow_blank=True
+    )
+    dv.showDropDown = False
+    dv.showInputMessage = True
+    dv.promptTitle = "Escolha a decisão"
+    dv.prompt = "Excluir: fora do total. Liberar saldo original: usa o valor original. Corrigir e liberar: informe o novo saldo. Não use zero para excluir."
     dv.showErrorMessage = True
     dv.error = "Escolha uma opção da lista."
     dv.errorStyle = "stop"
     ws.add_data_validation(dv)
     dv.add(f"F5:F{max(5, len(rows) + 4)}")
+    ws["F4"].comment = Comment(
+        "Clique na célula abaixo e na seta da lista, ou pressione Alt+seta para baixo. Excluir e Liberar saldo original não precisam de valor.",
+        "Goener",
+    )
+    ws["G4"].comment = Comment(
+        "Preencha somente com Corrigir e liberar. Zero é um saldo real de R$ 0,00; não significa exclusão.",
+        "Goener",
+    )
+    ws.conditional_formatting.add(
+        f"G5:G{max(5, len(rows) + 4)}",
+        FormulaRule(
+            formula=['$F5<>"Corrigir e liberar"'], fill=PatternFill("solid", fgColor="E7ECEB")
+        ),
+    )
 
 
 def _targets(r):

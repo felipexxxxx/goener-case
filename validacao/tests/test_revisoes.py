@@ -123,3 +123,17 @@ def test_repeated_movements_are_both_highlighted_with_short_date(config):
     directory, _, _ = run(config)
     evidence = json.loads((directory / "evidencias.json").read_text(encoding="utf-8"))[0]
     assert evidence["highlight"]["marks"] == 3
+
+
+def test_excel_original_release_label_and_visible_dropdown(config):
+    setup_case(config)
+    wb = load_workbook(config.output_dir / "consolidado.xlsx")
+    ws = wb["Revisões"]
+    choice = next(d for d in ws.data_validations.dataValidation if "F5" in d.sqref)
+    assert choice.showDropDown is False and choice.showInputMessage
+    assert "Liberar saldo original" in choice.formula1
+    assert "Zero" in ws["G4"].comment.text
+    wb.close()
+    edit_review(config, decision="Liberar saldo original", value=None)
+    _, summary, code = run(config, reviews_only=True)
+    assert code == 0 and summary["approved_balance"] == "457179.12"

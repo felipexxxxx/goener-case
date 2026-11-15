@@ -112,3 +112,54 @@ def test_cache_serialization_preserves_negative_and_zero():
     s = statement("0")
     s.opening = money(-1)
     assert Statement.from_dict(s.to_dict()).to_dict() == s.to_dict()
+
+
+@pytest.mark.parametrize(
+    "mode,confirmed,expected",
+    [("automatico", True, "competencia"), ("automatico", False, None), ("consultivo", True, None)],
+)
+def test_other_month_is_conclusive_only_with_matching_readable_ai_evidence(
+    mode, confirmed, expected
+):
+    from goener.reporting import needs_attention
+
+    r = Result(
+        "outro_mes.png", "hash", "Imagem", Statement("Banco", "1", "2026-09", closing=money(10))
+    )
+    r.statement.issue("FORA_COMPETENCIA", "Esperado 2026-10")
+    r.ai = {
+        "mode": mode,
+        "decision": "revisar",
+        "source_check": {
+            "period": "2026-09" if confirmed else "2026-10",
+            "readable": confirmed,
+            "location": "topo",
+            "quote": "Período setembro",
+        },
+    }
+    assert r.automatic_exclusion == expected
+    assert needs_attention(r) == (expected is None)
+    assert not r.included(mode, "2026-10")
+
+
+def test_nonstatement_exclusion_needs_explicit_source_evidence():
+    from goener.reporting import needs_attention
+
+    r = Result("comunicado.pdf", "hash", "PDF", Statement())
+    r.statement.issue("CAMPO_AUSENTE", "Saldo não encontrado", "falhou")
+    r.ai = {
+        "mode": "automatico",
+        "decision": "nao_considerar",
+        "source_check": {
+            "account": None,
+            "period": None,
+            "closing": None,
+            "readable": True,
+            "location": "página 1",
+            "quote": "Este comunicado não é um extrato bancário.",
+        },
+    }
+    assert r.automatic_exclusion == "nao_extrato" and not needs_attention(r)
+    assert not r.included("automatico", "2026-10")
+    r.ai["source_check"]["quote"] = "Texto ilegível"
+    assert r.automatic_exclusion is None and needs_attention(r)

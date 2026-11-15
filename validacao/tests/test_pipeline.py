@@ -202,7 +202,7 @@ def test_summary_uses_editable_table_and_formulas_without_changing_source(config
     assert all(wb["Consolidado"][cell].data_type == "f" for cell in ["E2", "B3", "B4", "B5", "B6"])
     assert [wb["Consolidado"][f"A{n}"].value for n in range(3, 7)] == [
         "Incluídos no mês",
-        "Para conferir",
+        "Com ressalvas",
         "Com falha",
         "Arquivos recebidos",
     ]

@@ -155,6 +155,39 @@ class Result:
         return self.rules_status
 
     @property
+    def automatic_exclusion(self):
+        """Conclusão operacional de exclusão; nunca autoriza incluir/corrigir saldo."""
+        if self.human_review:
+            return None
+        if self.duplicate_of:
+            return "copia"
+        check = self.ai.get("source_check", {})
+        if (
+            self.ai.get("mode") != "automatico"
+            or self.ai.get("source_disagreements")
+            or check.get("readable") is not True
+            or not check.get("location")
+            or not check.get("quote")
+        ):
+            return None
+        s = self.statement
+        if (
+            any(i.code == "FORA_COMPETENCIA" for i in s.issues)
+            and check.get("period") == s.period
+            and self.ai.get("decision") in ("revisar", "nao_considerar")
+        ):
+            return "competencia"
+        if (
+            self.ai.get("decision") == "nao_considerar"
+            and s.closing is None
+            and not s.transactions
+            and all(check.get(k) is None for k in ("account", "period", "closing"))
+            and re.search(r"NAO (?:E|SE TRATA DE) (?:UM )?EXTRATO", normalized(check["quote"]))
+        ):
+            return "nao_extrato"
+        return None
+
+    @property
     def effective_balance(self):
         value = self.human_review.get("balance")
         if self.human_review.get("state") == "applied" and value is not None:
@@ -203,6 +236,8 @@ class Result:
                 else "Saldo confirmado e incluído por revisão humana; valor original preservado na aba Revisões e nas evidências."
             )
         codes = {issue.code for issue in self.statement.issues}
+        if self.automatic_exclusion == "nao_extrato":
+            return "Documento excluído automaticamente: a IA confirmou que não é um extrato."
         if self.duplicate_of:
             return "Cópia registrada e excluída dos totais."
         if "FORA_COMPETENCIA" in codes:
@@ -327,6 +362,7 @@ class Result:
             if self.effective_balance is not None
             else None,
             "applied_action": self.applied_action,
+            "automatic_exclusion": self.automatic_exclusion,
             "statement": self.statement.to_dict(),
         }
 

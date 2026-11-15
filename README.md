@@ -44,16 +44,22 @@ resultados/
 
 **Se preferir o Excel:** na aba Revisões, preencha as células amarelas, salve e feche. Dê dois cliques em **Aplicar revisoes.cmd na mesma pasta**. Não precisa digitar parâmetros. Não foi criado botão de macro dentro do Excel.
 
-A aba Consolidado tem os indicadores de quantidade alinhados verticalmente nas colunas A/B (incluídos, para conferir, com falha e recebidos), resumo no topo e as oito colunas do enunciado a partir da linha 7: Arquivo, Banco, Conta, Período, Saldo final, Formato de origem, Status, Observação. Uma linha por arquivo, inclusive cópias e falhas. Revisões mostra pendências e decisões/rascunhos preenchidos; identificadores técnicos ficam ocultos. Nas pendências, a observação inclui **o motivo retornado pela IA**, quando disponível, e não apenas a decisão genérica. Ela é uma recomendação, não comprovação de que o documento está correto.
+A aba Consolidado tem os indicadores de quantidade alinhados verticalmente nas colunas A/B (incluídos, para conferir, com falha e recebidos), resumo no topo e as oito colunas do enunciado a partir da linha 7: Arquivo, Banco, Conta, Período, Saldo final, Formato de origem, Status, Observação. Uma linha por arquivo, inclusive cópias e falhas. Revisões mostra apenas casos que exigem decisão e decisões/rascunhos preenchidos; identificadores técnicos ficam ocultos. Nas pendências, a observação inclui **o motivo retornado pela IA**, quando disponível, e não apenas a decisão genérica. Ela é uma recomendação, não comprovação de que o documento está correto.
 
 O link **Abrir relatório com detalhes** na aba Revisões usa URI local explícita para evitar a resolução relativa do Office pelo OneDrive. Ao abrir o painel, o robô atualiza o link para a localização atual do projeto, se o Excel estiver fechado. Após mover/extrair o projeto em outro computador, abra primeiro Abrir painel.cmd para atualizar esse vínculo. A consulta HTML é local; a edição exige o painel em execução. O Office pode pedir confirmação ao abrir o arquivo local; não é um redirecionamento para o OneDrive.
 
 ### Decisões e efeitos
 
+Na aba Revisões, clique na célula da coluna **Decisão** e use a seta da lista (ou Alt+↓). Não digite zero para excluir: escolha **Excluir** e deixe Saldo confirmado vazio. Para aceitar os R$ 457.179,12 declarados, escolha **Liberar saldo original**, sem preencher outro valor. Para substituir por R$ 456.099,12 após conferência, escolha **Corrigir e liberar** e informe 456099,12. Zero só deve ser informado se o saldo correto for realmente R$ 0,00. A coluna de valor fica cinza quando a decisão não exige preenchimento. Justifique, informe responsável/data, salve e feche o Excel e abra Aplicar revisoes.cmd do mesmo fechamento.
+
+Cópias exatas são exclusões determinísticas. No modo automático, documento de outra competência pode ser encerrado como exclusão quando a leitura legível da IA confirma o mesmo período identificado pelas regras, com localização/citação e sem divergência de leitura. Documento sem saldo/movimentos pode ser encerrado quando a IA recomenda não considerar e cita explicitamente que não é extrato. Esses casos permanecem no Consolidado e na consulta Todos/Tratados do HTML, fora dos totais, e saem da fila de decisão. Se houver incerteza ou discordância, continuam pendentes. Divergência matemática não é liberada pela IA; exige revisão registrada.
+
+Os três Status do enunciado (ok/revisar/falhou) são mantidos para compatibilidade. O indicador **Com ressalvas** conta o status revisar; não equivale ao número de decisões humanas pendentes. A aba Revisões e o filtro Revisão necessária mostram a fila operacional. No lote de referência, são três exclusões concluídas (cópia, comunicado e outro mês) e dois casos para decisão (lançamento suspeito e divergência de saldo).
+
 | Decisão | Efeito |
 | --- | --- |
 | Pendente | Mantém as regras; não aplica decisão humana. |
-| Liberar | Inclui o saldo original após conferência registrada. |
+| Liberar saldo original | Inclui o saldo original após conferência registrada. |
 | Corrigir e liberar | Usa o saldo confirmado, inclusive zero; preserva o original. |
 | Excluir | Mantém registro e histórico; saldo fora do total. |
 
@@ -410,7 +416,7 @@ Até 50 documentos, 100 mil caracteres de contexto e 16 MiB nas partes serializa
 
 ## 4. Validação e entrega
 
-Na versão 1.14.0, **155 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
+Na versão 1.14.0, **160 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
 
 Testes e registros ficam em validacao/. A suíte cobre regras financeiras, duplicidade, OCR, JSON, retries, fórmulas, segurança de entrada, publicação, revisão, arquivos alterados e isolamento entre dois fechamentos. A abertura no Excel Desktop e a navegação do link são verificadas separadamente; abrir com openpyxl não basta para comprovar compatibilidade.
 

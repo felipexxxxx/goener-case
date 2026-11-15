@@ -131,7 +131,7 @@ def one_page(path: Path, summary: dict) -> None:
         expected = sum(r["ai"]["valid_decisions"] + r["ai"]["unavailable_files"] for r in rounds)
         timing += f" IA no cenário: {valid}/{expected} análises válidas; esperas e falhas incluídas."
     paragraph(
-        f"<b>{summary['files']} arquivos</b>: {counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} para revisar e {counts.get('falhou', 0)} com falha. {timing} Ressalvas: cópia idêntica, lançamento suspeito de repetição, diferença de R$ 1.080,00, outro mês e comunicado sem dados."
+        f"<b>{summary['files']} arquivos</b>: {counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} com status revisar e {counts.get('falhou', 0)} com falha. {timing} Ressalvas: cópia idêntica, lançamento suspeito de repetição, diferença de R$ 1.080,00, outro mês e comunicado sem dados."
     )
     paragraph("Tempo estimado e qualidade da evidência", True)
     estimate = summary.get("time_estimate", {})

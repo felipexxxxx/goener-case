@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import math
 import os
+import re
 from collections import Counter
 from pathlib import Path
 from urllib.parse import quote
@@ -29,6 +30,8 @@ HEADERS = [
 
 
 def needs_attention(result):
+    if result.automatic_exclusion:
+        return False
     if result.human_review.get("state") == "applied":
         return False
     return (
@@ -175,6 +178,13 @@ def estimate_effort(results, summary):
     }
 
 
+def _period_label(period):
+    if not isinstance(period, str) or not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", period):
+        return str(period or "não identificado")
+    months = "janeiro fevereiro março abril maio junho julho agosto setembro outubro novembro dezembro".split()
+    return months[int(period[5:]) - 1] + "/" + period[:4]
+
+
 def workbook_note(result):
     """Resumo operacional; a evidência completa permanece no HTML e no JSON."""
     if result.human_review.get("state") == "applied":
@@ -186,6 +196,20 @@ def workbook_note(result):
         reason = result.ai.get("reason") or result.ai.get("message")
         return note + ("\nAnálise da IA: " + human_text(reason) if reason else "")
     codes = {i.code for i in result.statement.issues}
+    if result.automatic_exclusion:
+        reason = {
+            "copia": "Cópia idêntica; excluída automaticamente do total.",
+            "competencia": f"Fora da competência: {result.statement.period}. Excluído deste fechamento; IA confirmou o período. Solicitar o extrato do mês esperado.",
+            "nao_extrato": "Excluído automaticamente: o documento não é um extrato. IA confirmou a identificação na fonte.",
+        }[result.automatic_exclusion]
+        if result.automatic_exclusion == "competencia":
+            issue = next(i for i in result.statement.issues if i.code == "FORA_COMPETENCIA")
+            expected = re.search(r"esperado\s+(\d{4}-\d{2})", issue.message, re.I)
+            target = _period_label(expected[1]) if expected else "mês esperado"
+            reason = f"Fora da competência: {_period_label(result.statement.period)}. Excluído do fechamento de {target}. IA confirmou o período. Solicitar o extrato de {target}."
+        if result.ai.get("reason"):
+            reason += "\nAnálise da IA: " + human_text(result.ai["reason"])
+        return reason
     if result.duplicate_of:
         problem = "Cópia idêntica; não entra no total."
     elif "FORA_COMPETENCIA" in codes:
@@ -245,7 +269,7 @@ def write_summary(wb, period):
     ws["A3"] = "Incluídos no mês"
     ws["B3"] = '=COUNTIFS(Extratos[Status],"ok",Extratos[Período],$B$2)'
     for label_cell, label, value_cell, formula in (
-        ("A4", "Para conferir", "B4", '=COUNTIF(Extratos[Status],"revisar")'),
+        ("A4", "Com ressalvas", "B4", '=COUNTIF(Extratos[Status],"revisar")'),
         ("A5", "Com falha", "B5", '=COUNTIF(Extratos[Status],"falhou")'),
         ("A6", "Arquivos recebidos", "B6", "=COUNTA(Extratos[Arquivo])"),
     ):
@@ -505,6 +529,10 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
             ai_state, ai_label = "dispensada", "Só regras · IA dispensada"
         else:
             ai_state, ai_label = "desligada", "IA desligada nesta execução"
+        if r.automatic_exclusion == "competencia":
+            ai_label = "IA confirmou outra competência"
+        elif r.automatic_exclusion == "nao_extrato":
+            ai_label = "IA confirmou: não é extrato"
         issues = "".join("<li>" + html.escape(m) + "</li>" for m in messages)
         issues = (
             "<ul>" + issues + "</ul>"
@@ -611,9 +639,14 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
             + html.escape(str(s.closing), quote=True)
             + '">Revisar este arquivo</button>'
         )
+        if r.automatic_exclusion:
+            review_button = '<p class="caption">Exclusão automática concluída; não exige decisão de saldo. O documento permanece disponível para consulta.</p>'
+            finding = workbook_note(r).split("\n")[0]
+            if r.automatic_exclusion == "nao_extrato":
+                action = "Documento informativo; não há saldo a liberar neste fechamento."
         rows.append(
             f'<details class="item" data-status="{r.status}" data-attention="{str(needs_attention(r)).lower()}" data-ai="{ai_state}" data-file="{html.escape(r.filename, quote=True)}">'
-            f'<summary><span class="pill {r.status}">{labels[r.status]}</span><div><span class="filename">{html.escape(r.filename)}</span>'
+            f'<summary><span class="pill {r.status}">{"Excluído automaticamente" if r.automatic_exclusion else labels[r.status]}</span><div><span class="filename">{html.escape(r.filename)}</span>'
             f'<span class="meta">{meta}</span><span class="finding">{html.escape(finding)}</span><span class="ai-badge {ai_state}">{html.escape(ai_label)}</span></div>'
             f'<span class="amount">{amount}<small class="caption">{amount_note}</small></span></summary><div class="body"><div class="reviewgrid"><section><h3>1. O que as regras encontraram</h3>{issues}</section>'
             f"<section><h3>2. Recomendação da IA</h3><p>{html.escape(ai_message)}</p></section></div>"
