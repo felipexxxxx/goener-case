@@ -243,24 +243,23 @@ def write_summary(wb, period):
     ws["B3"] = '=COUNTIFS(Extratos[Status],"ok",Extratos[Período],$B$2)'
     for label_cell, label, value_cell, formula in (
         ("A4", "Para conferir", "B4", '=COUNTIF(Extratos[Status],"revisar")'),
-        ("C4", "Com falha", "D4", '=COUNTIF(Extratos[Status],"falhou")'),
-        ("E4", "Arquivos recebidos", "G4", "=COUNTA(Extratos[Arquivo])"),
+        ("A5", "Com falha", "B5", '=COUNTIF(Extratos[Status],"falhou")'),
+        ("A6", "Arquivos recebidos", "B6", "=COUNTA(Extratos[Arquivo])"),
     ):
         ws[label_cell] = label
         ws[value_cell] = formula
-    for row in ws.iter_rows(min_row=2, max_row=4, max_col=8):
+    for row in ws.iter_rows(min_row=2, max_row=6, max_col=8):
         for c in row:
             if c.coordinate not in ("B2", "E2"):
                 c.font = Font(name="Aptos", size=11, bold=c.data_type == "f", color="003836")
             if c.coordinate != "B2":
                 c.fill = PatternFill("solid", fgColor="F0F7F6")
-    ws.merge_cells("A5:H5")
-    ws["A5"] = (
+    ws.merge_cells("C4:H6")
+    ws["C4"] = (
         "Filtre os arquivos abaixo. Para corrigir, use a aba Revisões, salve, feche e reexecute. Detalhes no relatório HTML."
     )
-    ws["A5"].font = Font(name="Aptos", size=10, color="526762")
-    ws["A5"].alignment = Alignment(wrap_text=True, vertical="center")
-    ws.row_dimensions[5].height = 28
+    ws["C4"].font = Font(name="Aptos", size=10, color="526762")
+    ws["C4"].alignment = Alignment(wrap_text=True, vertical="center")
 
 
 def write_workbook(

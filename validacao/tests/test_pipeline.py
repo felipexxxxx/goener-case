@@ -199,7 +199,13 @@ def test_summary_uses_editable_table_and_formulas_without_changing_source(config
         wb["Consolidado"]["E2"].value
         == '=SUMIFS(Extratos[Saldo final],Extratos[Status],"ok",Extratos[Período],$B$2)'
     )
-    assert all(wb["Consolidado"][cell].data_type == "f" for cell in ["E2", "B3", "B4", "D4", "G4"])
+    assert all(wb["Consolidado"][cell].data_type == "f" for cell in ["E2", "B3", "B4", "B5", "B6"])
+    assert [wb["Consolidado"][f"A{n}"].value for n in range(3, 7)] == [
+        "Incluídos no mês",
+        "Para conferir",
+        "Com falha",
+        "Arquivos recebidos",
+    ]
     assert wb.calculation.calcMode == "auto" and wb.calculation.fullCalcOnLoad
     assert len(wb["Consolidado"].data_validations.dataValidation) == 1
     wb.close()

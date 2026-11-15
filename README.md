@@ -36,7 +36,7 @@ resultados/
 
 **Se preferir o Excel:** na aba Revisões, preencha as células amarelas, salve e feche. Dê dois cliques em **Aplicar revisoes.cmd na mesma pasta**. Não precisa digitar parâmetros. Não foi criado botão de macro dentro do Excel.
 
-A aba Consolidado tem resumo no topo e as oito colunas do enunciado a partir da linha 7: Arquivo, Banco, Conta, Período, Saldo final, Formato de origem, Status, Observação. Uma linha por arquivo, inclusive cópias e falhas. Revisões mostra pendências e decisões/rascunhos preenchidos; identificadores técnicos ficam ocultos. Nas pendências, a observação inclui **o motivo retornado pela IA**, quando disponível, e não apenas a decisão genérica. Ela é uma recomendação, não comprovação de que o documento está correto.
+A aba Consolidado tem os indicadores de quantidade alinhados verticalmente nas colunas A/B (incluídos, para conferir, com falha e recebidos), resumo no topo e as oito colunas do enunciado a partir da linha 7: Arquivo, Banco, Conta, Período, Saldo final, Formato de origem, Status, Observação. Uma linha por arquivo, inclusive cópias e falhas. Revisões mostra pendências e decisões/rascunhos preenchidos; identificadores técnicos ficam ocultos. Nas pendências, a observação inclui **o motivo retornado pela IA**, quando disponível, e não apenas a decisão genérica. Ela é uma recomendação, não comprovação de que o documento está correto.
 
 O link **Abrir relatório com detalhes** na aba Revisões usa URI local explícita para evitar a resolução relativa do Office pelo OneDrive. Ao abrir o painel, o robô atualiza o link para a localização atual do projeto, se o Excel estiver fechado. Após mover/extrair o projeto em outro computador, abra primeiro Abrir painel.cmd para atualizar esse vínculo. A consulta HTML é local; a edição exige o painel em execução. O Office pode pedir confirmação ao abrir o arquivo local; não é um redirecionamento para o OneDrive.
 
@@ -228,7 +228,7 @@ G_ano = G_mês × 12
 | Central | 10 | 1 | 2,37 | 28,44 |
 | Maior ganho | 12 | 2 | 2,89 | 34,64 |
 
-No cenário central, o ganho potencial é **2,37 horas/mês e 28,44 horas/ano**, descontando a referência de 46,70 s do fluxo completo sem tentativas no 3.8.
+No cenário central, o ganho potencial é **2,37 horas/mês e 28,44 horas/ano**, descontando a referência de 46,70 s do fluxo completo sem tentativas no 3.8. Usando a média geral de 70,97 s, o mesmo cálculo resulta em **2,36 horas/mês e 28,36 horas/ano**. O cenário de 46,70 s não elimina falhas do 3.5: o retry dessa rodada continua contado. O modelo 3.8 permanece configurado como principal; os 46,70 s descrevem a situação em que a cota o faz ser pulado, não uma mudança no fluxo nem um SLA.
 
 Os cenários usam consolidação a 80%/100%/120% da referência e triagem a 50%/100%/200%. São **faixas de planejamento**, sem probabilidade atribuída: não são percentis nem IC de 95%. A referência manual única não permite estimar desvio-padrão ou um intervalo de confiança defensável. Para isso, coletar um piloto por PDF/Excel/imagem, medir média e dispersão por grupo e dimensionar a amostra pela margem de erro desejada.
 
@@ -369,7 +369,7 @@ Até 50 documentos, 100 mil caracteres de contexto e 16 MiB nas partes serializa
 
 ## 4. Validação e entrega
 
-Na versão 1.14.0, **150 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
+Na versão 1.14.0, **151 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
 
 Testes e registros ficam em validacao/. A suíte cobre regras financeiras, duplicidade, OCR, JSON, retries, fórmulas, segurança de entrada, publicação, revisão, arquivos alterados e isolamento entre dois fechamentos. A abertura no Excel Desktop e a navegação do link são verificadas separadamente; abrir com openpyxl não basta para comprovar compatibilidade.
 

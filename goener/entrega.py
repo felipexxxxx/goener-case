@@ -115,6 +115,11 @@ def one_page(path: Path, summary: dict) -> None:
         if benchmark
         else "O tempo desta atualização não é usado como benchmark do pipeline completo."
     )
+    if benchmark and "reference" in benchmark:
+        timing = (
+            f"Pipeline completo: média geral de <b>{benchmark['mean_seconds']:.2f} segundos</b> em {benchmark['n']} rodadas, incluindo tentativas no 3.8. "
+            f"Cenário sem tentativas no 3.8 (cota esgotada): <b>{seconds:.2f} segundos</b> em {reference['n']} rodadas, incluindo retry no 3.5. Sem cache local; leitura/OCR, IA high e publicação incluídos."
+        )
     if benchmark:
         rounds = [
             r
@@ -123,7 +128,7 @@ def one_page(path: Path, summary: dict) -> None:
         ]
         valid = sum(r["ai"]["valid_decisions"] for r in rounds)
         expected = sum(r["ai"]["valid_decisions"] + r["ai"]["unavailable_files"] for r in rounds)
-        timing += f" IA: {valid}/{expected} análises válidas; esperas e falhas incluídas."
+        timing += f" IA no cenário: {valid}/{expected} análises válidas; esperas e falhas incluídas."
     paragraph(
         f"<b>{summary['files']} arquivos</b>: {counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} para revisar e {counts.get('falhou', 0)} com falha. {timing} Ressalvas: cópia idêntica, lançamento suspeito de repetição, diferença de R$ 1.080,00, outro mês e comunicado sem dados."
     )
