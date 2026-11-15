@@ -1,0 +1,59 @@
+{
+  "version": "1.10.2",
+  "date": "2026-11-15",
+  "application": "Microsoft Excel Desktop (Windows)",
+  "method": "Abertura e edição pela interface do Excel; testes de recálculo em cópias isoladas.",
+  "source_run_id": "20261115T040222Z_7b7799df",
+  "generated_xlsx_sha256": "bcf36098f1df8fa36768d1d2b5cd5d7859b996257a4a78d511d85a4ce2bc35ea",
+  "reproduction": {
+    "before": "Pedido de recuperação de antes.xlsx confirmado no Excel; tabela removida conforme log de reparo do usuário.",
+    "cause": "AutoFilter da planilha sobreposto ao AutoFilter da tabela Extratos.",
+    "control": "Cópia com apenas o filtro da planilha removido abriu sem reparo."
+  },
+  "new_generator": {
+    "repair_prompt": false,
+    "approved_balance": "4114372.29",
+    "approved": 12,
+    "review": 4,
+    "failed": 1,
+    "registered": 17,
+    "total_fully_visible": true
+  },
+  "recalculation_tests": [
+    {
+      "copy": "sem_filtro_sobreposto.xlsx",
+      "action": "Alterar competência de outubro para setembro e desfazer",
+      "expected_eligible": 0,
+      "observed_eligible": 0,
+      "observed_balance": "0.00",
+      "restored_balance": "4114372.29"
+    },
+    {
+      "copy": "gerado_corrigido.xlsx",
+      "action": "Consolidado!E2 de 271350.74 para 271351.74",
+      "expected_balance": "4114373.29",
+      "observed_balance": "4114373.29",
+      "undone": true
+    }
+  ],
+  "automated_tests": {
+    "passed": 132,
+    "ruff": "passed",
+    "xml_regression": "Tabela possui AutoFilter; planilha Consolidado não possui AutoFilter sobreposto."
+  },
+  "limitations": "Ensaio no Excel Desktop instalado nesta máquina. Não homologa outras versões/plataformas. Testes anteriores somente com openpyxl não detectaram o problema.",
+  "external_ai_calls": 0,
+  "final_distribution": {
+    "run_id": "20261115T040600Z_3fafe4a3",
+    "xlsx_sha256": "32ac560e4414e573751da337d19736e197e3089988e3e7eb0ffdbbccbe1aeba2",
+    "excel_desktop_opened_copy": true,
+    "repair_prompt": false,
+    "approved_balance": "4114372.29",
+    "counts": {
+      "ok": 12,
+      "revisar": 4,
+      "falhou": 1
+    },
+    "workbook_identical_in_zip_and_operational_output": true
+  }
+}

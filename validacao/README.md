@@ -90,3 +90,11 @@ O CMD da distribuição 1.10.0 foi executado a partir do ZIP extraído em pasta 
 ## Portabilidade 1.10.1
 
 131 testes passaram. Foram adicionados testes de mudança de pasta, índice relativo, recuperação de índice absoluto legado e links dos artefatos. O modelo HTML mostra aviso ao ser aberto diretamente. A rota HTTP de evidências e a de log também foram verificadas.
+
+## Compatibilidade Excel Desktop 1.10.2
+
+O usuário identificou reparo de tabela e fórmulas `#REF!` no Excel Desktop. A reabertura via openpyxl dos testes anteriores não era suficiente para comprovar compatibilidade. O defeito foi reproduzido no Excel com uma cópia do arquivo anterior. Removendo somente o AutoFilter da planilha que se sobrepunha ao da tabela, o Excel passou a abrir sem reparo e a calcular as referências estruturadas.
+
+O gerador foi corrigido, a coluna do total ampliada e a saída regenerada por `--update-reviews`, preservando originais e análises, sem chamadas à IA. Uma cópia dessa nova saída foi aberta no Excel Desktop: total R$ 4.114.372,29, 12 aprovados, 4 revisões e 1 falha. Alterar E2 de 271350,74 para 271351,74 atualizou o resumo para R$ 4.114.373,29; a edição foi desfeita. A competência foi alterada/restaurada em outra cópia, com recálculo dos elegíveis. `excel_desktop.json` registra os arquivos e o escopo desse ensaio.
+
+132 testes passaram, incluindo regressão que inspeciona o XML para impedir filtros sobrepostos, mesmo se o modelo de entrada já tiver AutoFilter. Ruff passou. Isso valida o Excel instalado nesta máquina e os cenários descritos, sem prometer compatibilidade universal ou ausência de qualquer outro defeito.

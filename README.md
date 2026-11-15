@@ -427,7 +427,11 @@ A distribuição atual é somente Python/CMD. Ensaios anteriores de EXE são his
 ### O que foi validado e o que ainda exige homologação
 
 
-**131 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
+**132 testes passaram** na suíte completa local: regras financeiras, arquivos inválidos, duplicidade, OCR, fórmulas, publicação, contrato/retries, revisão com saldo zero, alteração de original, edição concorrente, token/origem, tela antiga e sincronização Excel/HTML. Há ensaios reais de HTTP preservados; as provas históricas e as execuções Python atuais estão identificadas separadamente.
+
+Na versão **1.10.2**, a planilha também foi aberta no **Excel Desktop**: sem pedido de reparo, com total de R$ 4.114.372,29 e contagens 12 ok / 4 revisar / 1 falhou. Em cópia descartável, aumentar um saldo em R$ 1 atualizou o resumo para R$ 4.114.373,29; a alteração foi desfeita. A competência também foi alterada e restaurada em outra cópia para verificar o recálculo. Registro em `validacao/excel_desktop.json`.
+
+**Correção de compatibilidade:** antes havia AutoFilter da planilha e da tabela sobre a mesma área. O Excel removia a tabela ao reparar o arquivo, deixando as referências das fórmulas como `#REF!`. Agora o filtro fica somente na tabela; um teste verifica também o XML do XLSX. Os testes anteriores com openpyxl não haviam detectado essa incompatibilidade. Se estiver com uma versão antiga aberta como “Reparado”, feche-a e abra o novo `resultados/consolidado.xlsx`; salvar a cópia reparada não restaura a tabela removida. A coluna do total também foi ampliada para exibir o saldo sem `#####`.
 
 
 Git registra fonte, configuração e evidências técnicas; credenciais, caches, ZIP e relatórios gerados não entram no versionamento atual. Commits descrevem alterações objetivas. O workflow `.github/workflows/ci.yml` configura lint, testes e execução em Windows/Linux, com logs/JSON como artefatos; seu resultado precisa ser consultado, não presumido pela presença da configuração.

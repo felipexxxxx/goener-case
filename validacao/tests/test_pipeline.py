@@ -179,7 +179,8 @@ def test_workbook_retains_model_with_human_review_reference(config):
         and "linha 11" in ws["H2"].value
     )
     assert not ws.sheet_view.showGridLines and ws.freeze_panes == "A2"
-    assert ws.auto_filter.ref == "A1:H2"
+    assert ws.auto_filter.ref is None
+    assert ws.tables["Extratos"].autoFilter.ref == "A1:H2"
     wb.close()
 
 
@@ -191,6 +192,7 @@ def test_summary_uses_editable_table_and_formulas_without_changing_source(config
     wb = load_workbook(path, data_only=False)
     assert [c.value for c in wb["Consolidado"][1]] == HEADERS
     assert wb["Consolidado"].tables["Extratos"].ref == "A1:H2"
+    assert wb["Consolidado"].auto_filter.ref is None
     assert wb["Consolidado"]["E2"].value == 10
     assert wb["Resumo"]["B3"].value == "2026-11"
     assert (
@@ -201,6 +203,30 @@ def test_summary_uses_editable_table_and_formulas_without_changing_source(config
     assert wb.calculation.calcMode == "auto" and wb.calculation.fullCalcOnLoad
     assert len(wb["Consolidado"].data_validations.dataValidation) == 1
     wb.close()
+
+
+def test_generated_table_has_no_overlapping_sheet_filter_from_template(config, tmp_path):
+    from xml.etree import ElementTree as ET
+    from zipfile import ZipFile
+
+    # O modelo pode ter filtro próprio: ele deve ser substituído pelo da tabela.
+    template_path = tmp_path / "modelo_com_filtro.xlsx"
+    shutil.copy2(config.template, template_path)
+    template = load_workbook(template_path)
+    template["Consolidado"].auto_filter.ref = "A1:H20"
+    template.save(template_path)
+    template.close()
+    r = Result("extrato.pdf", "sha", "PDF", Statement("Banco", "1-0", "2026-10", closing=money(10)))
+    destination = tmp_path / "sem_sobreposicao.xlsx"
+    write_workbook(template_path, destination, [r], "2026-10")
+    ns = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    with ZipFile(destination) as package:
+        sheet = ET.fromstring(package.read("xl/worksheets/sheet1.xml"))
+        table = ET.fromstring(package.read("xl/tables/table1.xml"))
+        assert sheet.find("s:autoFilter", ns) is None
+        assert sheet.find("s:tableParts", ns).get("count") == "1"
+        assert table.find("s:autoFilter", ns).get("ref") == "A1:H2"
+        assert [c.get("name") for c in table.find("s:tableColumns", ns)] == HEADERS
 
 
 def test_package_excludes_env_by_default_and_includes_only_when_requested(

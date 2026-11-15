@@ -177,7 +177,7 @@ def write_summary(wb, period):
     ws.sheet_view.showGridLines = False
     ws.sheet_properties.tabColor = "AFCA0B"
     ws.column_dimensions["A"].width = 49
-    ws.column_dimensions["B"].width = 27
+    ws.column_dimensions["B"].width = 38
     ws.column_dimensions["C"].width = 59
     ws.merge_cells("A1:C1")
     ws["A1"] = "GOENER | Resumo do fechamento"
@@ -327,7 +327,9 @@ def write_workbook(
         for col, width in zip("ABCDEFGH", (40, 21, 17, 13, 21, 17, 14, 86), strict=True):
             ws.column_dimensions[col].width = width
         ws.freeze_panes = "A2"
-        ws.auto_filter.ref = f"A1:H{len(results) + 1}"
+        # O filtro pertence à tabela. Um AutoFilter da planilha na mesma área
+        # faz o Excel Desktop reparar/remover a tabela e quebrar suas fórmulas.
+        ws.auto_filter.ref = None
         ws.row_dimensions[1].height = 32
         for cell in ws[1]:
             cell.font = Font(name="Aptos", size=11, bold=True, color="FFFFFF")
@@ -380,11 +382,22 @@ def write_workbook(
     finally:
         wb.close()
     # A gravação só conta como concluída depois de reabrir e conferir o resultado.
-    check = load_workbook(destination, read_only=True, data_only=False)
+    check = load_workbook(destination, data_only=False)
     try:
         ws = check["Consolidado"]
         if ws.max_row != len(results) + 1:
             raise ValueError("Contagem de linhas gravadas não confere com a entrada")
+        if results:
+            table = ws.tables["Extratos"]
+            expected_ref = f"A1:H{len(results) + 1}"
+            if (
+                ws.auto_filter.ref is not None
+                or table.ref != expected_ref
+                or table.autoFilter is None
+                or table.autoFilter.ref != expected_ref
+                or [column.name for column in table.tableColumns] != HEADERS
+            ):
+                raise ValueError("Estrutura da tabela/filtro gravado não confere")
         for row, result in zip(ws.iter_rows(min_row=2), results, strict=True):
             expected = result.row()
             for cell, value in zip(row[:8], expected, strict=True):
