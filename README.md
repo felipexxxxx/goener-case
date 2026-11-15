@@ -79,6 +79,27 @@ O lote fornecido contém **17 arquivos: 12 ok, 4 revisar e 1 falhou**, com saldo
 
 Execute **Executar automacao.cmd** para processar e abrir o painel; ou `& ".\Executar automacao.cmd" --panel` para abrir os resultados existentes. No painel, clique em **Revisar este arquivo**, preencha a decisão e clique em **Salvar e atualizar**. O programa mantém o Excel e o HTML sincronizados. Deixe a janela do robô aberta enquanto usa esses botões. A execução automática pela pasta continua disponível pelos mesmos parâmetros de terminal, sem intervenção manual entre etapas.
 
+### Recursos do HTML: onde clicar
+
+| Recurso | Como usar / resultado |
+| --- | --- |
+| **Visão geral** | Mostra saldo considerado, situação dos arquivos, saldo por banco e pontos que precisam de atenção. |
+| **Conferir arquivos** | Abre a lista; clique no cartão de um arquivo para ver regras, recomendação da IA, onde conferir e medida aplicada. |
+| **Filtros** | Escolha Com ressalvas, Todos, Sem ressalvas, IA analisou ou IA indisponível. Os atalhos de pendências da visão geral também levam aos arquivos. |
+| **Busca** | Digite parte do nome do arquivo, banco ou conta. A busca funciona junto com o filtro escolhido. |
+| **Expandir os arquivos visíveis** | Abre de uma vez os cartões que passaram pelo filtro e pela busca; o botão também permite recolhê-los. |
+| **Abrir documento de origem** | Abre o arquivo original, na página indicada quando houver referência de PDF. O original não é alterado. |
+| **Abrir cópia destacada** | Abre uma cópia PDF com grifos numerados e explicações, quando foi possível localizar os trechos com segurança. Sem marcação segura, o cartão informa a limitação. |
+| **Baixar Excel** | Obtém uma cópia da planilha. Para registrar revisões pelo Excel, use a base operacional `resultados/consolidado.xlsx`. |
+| **Log da execução** | Link no rodapé: abre o registro legível do processamento, avisos e erros daquela publicação. |
+| **Baixar evidências (JSON)** | Link no rodapé: acessa os dados técnicos completos da leitura, validações e análise da IA. JSON é um arquivo de dados; não é outra tela do painel. |
+| **Verificação de integridade** | Link no rodapé: abre o manifesto com hashes dos arquivos e saídas. Serve para conferir se o conteúdo mudou; não comprova autenticidade bancária. |
+| **Revisar este arquivo** | Disponível no painel local: abre o formulário com decisão, saldo confirmado quando necessário, justificativa, responsável e data. As decisões e restrições estão na tabela abaixo. |
+| **Salvar e atualizar** | Valida a decisão, registra na aba Revisões e regenera Excel e HTML juntos. Mantém o histórico e não chama a IA novamente. Se a revisão for recusada, o painel mostra o motivo. |
+| **Cancelar** | Fecha o formulário sem registrar a revisão. |
+
+**Para consultar:** abra `resultados/relatorio.html`. **Para consultar e editar:** execute `py -3.12 executar.py --panel`, mantenha o terminal aberto e deixe o Excel fechado ao salvar uma revisão. Sem uma publicação anterior, faça primeiro a execução completa com `py -3.12 executar.py`. Abrir o HTML diretamente pelo Explorer permite consulta, busca, filtros e acesso aos arquivos; a edição pelo formulário depende do painel local.
+
 ### Conferir e corrigir sem perder o histórico
 
 Use sempre **`resultados/consolidado.xlsx`** como planilha de trabalho. A aba **Consolidado** reúne o resumo com fórmulas no topo e a tabela de oito colunas a partir da linha 7. **Revisões** mostra pendências e decisões já preenchidas; arquivos sem ressalvas não exigem revisão. Os registros de todas as entradas continuam no Consolidado.
@@ -101,13 +122,11 @@ O comando equivalente, sem atalho, é:
 
 ```powershell
 py -3.12 executar.py --update-reviews
-# Alternativa com Python:
-py -3.12 executar.py --update-reviews
 ```
 
 Essa atualização reaproveita a extração e a análise anteriores, **sem novas chamadas à IA nem nova extração financeira**. Confere os hashes dos documentos, lê Revisões e regenera fórmulas, relatório e cópias visuais; PDF digitalizado pode exigir OCR somente para localizar as marcações. Se houver documento novo, removido ou alterado, competência ou modo de IA diferente, execute o fluxo completo. Revisões anteriores só valem para o mesmo nome, SHA-256 e fechamento; versões antigas permanecem na aba como histórico.
 
-Você também pode revisar **diretamente no HTML interativo**: execute `py -3.12 executar.py --panel` ou `py -3.12 executar.py --panel` e mantenha a janela aberta. O painel usa somente `127.0.0.1`, na própria máquina, sem nuvem, login de navegador ou dependências web adicionais. Escolha o arquivo, clique em **Revisar este arquivo**, preencha o formulário e salve. Ele registra a decisão na aba Revisões e chama o mesmo pipeline com `reviews_only=True`. O Excel precisa estar fechado. Uma cópia baixada pelo navegador é somente uma cópia: a base operacional continua em `resultados/consolidado.xlsx`.
+Você também pode revisar **diretamente no HTML interativo**: execute `py -3.12 executar.py --panel` e mantenha a janela aberta. O painel usa somente `127.0.0.1`, na própria máquina, sem nuvem, login de navegador ou dependências web adicionais. Escolha o arquivo, clique em **Revisar este arquivo**, preencha o formulário e salve. Ele registra a decisão na aba Revisões e chama o mesmo pipeline com `reviews_only=True`. O Excel precisa estar fechado. Uma cópia baixada pelo navegador é somente uma cópia: a base operacional continua em `resultados/consolidado.xlsx`.
 
 Abrir o HTML diretamente pelo Explorer continua sendo consulta: os botões de edição só aparecem no painel servido pelo robô. O painel não modifica código nem pede à IA para programar; as opções são fixas e validadas. O endpoint exige token por sessão e origem local, bloqueia acesso a `.env` e rejeita envio de uma tela antiga. O modo de revisão não faz novas chamadas à IA. Não exponha esse servidor na rede: ele foi feito para uso local por um operador.
 
