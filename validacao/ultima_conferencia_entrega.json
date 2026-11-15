@@ -24,5 +24,6 @@
     }
   },
   "windows_process_tree_kill_test": "Supervisor encerrado abruptamente; trabalhador e subprocesso auxiliar terminaram pelo Job Object",
-  "confirmed_exclusions_copy": "HTML distingue alerta inicial, confirmação da IA e exclusão concluída; parecer original disponível em seção expansível"
+  "confirmed_exclusions_copy": "HTML distingue alerta inicial, confirmação da IA e exclusão concluída; parecer original disponível em seção expansível",
+  "delivery_output_folder": "resultados/Fechamento de referencia AAAA-MM; exemplo e novos fechamentos sob uma única pasta resultados"
 }

@@ -678,9 +678,14 @@ def test_delivery_reference_uses_runtime_and_only_dynamic_launcher_in_root(
         entrega.subprocess, "run", lambda *a, **k: SimpleNamespace(stdout=b"executar.py\0")
     )
     archive = entrega.build(publication, tmp_path / "entrega")
-    prefix = "goener-case/resultado/"
+    prefix = "goener-case/resultados/Fechamento de referencia " + summary["period"] + "/"
     with zipfile.ZipFile(archive) as z:
         names = z.namelist()
+        assert not any(n.startswith("goener-case/resultado/") for n in names)
+        assert (
+            json.loads(z.read("goener-case/resultados/controle/sessao_atual.json"))["folder"]
+            == "Fechamento de referencia " + summary["period"]
+        )
         assert prefix + "relatorio.html" not in names
         assert prefix + "Abrir relatorio dinamico.cmd" in names
         assert prefix + "Aplicar revisoes (Excel).cmd" in names

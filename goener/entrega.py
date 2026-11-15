@@ -206,6 +206,8 @@ def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
         .split("\0")
     )
     archive = destination / "goener_automacao.zip"
+    reference_name = "Fechamento de referencia " + summary["period"]
+    reference_prefix = "goener-case/resultados/" + reference_name + "/"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
         for name in names:
             if (
@@ -226,14 +228,14 @@ def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
             folder = Path(temporary)
             write_launchers(folder)
             for p in folder.glob("*.cmd"):
-                z.writestr("goener-case/resultado/" + p.name, p.read_bytes())
+                z.writestr(reference_prefix + p.name, p.read_bytes())
         if "relatorio.html" in payloads:
             input_dir = summary.get("configuration", {}).get("input_dir", ROOT / "extratos")
             prefix = source_root(run_dir, input_dir) + "/"
             payloads["relatorio.html"] = (
                 payloads["relatorio.html"]
                 .decode("utf-8")
-                .replace('href="' + prefix, 'href="../../../../extratos/')
+                .replace('href="' + prefix, 'href="../../../../../extratos/')
                 .encode("utf-8")
             )
             manifest = json.loads(payloads["manifesto.json"])
@@ -245,11 +247,11 @@ def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
             )
         for name, data in payloads.items():
             z.writestr(
-                "goener-case/resultado/runtime/historico/" + summary["run_id"] + "/" + name, data
+                reference_prefix + "runtime/historico/" + summary["run_id"] + "/" + name, data
             )
-        z.writestr("goener-case/resultado/consolidado.xlsx", payloads["consolidado.xlsx"])
+        z.writestr(reference_prefix + "consolidado.xlsx", payloads["consolidado.xlsx"])
         z.writestr(
-            "goener-case/resultado/runtime/historico/latest.json",
+            reference_prefix + "runtime/historico/latest.json",
             json.dumps(
                 {
                     "run_id": summary["run_id"],
@@ -257,6 +259,10 @@ def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
                     "exit_code": summary["exit_code"],
                 }
             ),
+        )
+        z.writestr(
+            "goener-case/resultados/controle/sessao_atual.json",
+            json.dumps({"folder": reference_name}),
         )
         z.write(destination / "documentacao_1_pagina.pdf", "goener-case/documentacao_1_pagina.pdf")
     return archive

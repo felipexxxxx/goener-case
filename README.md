@@ -429,7 +429,7 @@ py -3.12 -m pytest -q
 py -3.12 -m goener.entrega --include-env
 ```
 
-A entrega tem três arquivos: goener_automacao.zip, consolidado.xlsx e documentacao_1_pagina.pdf. O ZIP contém o projeto e um fechamento de referência em resultado/, com consolidado.xlsx, os atalhos Abrir relatorio dinamico.cmd e Aplicar revisoes (Excel).cmd e o histórico completo dentro de runtime/. Não há HTML de consulta solto na pasta principal desse fechamento. Novos fechamentos são criados em resultados/. O empacotamento compara fontes atuais e preserva os artefatos da execução escolhida. Não há EXE/PyInstaller nem macros.
+A entrega tem três arquivos: goener_automacao.zip, consolidado.xlsx e documentacao_1_pagina.pdf. O ZIP contém o projeto e um fechamento de referência em resultados/Fechamento de referencia AAAA-MM/, com consolidado.xlsx, os atalhos Abrir relatorio dinamico.cmd e Aplicar revisoes (Excel).cmd e o histórico completo dentro de runtime/. Não há HTML de consulta solto na pasta principal desse fechamento. O exemplo pronto e os novos fechamentos usam a mesma pasta resultados/; não há uma segunda pasta resultado/. O exemplo fica selecionado no índice inicial, permitindo reabri-lo sem reprocessar. O empacotamento compara fontes atuais e preserva os artefatos da execução escolhida. Não há EXE/PyInstaller nem macros.
 
 Fonte, configuração e validação são versionados. Relatórios, ZIP, cache e .env não vão para o Git. O ZIP privado inclui .env somente por solicitação explícita do responsável; quem receber a chave poderá consumir a cota dela. Não publique esse pacote privado em repositório aberto.
 
