@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from openpyxl import load_workbook
+from openpyxl.comments import Comment
 from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.workbook.properties import CalcProperties
@@ -27,7 +28,7 @@ HEADERS = [
     "Status",
     "Observação",
 ]
-OUTPUT_HEADERS = [*HEADERS, "Status técnico"]
+OUTPUT_HEADERS = [*HEADERS, "Decisão do fechamento"]
 OUTCOME_LABELS = {"incluido": "Incluído", "excluido": "Excluído", "pendente": "Pendente"}
 
 
@@ -266,7 +267,7 @@ def write_summary(wb, period):
         if name not in ("Consolidado", "Revisões"):
             del wb[name]
     ws = wb["Consolidado"]
-    ws.merge_cells("A1:H1")
+    ws.merge_cells("A1:I1")
     ws["A1"] = "GOENER | Saldos bancários"
     ws["A1"].font = Font(name="Aptos", size=20, bold=True, color="FFFFFF")
     ws["A1"].fill = PatternFill("solid", fgColor="003836")
@@ -279,29 +280,34 @@ def write_summary(wb, period):
     ws["B2"].number_format = "@"
     ws.merge_cells("C2:D2")
     ws["C2"] = "Saldo considerado"
-    ws.merge_cells("E2:H3")
-    ws["E2"] = '=SUMIFS(Extratos[Saldo final],Extratos[Status técnico],"ok",Extratos[Período],$B$2)'
+    ws.merge_cells("E2:I3")
+    ws["E2"] = '=SUMIFS(Extratos[Saldo final],Extratos[Status],"ok",Extratos[Período],$B$2)'
     ws["E2"].font = Font(name="Aptos", size=22, bold=True, color="003836")
     ws["E2"].number_format = '"R$" #,##0.00;[Red]-"R$" #,##0.00'
     ws["E2"].alignment = Alignment(vertical="center", horizontal="left")
     ws["A3"] = "Incluídos no mês"
-    ws["B3"] = '=COUNTIFS(Extratos[Status],"Incluído",Extratos[Período],$B$2)'
+    ws["B3"] = '=COUNTIFS(Extratos[Decisão do fechamento],"Incluído",Extratos[Período],$B$2)'
     for label_cell, label, value_cell, formula in (
-        ("A4", "Excluídos", "B4", '=COUNTIF(Extratos[Status],"Excluído")'),
-        ("A5", "Pendentes de decisão", "B5", '=COUNTIF(Extratos[Status],"Pendente")'),
+        ("A4", "Excluídos", "B4", '=COUNTIF(Extratos[Decisão do fechamento],"Excluído")'),
+        (
+            "A5",
+            "Pendentes de decisão",
+            "B5",
+            '=COUNTIF(Extratos[Decisão do fechamento],"Pendente")',
+        ),
         ("A6", "Arquivos recebidos", "B6", "=COUNTA(Extratos[Arquivo])"),
     ):
         ws[label_cell] = label
         ws[value_cell] = formula
-    for row in ws.iter_rows(min_row=2, max_row=6, max_col=8):
+    for row in ws.iter_rows(min_row=2, max_row=6, max_col=9):
         for c in row:
             if c.coordinate not in ("B2", "E2"):
                 c.font = Font(name="Aptos", size=11, bold=c.data_type == "f", color="003836")
             if c.coordinate != "B2":
                 c.fill = PatternFill("solid", fgColor="F0F7F6")
-    ws.merge_cells("C4:H6")
+    ws.merge_cells("C4:I6")
     ws["C4"] = (
-        "Status mostra a decisão: Incluído, Excluído ou Pendente. Apenas pendentes exigem decisão. Para corrigir, use a aba Revisões ou o relatório dinâmico."
+        "Status = validação técnica (ok/revisar/falhou). Decisão do fechamento = efeito no total (Incluído/Excluído/Pendente). Um alerta pode ser resolvido por exclusão: só Pendente exige decisão humana. Motivos na Observação."
     )
     ws["C4"].font = Font(name="Aptos", size=10, color="526762")
     ws["C4"].alignment = Alignment(wrap_text=True, vertical="center")
@@ -331,8 +337,7 @@ def write_workbook(
         for row_number, result in enumerate(results, 8):
             values = result.row()
             values[7] = workbook_note(result)
-            values.append(result.status)
-            values[6] = OUTCOME_LABELS[operational_state(result, ai_mode, period or "")]
+            values.append(OUTCOME_LABELS[operational_state(result, ai_mode, period or "")])
             for col_number, value in enumerate(values, 1):
                 cell = ws.cell(row_number, col_number, value)
                 if isinstance(value, str):
@@ -360,6 +365,14 @@ def write_workbook(
                     cell.number_format = '"R$" #,##0.00;[Red]-"R$" #,##0.00'
                 if col_number == 7:
                     bg, fg = {
+                        "ok": ("E7F3EC", "176038"),
+                        "revisar": ("FFF2CD", "805A00"),
+                        "falhou": ("FCE5E5", "A52222"),
+                    }[value]
+                    cell.fill = PatternFill("solid", fgColor=bg)
+                    cell.font = Font(name="Aptos", size=10, bold=True, color=fg)
+                if col_number == 9:
+                    bg, fg = {
                         "Incluído": ("E7F3EC", "176038"),
                         "Excluído": ("E8EFF5", "375B87"),
                         "Pendente": ("FFF2CD", "805A00"),
@@ -371,20 +384,28 @@ def write_workbook(
             )
             ws.row_dimensions[row_number].height = min(409, max(40, lines * 13 + 10))
         ws["I7"] = OUTPUT_HEADERS[-1]
-        ws.column_dimensions["I"].hidden = True
-        for col, width in zip("ABCDEFGHI", (37, 22, 16, 14, 21, 19, 13, 56, 20), strict=True):
+        ws.column_dimensions["I"].hidden = False
+        ws["G7"].comment = Comment(
+            "Status da validação técnica. revisar indica um alerta; consulte Decisão do fechamento para saber se ele já foi resolvido por exclusão ou ainda exige decisão humana.",
+            "Goener",
+        )
+        ws["I7"].comment = Comment(
+            "Resultado operacional: Incluído entra no total; Excluído fica fora com motivo registrado; Pendente aguarda decisão humana. Exemplo: Status revisar + Decisão Excluído = alerta resolvido por exclusão, sem pendência humana.",
+            "Goener",
+        )
+        for col, width in zip("ABCDEFGHI", (37, 22, 16, 14, 21, 19, 13, 56, 25), strict=True):
             ws.column_dimensions[col].width = width
         ws.freeze_panes = "C8"
         # O filtro pertence à tabela. Um AutoFilter da planilha na mesma área
         # faz o Excel Desktop reparar/remover a tabela e quebrar suas fórmulas.
         ws.auto_filter.ref = None
-        ws.row_dimensions[7].height = 30
+        ws.row_dimensions[7].height = 38
         for cell in ws[7]:
             cell.font = Font(name="Aptos", size=11, bold=True, color="FFFFFF")
             cell.fill = PatternFill("solid", fgColor="003836")
-            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         ws.print_options.horizontalCentered = True
-        ws.print_area = f"A1:H{len(results) + 7}"
+        ws.print_area = f"A1:I{len(results) + 7}"
         ws.print_title_rows = "7:7"
         ws.sheet_properties.pageSetUpPr.fitToPage = True
         ws.page_setup.orientation = "landscape"
@@ -396,7 +417,7 @@ def write_workbook(
             table = Table(displayName="Extratos", ref=f"A7:I{len(results) + 7}")
             table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
             ws.add_table(table)
-            status_validation = DataValidation(type="list", formula1='"Incluído,Excluído,Pendente"')
+            status_validation = DataValidation(type="list", formula1='"ok,revisar,falhou"')
             status_validation.errorTitle = "Escolha um status válido"
             status_validation.error = "Use a aba Revisões para registrar e aplicar uma decisão."
             status_validation.showErrorMessage = True
@@ -404,9 +425,9 @@ def write_workbook(
             ws.add_data_validation(status_validation)
             status_validation.add("G8:G1048576")
             for status, bg, fg in [
-                ("Incluído", "E7F3EC", "176038"),
-                ("Pendente", "FFF2CD", "805A00"),
-                ("Excluído", "E8EFF5", "375B87"),
+                ("ok", "E7F3EC", "176038"),
+                ("revisar", "FFF2CD", "805A00"),
+                ("falhou", "FCE5E5", "A52222"),
             ]:
                 ws.conditional_formatting.add(
                     "G8:G1048576",
@@ -452,7 +473,6 @@ def write_workbook(
         for row, result in zip(ws.iter_rows(min_row=8), results, strict=True):
             expected = result.row()
             expected[7] = workbook_note(result)
-            expected[6] = OUTCOME_LABELS[operational_state(result, ai_mode, period or "")]
             for cell, value in zip(row[:8], expected, strict=True):
                 actual = cell.value
                 if (actual if actual is not None else "") != (value if value is not None else ""):

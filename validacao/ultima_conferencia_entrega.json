@@ -17,7 +17,11 @@
     "pending": 2,
     "received": 17,
     "calculated_balance": "4114372.29",
-    "visible_status_columns": 1
+    "visible_status_columns": 2,
+    "column_meanings": {
+      "Status": "Validação técnica: ok/revisar/falhou",
+      "Decisão do fechamento": "Tratamento aplicado: Incluído/Excluído/Pendente"
+    }
   },
   "windows_process_tree_kill_test": "Supervisor encerrado abruptamente; trabalhador e subprocesso auxiliar terminaram pelo Job Object",
   "confirmed_exclusions_copy": "HTML distingue alerta inicial, confirmação da IA e exclusão concluída; parecer original disponível em seção expansível"
