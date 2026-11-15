@@ -1,7 +1,7 @@
 # Caminhos relativos a este arquivo, não ao diretório do terminal.
 input_dir = "extratos"
 output_dir = "resultados"
-runtime_dir = "resultados/runtime"
+runtime_dir = "resultados/controle"
 template = "modelo.xlsx"
 # Remova para usar o mês anterior na zona America/Sao_Paulo.
 period = "2026-10"
@@ -13,7 +13,7 @@ max_file_mb = 25
 max_pdf_pages = 20
 max_image_pixels = 30000000
 retries = 2
-stop_file = "resultados/runtime/STOP"
+stop_file = "resultados/controle/STOP"
 ai_mode = "automatico" # aplica retenções e exclusões no consolidado; não altera o extrato original
 ai_scope = "excecoes" # excecoes: somente revisar/falhou; todos: conferência adicional de todo o lote
 ai_batch_size = 50 # agrupa as exceções numa chamada; divide apenas ao atingir limites de tamanho

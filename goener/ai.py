@@ -503,6 +503,11 @@ def request_gemini(
         status, category, retry_after, provider_status = None, None, 0, None
         quotas, quota_kind = [], None
         try:
+            emit(
+                "AI_REQUEST_STARTED",
+                number=number,
+                timeout_seconds=round(min(getattr(config, "ai_timeout_seconds", 60), remaining), 1),
+            )
             with opener(
                 req, timeout=min(getattr(config, "ai_timeout_seconds", 60), remaining)
             ) as response:

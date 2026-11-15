@@ -13,11 +13,12 @@ from pathlib import Path
 
 def supervise(command, root: Path, *, desktop=False):
     """O processo externo conserva o diagnóstico mesmo se uma biblioteca nativa cair."""
-    folder = root / "resultados/runtime/diagnosticos"
+    print("Iniciando Goener. Preparando o Python e carregando as dependências...", flush=True)
+    folder = root / "resultados/controle/diagnosticos"
     try:
         import json
 
-        pointer = root / "resultados/runtime/sessao_atual.json"
+        pointer = root / "resultados/controle/sessao_atual.json"
         selected = (
             root / "resultados" / json.loads(pointer.read_text(encoding="utf-8"))["folder"]
         ).resolve()

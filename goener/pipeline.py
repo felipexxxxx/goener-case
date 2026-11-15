@@ -181,6 +181,35 @@ class RunLog:
         self.run_id = run_id
 
     def event(self, event: str, **fields):
+        messages = {
+            "RUN_STARTED": lambda: f"Preparando fechamento: {fields.get('files')} arquivos.",
+            "FILE_STARTED": lambda: f"Lendo arquivo: {fields.get('file')}",
+            "FILE_EXTRACTION_FAILED": lambda: f"Não foi possível ler {fields.get('file')}; a falha será registrada e os demais arquivos continuam.",
+            "AI_CACHE_HIT": lambda: "Resposta da IA reaproveitada do cache, sem nova chamada HTTP.",
+            "AI_BATCH_STARTED": lambda: (
+                f"Analisando {fields.get('size')} documentos juntos com a IA."
+            ),
+            "AI_REQUEST_STARTED": lambda: (
+                f"Aguardando {fields.get('model')}: tentativa {fields.get('number')}, prazo de até {fields.get('timeout_seconds')} s."
+            ),
+            "AI_THROTTLED": lambda: (
+                f"Aguardando limite de chamadas: pausa de {fields.get('wait_seconds')} s."
+            ),
+            "AI_RETRY": lambda: (
+                f"Nova tentativa da IA em {fields.get('wait_seconds')} s (motivo: {fields.get('reason')}, HTTP {fields.get('http_status')})."
+            ),
+            "AI_FAILOVER": lambda: (
+                f"Alternando de {fields.get('from_model')} para {fields.get('to_model')} (motivo: {fields.get('reason')})."
+            ),
+            "AI_BATCH_FINISHED": lambda: f"Etapa de IA encerrada: {fields.get('outcome')}.",
+            "GENERATING_OUTPUTS": lambda: (
+                "Gerando destaques, Excel, relatório HTML e evidências..."
+            ),
+            "RUN_FINISHED": lambda: "Fechamento publicado. Resultados disponíveis.",
+            "RUN_ABORTED": lambda: "A execução foi interrompida. Consulte o erro e o log abaixo.",
+        }
+        if event in messages:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] {messages[event]()}", flush=True)
         record = {
             "timestamp": datetime.now(UTC).isoformat(),
             "run_id": self.run_id,
@@ -492,6 +521,7 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
                 "included_files": sum(r.included(config.ai_mode, config.period) for r in results),
             }
             stage = config.output_dir / f".{run_id}.pending"
+            log.event("GENERATING_OUTPUTS")
             stage.mkdir()
             from .sessao import write_launchers
 

@@ -573,3 +573,23 @@ def test_panel_recovers_from_missing_saved_session(config):
     assert selected.output_dir.is_dir()
     assert selected.output_dir.parent == config.output_dir
     assert not (config.runtime_dir / "sessao_atual.json").exists()
+
+
+def test_terminal_announces_reading_before_waiting_for_ai(config, monkeypatch, capsys):
+    source(config)
+    config.ai_mode = "consultivo"
+    config.ai_scope = "todos"
+
+    def request(context, cfg, **kwargs):
+        initial = capsys.readouterr().out
+        assert "Preparando fechamento" in initial and "Lendo arquivo:" in initial
+        kwargs["emit"]("AI_REQUEST_STARTED", model="modelo-teste", number=1, timeout_seconds=60)
+        waiting = capsys.readouterr().out
+        assert "Aguardando modelo-teste" in waiting and "60 s" in waiting
+        return {"decision": "considerar", "reason": "Dados conferem", "evidence_codes": []}
+
+    monkeypatch.setattr("goener.ai.request_gemini_failover", request)
+    _, _, code = run(config)
+    assert code == 0
+    final = capsys.readouterr().out
+    assert "Gerando destaques, Excel" in final and "Fechamento publicado" in final
