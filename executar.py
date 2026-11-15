@@ -13,7 +13,18 @@ from pathlib import Path
 
 def supervise(command, root: Path, *, desktop=False):
     """O processo externo conserva o diagnóstico mesmo se uma biblioteca nativa cair."""
-    folder = root / ".local/runtime/diagnosticos"
+    folder = root / "resultados/runtime/diagnosticos"
+    try:
+        import json
+
+        pointer = root / "resultados/runtime/sessao_atual.json"
+        selected = (
+            root / "resultados" / json.loads(pointer.read_text(encoding="utf-8"))["folder"]
+        ).resolve()
+        if selected.is_dir() and selected.is_relative_to((root / "resultados").resolve()):
+            folder = selected / "runtime/diagnosticos"
+    except (OSError, ValueError, KeyError):
+        pass
     try:
         folder.mkdir(parents=True, exist_ok=True)
     except OSError:
@@ -22,9 +33,11 @@ def supervise(command, root: Path, *, desktop=False):
     name = datetime.now().strftime("abertura_%Y%m%d_%H%M%S_%f")
     path = folder / (name + ".log")
     native = folder / (name + "_nativo.log")
+    session_target = folder / (name + ".session")
     environment = {
         **os.environ,
         "GOENER_NATIVE_LOG": str(native),
+        "GOENER_SESSION_TARGET": str(session_target),
         "PYTHONIOENCODING": "utf-8",
         "GOENER_INTERACTIVE": "1" if desktop else "0",
     }
@@ -59,11 +72,28 @@ def supervise(command, root: Path, *, desktop=False):
             print("Não foi possível iniciar o processamento.", file=sys.stderr)
         log.write(f"FIM {datetime.now().isoformat()} codigo={code} hex={code & 0xFFFFFFFF:#x}\n")
         log.flush()
+    try:
+        selected = Path(session_target.read_text(encoding="utf-8")).resolve()
+        if selected.is_relative_to((root / "resultados").resolve()):
+            destination = selected / "runtime/diagnosticos"
+            destination.mkdir(parents=True, exist_ok=True)
+            if path.parent != destination:
+                new_path = destination / path.name
+                path.replace(new_path)
+                path = new_path
+                if native.exists():
+                    new_native = destination / native.name
+                    native.replace(new_native)
+                    native = new_native
+    except OSError:
+        pass
+    finally:
+        session_target.unlink(missing_ok=True)
     if code:
         print(
             f"\nA execução não concluiu (código {code}, {code & 0xFFFFFFFF:#x}).\n"
             f"Log da abertura: {path}\nDiagnóstico nativo, se disponível: {native}\n"
-            "Os logs por arquivo ficam em .local/runtime/logs. Não houve reinício automático.",
+            "Os logs por arquivo ficam na pasta runtime do fechamento em resultados. Não houve reinício automático.",
             flush=True,
         )
         if desktop and code != 130 and os.environ.get("GOENER_CMD") != "1":

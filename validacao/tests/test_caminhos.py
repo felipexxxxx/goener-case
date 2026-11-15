@@ -19,7 +19,7 @@ def test_links_and_relative_index_survive_moving_output_folder(config, tmp_path)
     resolved = publication_directory(moved)
     assert resolved == moved / "historico" / directory.name
     html = (resolved / "relatorio.html").read_text(encoding="utf-8")
-    for name in ("evidencias.json", "execucao.log", "manifesto.json", "consolidado.xlsx"):
+    for name in ("evidencias.json", "runtime/execucao.log", "manifesto.json", "consolidado.xlsx"):
         assert f'href="{name}"' in html
         assert (resolved / name).is_file()
 

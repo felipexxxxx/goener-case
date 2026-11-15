@@ -16,7 +16,7 @@ A chave Gemini fica no `.env` ao lado de `config.toml`. Não vai para o Git. A l
 
 ### Abrir e revisar um fechamento
 
-Dê dois cliques em **Executar automacao.cmd**, na raiz. Ele abre o fechamento mais recente; se não houver resultado, processa os extratos e depois abre o painel. Mantenha a janela do robô aberta.
+Dê dois cliques em **Executar automacao.cmd**, na raiz. Ele inicia um novo processamento dos extratos e depois abre o painel do novo fechamento. Para retomar uma execução existente, use Abrir painel.cmd dentro da pasta daquele fechamento. Mantenha a janela do robô aberta.
 
 Cada fechamento tem uma pasta identificada por mês, data e horário dentro de `resultados/`. Não existem mais Excel e HTML soltos nessa raiz.
 
@@ -286,7 +286,7 @@ py -3.12 executar.py --session "resultados/PASTA DO FECHAMENTO" --update-reviews
 
 Também disponíveis: --ai-mode off/consultivo/automatico, --ai-scope excecoes/todos, --period AAAA-MM, --no-cache, --no-ocr e --strict. O CMD aceita parâmetros explícitos, mas os atalhos das pastas dispensam isso para o usuário comum. O fechamento mantém competência e modo originais ao ser reaberto pelo seu atalho.
 
-config.toml usa caminhos relativos ao projeto. O índice do fechamento mais recente fica em .local/runtime/sessao_atual.json, separado dos resultados. Cache, logs de abertura e trava também ficam em .local/runtime. Cada fechamento tem sua própria base operacional; o painel não segue o índice global após abrir.
+config.toml usa caminhos relativos ao projeto. O índice do fechamento mais recente fica em resultados/runtime/sessao_atual.json, separado dos resultados. Cache, logs de abertura e trava também ficam em resultados/runtime. Cada fechamento tem sua própria base operacional; o painel não segue o índice global após abrir.
 
 ### Contrato de resposta da IA
 
@@ -311,7 +311,7 @@ As decisões da IA são `considerar`, `nao_considerar` e `revisar`, distintas da
 
 SHA-256 é uma impressão digital dos bytes do arquivo, calculada localmente com `hashlib`. Reconhece cópias exatas; documentos com os mesmos dados mas outra estrutura podem ter hashes diferentes. Banco, conta e competência repetidos em conteúdos diferentes recebem uma ressalva própria. A leitura também verifica se o original mudou durante o processamento ou antes do envio à IA; uma alteração nessa janela bloqueia aquela análise.
 
-O SQLite, acessado pela biblioteca padrão `sqlite3`, guarda dados em `.local/runtime/`. `extractions.sqlite3` reaproveita extrações por hash, formato, código e opções de leitura, reaplicando as regras em cada execução. `gemini.sqlite3` guarda respostas válidas, tentativas e bloqueios de cota. A resposta de IA é reutilizada por até 30 dias se modelo, instruções e requisição forem iguais. Mudar low/high invalida essa chave. Não se armazena a chave da API nesses bancos. `--no-cache` força nova análise, respeitando cotas.
+O SQLite, acessado pela biblioteca padrão `sqlite3`, guarda dados em `resultados/runtime/`. `extractions.sqlite3` reaproveita extrações por hash, formato, código e opções de leitura, reaplicando as regras em cada execução. `gemini.sqlite3` guarda respostas válidas, tentativas e bloqueios de cota. A resposta de IA é reutilizada por até 30 dias se modelo, instruções e requisição forem iguais. Mudar low/high invalida essa chave. Não se armazena a chave da API nesses bancos. `--no-cache` força nova análise, respeitando cotas.
 
 ### Como a leitura identifica os lançamentos sem Gemini
 
@@ -369,7 +369,7 @@ Até 50 documentos, 100 mil caracteres de contexto e 16 MiB nas partes serializa
 
 ## 4. Validação e entrega
 
-Na versão 1.14.0, **151 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
+Na versão 1.14.0, **153 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
 
 Testes e registros ficam em validacao/. A suíte cobre regras financeiras, duplicidade, OCR, JSON, retries, fórmulas, segurança de entrada, publicação, revisão, arquivos alterados e isolamento entre dois fechamentos. A abertura no Excel Desktop e a navegação do link são verificadas separadamente; abrir com openpyxl não basta para comprovar compatibilidade.
 
@@ -384,3 +384,7 @@ A entrega tem três arquivos: goener_automacao.zip, consolidado.xlsx e documenta
 Fonte, configuração e validação são versionados. Relatórios, ZIP, cache e .env não vão para o Git. O ZIP privado inclui .env somente por solicitação explícita do responsável; quem receber a chave poderá consumir a cota dela. Não publique esse pacote privado em repositório aberto.
 
 O servidor aceita somente origem local e token da sessão, rejeita tela antiga e não serve .env. Responsável é informado pelo operador, não autenticação corporativa. Não exponha o painel na rede. Hash detecta diferença de conteúdo, não garante autenticidade ou qualidade da leitura. Os testes nesta máquina não substituem homologação de novos formatos ou de outro Excel.
+
+Os logs de cada fechamento ficam na sua pasta `runtime/`; cada publicação também conserva os logs em `historico/<execução>/runtime/`. Diagnósticos anteriores à seleção do fechamento ficam em `resultados/runtime/diagnosticos/`. Cache, cotas e índice compartilhados ficam em `resultados/runtime/`. A pasta `.local` não é necessária para executar nem deve ser incluída no ZIP. Extraia o pacote completo antes de abrir o CMD; ele exige a instalação inicial das dependências descrita acima.
+
+No GitHub Actions, o ensaio ponta a ponta usa `--ai-mode off` para validar OCR, regras e publicação sem credencial ou dependência da API. Os testes de HTTP usam respostas controladas; as medições reais de IA estão registradas separadamente.

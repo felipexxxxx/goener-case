@@ -30,7 +30,7 @@ def test_local_panel_validates_token_and_updates_both_outputs(config, name):
             with urlopen(origin + "/evidencias.json") as response:
                 assert response.status == 200
                 assert json.load(response)[0]["file"] == name
-            with urlopen(origin + "/execucao.log") as response:
+            with urlopen(origin + "/runtime/execucao.log") as response:
                 assert response.status == 200
             token = re.search("const token='([^']+)'", html)[1]
             assert not token.startswith("__")

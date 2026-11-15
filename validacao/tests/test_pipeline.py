@@ -41,7 +41,7 @@ def test_batch_preserves_duplicates_and_failures_and_has_evidence(config):
     assert all(file_hash(out / n) == sha for n, sha in manifest["artifacts"].items())
     events = [
         json.loads(line)
-        for line in (out / "execucao.jsonl").read_text(encoding="utf8").splitlines()
+        for line in (out / "runtime/execucao.jsonl").read_text(encoding="utf8").splitlines()
     ]
     assert sum(e["event"] == "FILE_FINISHED" for e in events) == 4
 
@@ -560,3 +560,16 @@ def test_delivery_uses_complete_pipeline_benchmark_instead_of_review_duration(
         assert "240.00 segundos" in text
         assert ("10/10" if scenario_reference else "15/15") in text
         assert "0.94" not in text
+
+
+def test_panel_recovers_from_missing_saved_session(config):
+    from goener.sessao import select_session
+
+    config.runtime_dir.mkdir(parents=True)
+    (config.runtime_dir / "sessao_atual.json").write_text(
+        '{"folder":"pasta-removida"}', encoding="utf-8"
+    )
+    selected = select_session(config)
+    assert selected.output_dir.is_dir()
+    assert selected.output_dir.parent == config.output_dir
+    assert not (config.runtime_dir / "sessao_atual.json").exists()

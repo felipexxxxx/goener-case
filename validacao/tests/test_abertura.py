@@ -11,7 +11,7 @@ def test_supervisor_records_abrupt_exit_and_waits_for_desktop(tmp_path, monkeypa
     monkeypatch.setattr("builtins.input", lambda message: prompts.append(message))
     code = supervise([sys.executable, "-c", "import os;os._exit(37)"], tmp_path, desktop=True)
     assert code == 37 and prompts
-    logs = list((tmp_path / ".local/runtime/diagnosticos").glob("*.log"))
+    logs = list((tmp_path / "resultados/runtime/diagnosticos").glob("*.log"))
     assert "codigo=37" in logs[0].read_text(encoding="utf-8")
 
 
@@ -52,3 +52,16 @@ def test_legacy_live_process_is_not_removed(tmp_path):
         with RunLock(path):
             pass
     assert path.exists()
+
+
+def test_supervisor_keeps_diagnostic_in_selected_session(tmp_path):
+    folder = tmp_path / "resultados/Fechamento teste"
+    folder.mkdir(parents=True)
+    script = (
+        "import os;from pathlib import Path;Path(os.environ['GOENER_SESSION_TARGET']).write_text("
+        + repr(str(folder))
+        + ",encoding='utf-8');print('ok')"
+    )
+    assert supervise([sys.executable, "-c", script], tmp_path) == 0
+    logs = list((folder / "runtime/diagnosticos").glob("*.log"))
+    assert len(logs) == 1 and "codigo=0" in logs[0].read_text(encoding="utf-8")

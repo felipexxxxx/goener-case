@@ -8,7 +8,8 @@ if errorlevel 1 (
     exit /b 1
 )
 if "%~1"=="" (
-    py -3.12 executar.py --panel
+    py -3.12 executar.py
+    if not errorlevel 1 py -3.12 executar.py --panel
 ) else (
     py -3.12 executar.py %*
 )

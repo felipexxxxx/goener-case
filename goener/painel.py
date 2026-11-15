@@ -69,12 +69,17 @@ def make_server(config, *, port=0):
                 if route.startswith("extratos/"):
                     base = config.input_dir.resolve()
                     path = base / route.removeprefix("extratos/")
-                elif route.startswith("destaques/") or route in {
-                    "consolidado.xlsx",
-                    "execucao.log",
-                    "evidencias.json",
-                    "manifesto.json",
-                }:
+                elif (
+                    route in {"runtime/execucao.log", "runtime/execucao.jsonl"}
+                    or route.startswith("destaques/")
+                    or route
+                    in {
+                        "consolidado.xlsx",
+                        "execucao.log",
+                        "evidencias.json",
+                        "manifesto.json",
+                    }
+                ):
                     base = directory
                     path = directory / route
                 else:

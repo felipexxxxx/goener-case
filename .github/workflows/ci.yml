@@ -31,7 +31,7 @@ jobs:
       - name: Testar regras e arquivos do case
         run: python -m pytest --cov=goener --cov-report=xml --junitxml=test-results.xml -q
       - name: Executar automacao de ponta a ponta
-        run: python -m goener --config config.toml --no-cache --output .local/outputs
+        run: python -m goener --config config.toml --no-cache --output resultados/ci --ai-mode off
       - name: Guardar logs e evidencias tecnicas
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -39,10 +39,10 @@ jobs:
           name: validacao-${{ matrix.os }}
           include-hidden-files: true
           path: |
-            .local/outputs/historico/*/execucao.log
-            .local/outputs/historico/*/execucao.jsonl
-            .local/outputs/historico/*/resumo.json
-            .local/outputs/historico/*/evidencias.json
+            resultados/ci/**/runtime/*.log
+            resultados/ci/**/runtime/*.jsonl
+            resultados/ci/**/resumo.json
+            resultados/ci/**/evidencias.json
             test-results.xml
             coverage.xml
           retention-days: 14

@@ -327,7 +327,7 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
     config.runtime_dir.mkdir(parents=True, exist_ok=True)
     config.output_dir.mkdir(parents=True, exist_ok=True)
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ") + "_" + uuid.uuid4().hex[:8]
-    log = RunLog(config.runtime_dir / "logs", run_id)
+    log = RunLog(config.output_dir / "runtime", run_id)
     start = time.perf_counter()
     started_at = datetime.now(UTC).isoformat()
     with RunLock(config.runtime_dir / "execution.lock") as lock:
@@ -520,8 +520,9 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
                 rows=len(results),
                 statuses=json.dumps(statuses, sort_keys=True),
             )
-            shutil.copyfile(log.json_path, stage / "execucao.jsonl")
-            shutil.copyfile(log.text_path, stage / "execucao.log")
+            (stage / "runtime").mkdir()
+            shutil.copyfile(log.json_path, stage / "runtime/execucao.jsonl")
+            shutil.copyfile(log.text_path, stage / "runtime/execucao.log")
             manifest = {
                 "run_id": run_id,
                 "algorithm": "SHA-256",
@@ -620,6 +621,8 @@ def main(argv=None) -> int:
         config = select_session(
             config, args.session, create=not (args.panel or args.update_reviews or args.session)
         )
+        if target := os.environ.get("GOENER_SESSION_TARGET"):
+            Path(target).write_text(str(config.output_dir.resolve()), encoding="utf-8")
         if args.panel:
             from .painel import serve
 

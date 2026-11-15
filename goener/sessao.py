@@ -24,7 +24,8 @@ def select_session(config, requested=None, *, create=False):
     elif not create and pointer.exists():
         folder = (root / json.loads(pointer.read_text(encoding="utf-8"))["folder"]).resolve()
         if not folder.is_relative_to(root.resolve()) or not folder.is_dir():
-            raise ValueError("Execução não encontrada. Execute novamente o processamento.")
+            pointer.unlink(missing_ok=True)
+            return select_session(config, create=False)
         if (
             not (folder / "historico/latest.json").exists()
             and not (folder / "resumo.json").exists()

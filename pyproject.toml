@@ -24,12 +24,12 @@ goener = ["report.html"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-cache_dir = ".local/pytest"
+cache_dir = "resultados/runtime/pytest"
 testpaths = ["validacao/tests"]
 markers = ["integration: arquivos reais do case", "ocr: inferência local de OCR"]
 
 [tool.ruff]
-cache-dir = ".local/ruff"
+cache-dir = "resultados/runtime/ruff"
 target-version = "py312"
 line-length = 100
 
@@ -38,4 +38,4 @@ select = ["E", "F", "I", "B", "UP"]
 ignore = ["E501"]
 
 [tool.coverage.run]
-data_file = ".local/coverage"
+data_file = "resultados/runtime/coverage"
