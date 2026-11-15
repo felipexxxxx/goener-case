@@ -63,11 +63,11 @@ def one_page(path: Path, summary: dict) -> None:
         p = Paragraph(text, title_style if title else body_style)
         _, h = p.wrap(width - 34 * mm, height)
         p.drawOn(c, 17 * mm, y - h)
-        y -= h + (3 if title else 5) * mm
+        y -= h + (3 if title else 4.5) * mm
 
     paragraph("O que foi automatizado", True)
     paragraph(
-        "Um comando Python 3.12, iniciado pelo CMD, lê a pasta de entrada, extrai banco, conta, competência e saldo final de PDF, Excel e imagem e preenche o modelo fornecido. A execução gera planilha, log, evidências por arquivo e relatório filtrável. Aplica retenções e exclusões nos totais, preserva uma linha por arquivo e entrega as ressalvas sem aguardar intervenção humana. Os extratos originais são preservados. O painel local permite registrar revisões e atualizar Excel e HTML juntos; cópias destacadas facilitam localizar divergências."
+        "Python 3.12 lê a pasta de extratos em PDF, Excel e imagem, confere os saldos e gera planilha, relatório, logs e evidências. Cada arquivo recebe status e observação. Pendências não interrompem a publicação. Cada fechamento tem pasta e atalhos próprios; o painel registra revisões e atualiza Excel e HTML juntos. Cópias destacadas direcionam a conferência."
     )
     paragraph("Fluxo e controles", True)
     gap, box_height = 9, 31
@@ -95,22 +95,44 @@ def one_page(path: Path, summary: dict) -> None:
             c.line(right + gap - 4, y - box_height / 2 - 2, right + gap - 1, y - box_height / 2)
     y -= box_height + 9
     paragraph(
-        "* Regulares dispensam IA. O Python compara saldo inicial + movimentos com o final declarado e confere os saldos entre lançamentos. Hash identifica cópias; competência, campos e OCR são validados. O Gemini recebe original/contexto e devolve JSON conferido pelo robô. Falha da API gera ressalva, sem impedir a publicação. Cache, retries, cotas, lock e STOP apoiam a operação."
+        "* Regulares dispensam IA. O Python compara saldo inicial + movimentos com o final declarado e confere os saldos entre lançamentos. Hash identifica cópias; competência, campos e OCR são validados. O Gemini confere original/contexto e pode concordar ou discordar do alerta. Seu JSON é validado; parecer não equivale a autorização para corrigir saldo. Falha da API gera ressalva, sem impedir a publicação. Cache, retries, cotas, lock e STOP apoiam a operação."
     )
     paragraph("Resultado do lote fornecido", True)
     counts = summary["statuses"]
-    timing = "Reexecução com cache" if summary.get("cache_hits", 0) else "Execução sem cache"
+    benchmark_path = ROOT / "validacao/tempo_pipeline.json"
+    benchmark = (
+        json.loads(benchmark_path.read_text(encoding="utf-8")) if benchmark_path.exists() else None
+    )
+    seconds = benchmark["mean_seconds"] if benchmark else summary["duration_seconds"]
+    timing = (
+        f"Pipeline completo: média de <b>{seconds:.2f} segundos</b> em {benchmark['n']} execuções sem cache local, incluindo IA HTTP high agrupada e publicação."
+        if benchmark
+        else "O tempo desta atualização não é usado como benchmark do pipeline completo."
+    )
+    if benchmark:
+        valid = sum(r["ai"]["valid_decisions"] for r in benchmark["rounds"])
+        expected = sum(
+            r["ai"]["valid_decisions"] + r["ai"]["unavailable_files"] for r in benchmark["rounds"]
+        )
+        timing += f" IA: {valid}/{expected} análises válidas; esperas e falhas incluídas."
     paragraph(
-        f"<b>{summary['files']} arquivos</b>: {counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} para revisar e {counts.get('falhou', 0)} com falha. {timing}: <b>{summary['duration_seconds']:.2f} segundos</b> nesta máquina. A cópia de Lagoa Azul foi preservada e marcada por SHA-256. Também foram sinalizados um possível lançamento repetido, uma diferença de R$ 1.080,00 no saldo declarado de Sol do Sertão, um extrato de setembro e um comunicado sem dados de extrato."
+        f"<b>{summary['files']} arquivos</b>: {counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} para revisar e {counts.get('falhou', 0)} com falha. {timing} Ressalvas: cópia idêntica, lançamento suspeito de repetição, diferença de R$ 1.080,00, outro mês e comunicado sem dados."
     )
     paragraph("Tempo estimado e qualidade da evidência", True)
     estimate = summary.get("time_estimate", {})
     if estimate.get("version") != "3":
         raise ValueError("Atualize a execução com a versão atual antes de gerar a entrega.")
+    # A documentação desconta a média externa do fluxo completo, não uma atualização rápida.
+    estimate = json.loads(json.dumps(estimate))
+    batches = estimate.get("monthly_batches_assumption", 1)
+    for scenario in estimate["scenarios"].values():
+        difference = scenario["manual_seconds_per_batch"] - seconds
+        scenario["monthly_hours"] = difference * batches / 3600
+        scenario["annual_hours"] = difference * batches * 12 / 3600
     counts_time = estimate["workload_counts"]
     reference = estimate["manual_sample_minutes"]
     paragraph(
-        f"Base: <b>{counts_time['current_unique_statements']} extratos únicos do mês + {estimate['triage_files']} triagens</b> ({counts_time['duplicates']} cópia, {counts_time['other_period']} outro mês, {counts_time['insufficient_or_nonstatement']} sem dados). Central: <b>{counts_time['current_unique_statements']} × {reference:g} + {estimate['triage_files']} × {estimate['triage_minutes_assumption']:g} = {estimate['projected_manual_seconds'] / 60:g} min/lote</b>; referência de consolidação declarada e triagem hipotética. Ganhos descontam {summary['duration_seconds']:.2f} s do robô e supõem {estimate['monthly_batches_assumption']:g} lote(s)/mês com volume e composição iguais durante 12 meses."
+        f"Base: <b>{counts_time['current_unique_statements']} extratos únicos do mês + {estimate['triage_files']} triagens</b> ({counts_time['duplicates']} cópia, {counts_time['other_period']} outro mês, {counts_time['insufficient_or_nonstatement']} sem dados). Central: <b>{counts_time['current_unique_statements']} × {reference:g} + {estimate['triage_files']} × {estimate['triage_minutes_assumption']:g} = {estimate['projected_manual_seconds'] / 60:g} min/lote</b>; referência de consolidação declarada e triagem hipotética. Ganhos descontam {seconds:.2f} s do pipeline completo e supõem {estimate['monthly_batches_assumption']:g} lote(s)/mês com volume e composição iguais durante 12 meses."
     )
     c.setFont("Helvetica-Bold", 9)
     for x, text in ((17 * mm, "Cenário"), (105 * mm, "Horas/mês"), (151 * mm, "Horas/ano")):
@@ -129,7 +151,7 @@ def one_page(path: Path, summary: dict) -> None:
     )
     paragraph("Limites e próximos passos", True)
     paragraph(
-        "Os layouts do case são cobertos; novos layouts exigem validação. Confiança de OCR e conciliação não autenticam o extrato. Valores com ressalva não entram no saldo aprovado e não são corrigidos automaticamente.<br/><b>1. P1:</b> definir origem, banco/conta/competência esperados, prazo e critério de fechamento completo.<br/><b>2. P2:</b> agendar verificação da pasta por mudanças e reconstruir o Excel por competência, sem duplicar linhas; evolução ainda não implementada.<br/><b>3. P3:</b> homologar correções, retomadas, layouts e IA; ampliar a operação após validar os critérios de aprovação."
+        "Arquivos sem evidência suficiente são retidos; a IA ajuda quando o envio é seguro. Validações e OCR não garantem detectar todo erro nem autenticam o extrato. Valores com ressalva não entram no saldo aprovado e não são corrigidos automaticamente.<br/><b>1. P1:</b> definir origem, banco/conta/competência esperados, prazo e critério de fechamento completo.<br/><b>2. P2:</b> agendar verificação da pasta por mudanças e reconstruir o Excel por competência, sem duplicar linhas; evolução ainda não implementada.<br/><b>3. P3:</b> monitorar falsos alertas e erros não detectados, validar retomadas e acordar critérios de aprovação."
     )
     if y < 19 * mm:
         raise ValueError("Documento ultrapassou uma página; revisar o layout")

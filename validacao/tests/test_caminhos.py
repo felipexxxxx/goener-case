@@ -37,5 +37,5 @@ def test_old_absolute_index_is_rebased_to_local_run(config, tmp_path):
 def test_template_shows_explanation_instead_of_broken_links():
     template = (ROOT / "goener/report.html").read_text(encoding="utf-8")
     assert "Este arquivo é o modelo do relatório" in template
-    assert 'href="../resultados/relatorio.html"' in template
+    assert 'href="../resultados/relatorio.html"' not in template
     assert "['__','RUN','__'].join('')" in template

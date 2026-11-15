@@ -512,3 +512,37 @@ def test_unpublished_session_does_not_replace_current_session(config):
     pointer.write_text('{"folder":"anterior"}', encoding="utf-8")
     remember_session(config, config.output_dir.parent)
     assert json.loads(pointer.read_text(encoding="utf-8")) == {"folder": "anterior"}
+
+
+def test_delivery_uses_complete_pipeline_benchmark_instead_of_review_duration(
+    config, monkeypatch, tmp_path
+):
+    import pdfplumber
+
+    from goener import entrega
+
+    source(config)
+    _, summary, _ = run(config)
+    summary["duration_seconds"] = 0.94
+    benchmark = tmp_path / "validacao/tempo_pipeline.json"
+    benchmark.parent.mkdir()
+    benchmark.write_text(
+        json.dumps(
+            {
+                "mean_seconds": 240.0,
+                "n": 3,
+                "rounds": [
+                    {"ai": {"valid_decisions": 5, "unavailable_files": 0}} for _ in range(3)
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(entrega, "ROOT", tmp_path)
+    pdf = tmp_path / "documentacao.pdf"
+    entrega.one_page(pdf, summary)
+    with pdfplumber.open(pdf) as document:
+        assert len(document.pages) == 1
+        text = document.pages[0].extract_text()
+        assert "240.00 segundos" in text and "15/15" in text
+        assert "0.94" not in text

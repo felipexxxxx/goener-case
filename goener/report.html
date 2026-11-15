@@ -46,7 +46,7 @@ dialog{border:0;border-radius:18px;padding:28px;width:min(600px,calc(100vw - 36p
 (()=>{
 if(document.querySelector('.run')?.textContent.includes(['__','RUN','__'].join(''))){
  document.title='Modelo de relatório — Goener';
- document.body.innerHTML='<main style="margin:40px auto;padding:28px;max-width:680px;background:white;border-radius:18px"><h1>Este arquivo é o modelo do relatório</h1><p>O relatório pronto é gerado pela automação. Os arquivos de evidências e logs ficam junto da execução, não nesta pasta de código.</p><p><a class="btn" href="../resultados/relatorio.html">Abrir último relatório gerado</a></p><p>Se ainda não executou, volte à pasta principal e abra <b>Executar automacao.cmd</b>.</p></main>';
+ document.body.innerHTML='<main style="margin:40px auto;padding:28px;max-width:680px;background:white;border-radius:18px"><h1>Este arquivo é o modelo do relatório</h1><p>O relatório pronto é gerado pela automação. Os arquivos de evidências e logs ficam junto da execução, não nesta pasta de código.</p><p>Se ainda não executou, volte à pasta principal e abra <b>Executar automacao.cmd</b>.</p></main>';
  return;
 }
 const tabs=[...document.querySelectorAll('[data-tab]')];

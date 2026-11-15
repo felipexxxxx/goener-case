@@ -1,6 +1,6 @@
 # Goener — consolidação bancária
 
-Versão **1.13.0**. Automação Python de ponta a ponta: lê PDF, imagem e Excel, confere os saldos e publica planilha, relatório e logs. O Gemini ajuda a analisar exceções; regras obrigatórias do Python continuam valendo. No lote fornecido: **17 arquivos, 12 ok, 4 revisar, 1 falhou e R$ 4.114.372,29 no total**. Dados fictícios.
+Versão **1.14.0**. Automação Python de ponta a ponta: lê PDF, imagem e Excel, confere os saldos e publica planilha, relatório e logs. O Gemini ajuda a analisar exceções; regras obrigatórias do Python continuam valendo. No lote fornecido: **17 arquivos, 12 ok, 4 revisar, 1 falhou e R$ 4.114.372,29 no total**. Dados fictícios.
 
 ## 1. Usar sem conhecer o código
 
@@ -82,7 +82,7 @@ flowchart TD
     B --> C[Conferir campos, mês, cópias e saldos]
     C --> D{Há exceção no escopo da IA?}
     D -- Não --> E[Manter resultado das regras]
-    D -- Sim --> F[Gemini analisa documento e contexto]
+    D -- Sim --> F[Agrupar exceções e enviar originais ao Gemini]
     F --> G[Validar resposta JSON e respeitar bloqueios]
     G --> H[Gerar fechamento: Excel, HTML e logs]
     E --> H
@@ -106,6 +106,31 @@ flowchart TD
 ```
 
 Não são refeitos extração financeira e HTTP de IA na revisão. OCR pode ser necessário apenas para localizar grifos. Mudanças nos documentos bloqueiam reaproveitamento e exigem processamento completo.
+
+### O que a IA analisa e o que ela pode alterar
+
+A leitura do original pela IA já existia. Entretanto, o prompt anterior condicionava o parecer às pendências do Python. **No prompt versão 3**, o alerta é tratado explicitamente como hipótese: a IA pode concordar, discordar por erro de leitura/premissa inadequada e apontar outro problema no campo de justificativa, citando localização e evidência. Não há treinamento com os arquivos nem agente persistente; são instruções versionadas e contexto enviado por HTTPS.
+
+**Exemplo observado nos testes reais:** o Gemini recomendou considerar o extrato Lagoa Azul porque os dois PIX semelhantes constavam no original e a conciliação fechava. O Python manteve o status revisar conforme a política vigente. Isso demonstra uma discordância registrada, não comprova que os dois recebimentos sejam economicamente legítimos.
+
+**Parecer e aplicação são coisas separadas.** O campo decision e o motivo da IA são registrados sem convertê-los artificialmente para concordar com o robô. No modo consultivo, são recomendações. No automático, retenções/exclusões podem ser aplicadas, mas uma regra obrigatória pendente ainda impede liberar o saldo: isso aparece como policy_block. A IA pode discordar do alerta sem ganhar autorização para substituir valores ou liberar um bloqueio sozinha. Uma revisão humana registrada pode autorizar a correção/liberação nos casos permitidos.
+
+As análises já salvas mantêm a versão de prompt usada originalmente. Reabrir o painel ou aplicar Revisões não reenviam documentos; um novo processamento usa o prompt atual. Respostas em cache de outra versão do prompt não são usadas em novas chamadas.
+
+### Documentos diferentes e falhas não previstas
+
+| Situação | O que acontece hoje |
+| --- | --- |
+| Documento legível de formato aceito, mas campos/movimentos não reconhecidos | As regras registram falhou/revisar. No escopo excecoes, vai para a IA; no modo completo, segue o PDF/imagem ou as células de todas as abas, respeitados os limites. |
+| Regra encontra uma divergência diferente das do exemplo | O contexto e os achados seguem para a IA. A conta financeira não depende do nome do arquivo nem da diferença ser R$ 1.080. A justificativa da IA pode descrever problemas sem código prévio. |
+| Campos parecem válidos e todas as regras passam | No padrão excecoes, não chama a IA. Isso não prova ausência de todo erro possível, inclusive um problema não previsto que ainda passe pelas verificações implementadas. O escopo todos permite uma segunda leitura de cada arquivo, com mais consumo e tempo. |
+| Arquivo corrompido, tipo não suportado, limite excedido ou risco de conteúdo ativo | Registra a falha e não tenta contornar as restrições. O original só é enviado se passar pela preparação segura; nem toda falha de arquivo pode ser enviada à IA. |
+| Queda de API, rede, cota ou resposta inválida | Retries/failover conforme a categoria; se não houver resposta válida, registra IA indisponível e publica o resultado das regras com as pendências. |
+| Arquivo mudou durante leitura ou revisão | Hash impede aplicar análise/revisão sobre outra versão; exige processamento adequado da nova entrada. |
+
+**Proteção operacional não é cobertura semântica universal.** Há validação de estrutura, tamanho, páginas, pixels, campos essenciais, sinais, conciliação e integridade, além de tratamento de falha por arquivo, trava e logs. O reconhecimento local usa padrões de campos/posição; não interpreta automaticamente qualquer organização. Uma extração incompleta que ainda produza números plausíveis pode escapar das regras e, no escopo excecoes, não chegar à IA. Essa limitação permanece mesmo com proteções de infraestrutura. Novos problemas não precisam coincidir com os exemplos para serem sinalizados, mas não há garantia de detectar todos eles.
+
+Um teste usa PDF legível com estrutura diferente, confirma a retenção e verifica que o original chega à camada de IA. A resposta nesse teste é controlada: valida o encaminhamento e o contrato, não demonstra que o Gemini compreenderá qualquer documento real. Outro teste preserva um parecer da IA discordante, sem confundi-lo com liberação financeira.
 
 ### Do problema à implementação
 
@@ -157,60 +182,61 @@ Status: `falhou` para falha essencial, `revisar` para ressalva e `ok` quando pas
 
 As regras não procuram “Sol do Sertão” nem a diferença de 1.080: conferem valores de qualquer entrada que o leitor consiga interpretar. **Novos layouts exigem validação**; os testes não demonstram cobertura universal de bancos ou problemas.
 
-No escopo padrão de exceções, os 12 regulares do lote dispensam IA; cinco recebem análise. Um problema despercebido pelas regras pode não chegar à IA. `ai_scope = "todos"` acrescenta conferência dos regulares, com mais chamadas e tokens, sem garantia de detectar toda falha.
+No escopo padrão de exceções, os 12 regulares do lote dispensam IA; cinco recebem análise. Um problema despercebido pelas regras pode não chegar à IA. `ai_scope = "todos"` acrescenta conferência dos regulares, com mais dados e tokens, podendo exigir divisão do lote, sem garantia de detectar toda falha.
 
 `off` usa apenas regras locais; `consultivo` registra orientação sem mudar sua seleção; `automatico` aplica retenção/exclusão no escopo analisado. A IA não remove bloqueios obrigatórios nem corrige campos extraídos. **Uma revisão humana explícita é um caminho separado**, com justificativa e integridade verificadas.
 
 O modelo não aprende automaticamente com revisões nem recebe treinamento de pesos. As decisões registradas permitem avaliação supervisionada futura com a gestão. Hoje a reutilização é por cache compatível, não por aprendizado automático.
 
-### Tempo: cálculo por atividade, mês e ano
+### Tempo: medição completa e estimativa de economia
 
-O HTML continua exclusivamente financeiro e operacional. A estimativa fica no resumo JSON e na documentação de uma página.
+**0,94 s era o tempo de atualizar uma revisão com dados reaproveitados. Não representava a execução completa.** Abrir o painel também não equivale a processar os documentos.
 
-O cálculo usa a **população observada por atividade**, não o total bruto de arquivos multiplicado por um tempo único. No lote de referência:
+A referência de desempenho agora é um ensaio de **três execuções completas**, com 17 arquivos, leitura/OCR sem cache, análise das exceções via HTTP com raciocínio high, agrupamento e sem cache local de respostas, geração de destaques, Excel, HTML, manifesto e publicação. Um processo externo mede da inicialização do Python até seu encerramento, incluindo importações. Instalação, navegador aguardando o operador e revisão humana não entram no cronômetro.
 
-| Atividade | Quantidade observada | Tempo central por unidade | Origem do tempo |
+| Rodada | Tempo completo | Análises válidas de IA | Tentativas HTTP |
 | --- | --- | --- | --- |
-| Consolidar extrato único da competência, inclusive os retidos por divergência | 14: 5 PDF, 5 Excel e 4 imagens | 8 min de preenchimento + 2 min de conferência inicial = 10 min | Referência declarada pelo responsável a partir de um arquivo; formato não identificado e medição não auditada. |
-| Identificar e encaminhar cópia, outro mês ou documento sem dados suficientes | 3: uma cópia, um extrato de outro mês e um comunicado | 1 min | Hipótese de triagem, não tempo cronometrado. Não inclui resolver a exceção. |
+| 1 | 119,51 s | 5/5 | 4 |
+| 2 | 43,89 s | 5/5 | 1 |
+| 3 | 49,51 s | 5/5 | 2 |
 
-A composição por formato é observada; o tempo de dez minutos ainda é uma referência comum aplicada aos formatos, não uma média estratificada medida. Esses grupos são derivados dos dados de cada execução. Um lote diferente terá outra composição. Os dois extratos com divergências entram no esforço de consolidação; não se confunde “fora do total financeiro” com “sem trabalho manual”. A cópia e o comunicado não recebem dez minutos de transcrição como se fossem novos extratos.
+**Média: 70,97 s (1 min 10,97 s).** Mínimo 43,89 s; máximo 119,51 s; desvio-padrão amostral 42,13 s. Foram **15/15 análises válidas**, em um grupo de cinco por rodada, e sete tentativas HTTP no total. Todas publicaram os 17 registros. A primeira teve timeouts e 503 antes da recuperação; a terceira teve 503 e retry bem-sucedido. Um grupo lógico pode gerar várias tentativas por disponibilidade.
+
+O ensaio individual anterior permanece em `validacao/tempo_pipeline_individual.json`: média 226,62 s, 14/15 análises e 32 tentativas. **Não é um experimento controlado para atribuir toda a diferença ao agrupamento:** disponibilidade da API, modelo efetivamente usado, cotas e cache implícito do provedor variaram. O cache local foi desativado; os metadados registram quando houve reaproveitamento no próprio provedor. As médias das duas configurações não são misturadas.
+
+Registro das medições e tentativas: `validacao/tempo_pipeline.json`. Para repetir o ensaio, execute `py -3.12 validacao/medir_pipeline.py`; ele faz três rodadas sem cache local e consome chamadas/tokens da API configurada. Não usa as pastas operacionais de resultados nem aplica suas revisões. A tabela também informa quantas análises de IA ficaram disponíveis. Publicar Excel/HTML com ressalvas não equivale a obter todas as respostas da IA. O tempo inclui esperas, retries, troca de modelo e limites locais, quando ocorreram; não são descontados para melhorar o resultado. Três rodadas na mesma máquina e com o mesmo lote não estabelecem SLA nem desempenho de qualquer outro volume. O tempo gravado como `duration_seconds` em resumos de atualização é a duração daquela operação, não essa média de processamento completo.
+
+#### Economia: atividades diferentes têm pesos diferentes
+
+| Atividade | Quantidade no lote | Tempo central | Origem |
+| --- | --- | --- | --- |
+| Transcrever e conferir extratos únicos da competência | 14: 5 PDF, 5 Excel e 4 imagens | 8 min + 2 min = 10 min | Referência manual declarada de um arquivo; não é média medida por formato. |
+| Identificar cópia, outro mês ou comunicado | 3: um de cada | 1 min | Hipótese de triagem; não inclui resolver a exceção. |
+
+`T_manual = 14 × 10 + 3 × 1 = 143 minutos/lote`. São tarefas dos arquivos, não 17 transcrições equivalentes. Um extrato com divergência continua exigindo consolidação no processo manual. A cópia idêntica e o comunicado não recebem dez minutos de digitação.
 
 ```text
-T_manual = N_extratos_unicos_do_mes × t_consolidacao + N_triagem × t_triagem
-G_mes = (T_manual_em_segundos − tempo_medido_do_robo) × lotes_mensais / 3.600
-G_ano = 12 × G_mes, se volume e composição se repetirem nos 12 meses
+G_mês = (tempo manual estimado − média medida do pipeline completo) × lotes/mês
+G_ano = G_mês × 12
 ```
 
-No cenário central desta composição: `14 × 10 + 3 × 1 = 143 minutos` por lote, antes de descontar o tempo do robô. Com um lote/mês, aproximadamente **2h23/mês e 28h36/ano** na reexecução com cache medida. Não é economia líquida de todo o fechamento: exclui revisão posterior de exceções, espera pelo banco, recebimento e implantação. Não há conversão para dinheiro.
-
-#### Análise de sensibilidade — não intervalo de confiança
-
-| Cenário | Min/extrato a consolidar | Min/triagem | Ganho aproximado mensal | Projeção anual |
+| Cenário | Min/extrato | Min/triagem | Horas/mês | Horas/ano |
 | --- | --- | --- | --- | --- |
-| Menor ganho | 8 | 0,5 | 1,89 h | 22,70 h |
-| Central | 10 | 1 | 2,38 h | 28,60 h |
-| Maior ganho | 12 | 2 | 2,90 h | 34,80 h |
+| Menor ganho | 8 | 0,5 | 1,87 | 22,46 |
+| Central | 10 | 1 | 2,36 | 28,36 |
+| Maior ganho | 12 | 2 | 2,88 | 34,56 |
 
-Valores arredondados para um lote/mês com a composição acima, descontando a reexecução com cache. Cada execução registra seus próprios valores. O benchmark histórico de primeira execução do pacote, sem IA, levou 38,124 s: aplicando esse tempo, o cenário central seria aproximadamente **2,37 h/mês e 28,47 h/ano**. Ele não representa a latência de uma primeira execução com chamadas reais à IA.
+No cenário central, o ganho potencial é **2,36 horas/mês e 28,36 horas/ano**, descontando a média de 70,97 s do fluxo completo.
 
-Os limites são hipóteses deliberadas: consolidação a 80%/100%/120% da referência e triagem a 50%/100%/200%. **Não são percentis empíricos, IC de 95% ou limites garantidos.** Não há probabilidade atribuída aos cenários. A projeção anual supõe frequência/volume/composição constantes, sem redução artificial da incerteza por multiplicar por 12.
+Os cenários usam consolidação a 80%/100%/120% da referência e triagem a 50%/100%/200%. São **faixas de planejamento**, sem probabilidade atribuída: não são percentis nem IC de 95%. A referência manual única não permite estimar desvio-padrão ou um intervalo de confiança defensável. Para isso, coletar um piloto por PDF/Excel/imagem, medir média e dispersão por grupo e dimensionar a amostra pela margem de erro desejada.
 
-#### Qualidade da evidência e plano de amostragem
-
-A composição é contada nos arquivos e verificável; a estimativa de tempo é **exploratória**. Há apenas uma referência manual, insuficiente para estimar dispersão ou um IC de 95% defensável. Não se pode afirmar “95% de confiança” sem amostra e variabilidade que sustentem a conta.
-
-Para evoluir: coletar um piloto **estratificado por PDF, Excel e imagem**, com triagem separada; cronometrar arquivos diferentes e tarefas equivalentes; registrar tempo, formato, legibilidade e operador. Calcular média, desvio-padrão e coeficiente de variação por grupo. Dimensionar a amostra pela margem de erro desejada após o piloto; um número arbitrário de observações não garante precisão.
-
-A estimativa mensal passará a usar `soma(N_grupo × media_tempo_grupo) − tempo_robo`. Sob pressupostos adequados de amostragem/independência, um IC para a média de cada grupo pode usar `media ± t × desvio_padrao / raiz(n)`; o resultado agregado exige combinar as variâncias dos grupos, não somar seus ICs. Referência metodológica: [NIST — Confidence Limits for the Mean](https://www.itl.nist.gov/div898/handbook/eda/section3/eda352.htm).
-
-`resumo.json` guarda os grupos, formatos, hipóteses, medição e cenários em `time_estimate` versão 3. `confidence_level` e `empirical_confidence_interval` ficam nulos por falta de evidência. `manual_triage_minutes` e `monthly_batches` são editáveis no config; a referência de preenchimento/conferência também. Nenhum valor depende de o lote ter exatamente 17 arquivos.
+As projeções supõem um lote/mês com o mesmo volume e composição durante 12 meses. Não incluem revisão posterior de exceções, espera pelo banco, recebimento ou implantação; portanto não são economia líquida de todo o fechamento. Não há conversão para dinheiro. Outros lotes usam suas próprias quantidades; o código não depende de haver 17 entradas. Os parâmetros de esforço manual e frequência ficam no config. O resumo de cada execução mantém sua estimativa com a duração daquela operação; a documentação usa a referência externa do pipeline completo acima.
 
 ### Próximos passos, por prioridade
 
 1. **P1 — Definir um critério mínimo de fechamento com o financeiro.** Cadastro por banco e conta ativa, competência esperada e prazo de entrega. Cada conta esperada precisa ter um extrato válido do mês, com saldo e identificação, sem bloqueio crítico. Cópias não contam duas vezes; recebido não significa validado. Contas ausentes mantêm o fechamento parcial. No prazo, publicar entrega com ressalvas sem chamá-la de completa. A quantidade de arquivos, sozinha, não comprova completude.
 2. **P2 — Agendar conferência da pasta e consolidar por mês.** Verificar a cada hora ou diariamente e comparar inclusões, alterações e remoções por hash. Mudança de código/configuração/competência, prazo atingido ou IA pendente com nova janela também podem exigir processamento. Reconstruir `resultados/AAAA-MM/consolidado.xlsx`, sem acrescentar linhas duplicadas; publicar somente após validação e preservar histórico. Revisões manuais ficam em cópia separada. Esta evolução ainda não está implementada.
-3. **P3 — Homologar a operação e as decisões.** Validar novos layouts, retomadas, revisões e critérios de aprovação com o financeiro; acompanhar erros da extração e decisões da IA antes de ampliar o uso automático.
+3. **P3 — Homologar a operação e as decisões.** Definir indicadores de falsos alertas, divergências não detectadas, indisponibilidade e decisões alteradas pelo revisor; acompanhar uma amostra independente de documentos e acordar critérios de aprovação com o financeiro antes de ampliar o uso automático.
 
 ```mermaid
 flowchart TD
@@ -320,22 +346,28 @@ Limites: até 8 MB por original enviado, limite de páginas/pixels configurado, 
 
 ### IA: decisão, raciocínio e disponibilidade
 
-Padrão: **automático somente nas exceções**, uma chamada por documento (`ai_batch_size = 1`). Os 12 arquivos regulares dispensam IA. Consultivo registra orientação sem mudar a seleção pelas regras. Automático aplica retenções e exclusões, mas não supera bloqueios financeiros obrigatórios nem altera banco, conta, período ou saldo extraídos.
+Padrão: **automático somente nas exceções**, agrupadas numa solicitação ao Gemini (`ai_batch_size = 50`). No lote fornecido, os cinco arquivos com alertas seguem juntos; não são cinco solicitações independentes. Os 12 arquivos regulares dispensam IA. Consultivo registra orientação sem mudar a seleção pelas regras. Automático aplica retenções e exclusões, mas não supera bloqueios financeiros obrigatórios nem altera banco, conta, período ou saldo extraídos.
 
 O contrato JSON exige `decision`, `reason` e `evidence_codes`; no modo completo, também `source_check` com banco, conta, período, saldo, legibilidade, localização e citação. O Python valida campos, tipos, códigos e coerência com a leitura local. JSON válido não comprova interpretação correta. As instruções ficam versionadas em `goener/ai.py`, sem agente persistente ou treinamento de pesos. Arquivos, fórmulas e OCR são dados não confiáveis; suas instruções não são executadas. O modelo não recebe ferramentas.
 
-**3.8 → 3.5 Flash-Lite → 3.1 Flash-Lite**, com a mesma chave/projeto. Cada modelo pode fazer até três tentativas para 500/502/503/504, timeout ou rede, com espera crescente. HTTP 429 alterna diretamente, registrando cota e espera quando informadas. 400/401/403, contrato inválido e bloqueio de segurança não são contornados por outro modelo. Uma decisão válida encerra a busca, inclusive negativa. Se todos falharem, o lote termina com a ressalva. Resultados individuais concluídos não são reenviados nessa execução.
+**3.8 → 3.5 Flash-Lite → 3.1 Flash-Lite**, com a mesma chave/projeto. Cada modelo pode fazer até três tentativas para 500/502/503/504, timeout ou rede, com espera crescente. HTTP 429 alterna diretamente, registrando cota e espera quando informadas. 400/401/403, contrato inválido e bloqueio de segurança não são contornados por outro modelo. Uma decisão válida encerra a busca, inclusive negativa. Se todos falharem, o lote termina com a ressalva. No envio agrupado, retry e failover reenviam o grupo inteiro: não há resposta parcial aproveitada de uma requisição que falhou. Grupos já concluídos, quando houve divisão, não são refeitos naquela execução.
 
 O programa respeita orçamento de tempo, pausa de modelos e cotas persistentes. O limite local dos Lite é 12 RPM/450 RPD, abaixo dos 15 RPM/500 RPD observados no projeto; para o 3.8, aplica o teto observado de 5 RPM/20 RPD. Os valores atuais do provedor prevalecem; consumo em outros programas não é visto pelo contador local. A pausa diária local é calculada pela meia-noite do Pacífico; as condições efetivas do provedor prevalecem. Não existe garantia de disponibilidade externa.
 
-Os três modelos recebem **thinking HIGH**. PDFs/imagens usam também **resolução de mídia HIGH**: são controles independentes, como esforço de análise e detalhe de uma lupa. O OCR local não possui esse low/high. O teto definido pelo robô é 8.192 tokens de geração por chamada, incluindo raciocínio e resposta, sem contar a entrada. Ele não obriga o modelo a gastar o teto.
+Os três modelos recebem **thinking HIGH**. PDFs/imagens usam também **resolução de mídia HIGH**: são controles independentes, como esforço de análise e detalhe de uma lupa. O OCR local não possui esse low/high. O teto definido pelo robô passou de 8.192 para **32.768 tokens de geração por chamada**, incluindo raciocínio e resposta JSON de todo o grupo, sem contar a entrada. É configurável em `ai_max_output_tokens`. Ele não obriga o modelo a gastar o teto.
 
-Nos cinco documentos do ensaio, o total passou de **23.382 tokens em low para 27.911 em high**, com entradas iguais: 22.512 tokens em ambas as rodadas. Em high, foram 4.518 tokens de raciocínio e 881 de resposta. Foram cinco chamadas e cinco respostas válidas; esse ensaio não garante uma proporção fixa nem prova maior precisão. Registros em `validacao/comparacao_tokens.json` e nas execuções preservadas. Em projeto pago, raciocínio pode aumentar o custo; no Free Tier continuam valendo cotas e disponibilidade. Metadados de uso ficam em `ai.usage`, sem copiar raciocínio interno para os relatórios.
+No ensaio histórico com envios individuais, o total passou de **23.382 tokens em low para 27.911 em high**, com entradas iguais: 22.512 tokens em ambas as rodadas. Em high, foram 4.518 tokens de raciocínio e 881 de resposta. Foram cinco chamadas e cinco respostas válidas; esse ensaio não garante uma proporção fixa nem prova maior precisão. Registros em `validacao/comparacao_tokens.json` e nas execuções preservadas. Em projeto pago, raciocínio pode aumentar o custo; no Free Tier continuam valendo cotas e disponibilidade. Metadados de uso ficam em `ai.usage`, sem copiar raciocínio interno para os relatórios.
 
-`ai_batch_size = 5` permanece como opção de agrupamento. Nesse modo, IDs associam cada resultado ao documento; uma falha exige reenviar o grupo completo. O padrão individual foi escolhido para reduzir retrabalho e facilitar retomadas.
+**Como o envio agrupado funciona:** cada documento recebe um `item_id` derivado do nome e hash; o mesmo identificador rotula seu original/contexto e sua linha na resposta `{"results":[...]}`. O Python exige exatamente um resultado por ID e rejeita IDs desconhecidos, repetidos ou ausentes. Depois distribui parecer e localização para as linhas do Excel e cartões do HTML. A ordem da resposta não importa. As tentativas HTTP são contadas uma vez por grupo.
+
+Até 50 documentos, 100 mil caracteres de contexto e 16 MiB nas partes serializadas seguem no mesmo grupo. Ao atingir algum desses limites, o robô divide antes do envio, sem truncar documentos; um arquivo que sozinho exceda o limite fica com ressalva. `ai_batch_size = 1` permite voltar ao envio individual. Aumentar o teto de saída dá espaço ao raciocínio/JSON; não aumenta os limites de entrada nem a cota do projeto.
+
+**Menos solicitações não é garantia contra 503.** O agrupamento reduz requisições separadas e repetição de instruções, mas uma solicitação maior pode levar mais tempo. Retries, failover, orçamento de tempo e publicação com ressalvas permanecem. Se a única resposta do grupo for inválida ou indisponível, todos os documentos daquele grupo ficam sem parecer válido; os resultados das regras continuam publicados. Não se usa uma resposta incompleta para aprovar saldos.
 
 
 ## 4. Validação e entrega
+
+Na versão 1.14.0, **150 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
 
 Testes e registros ficam em validacao/. A suíte cobre regras financeiras, duplicidade, OCR, JSON, retries, fórmulas, segurança de entrada, publicação, revisão, arquivos alterados e isolamento entre dois fechamentos. A abertura no Excel Desktop e a navegação do link são verificadas separadamente; abrir com openpyxl não basta para comprovar compatibilidade.
 

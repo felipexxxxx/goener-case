@@ -69,6 +69,12 @@ def test_previous_month_uses_sao_paulo():
     assert len(previous_month()) == 7
 
 
+@pytest.mark.parametrize("value", [True, 0, 65537, "32768"])
+def test_output_token_limit_rejects_invalid_configuration(value):
+    with pytest.raises(ValueError, match="tokens de saída"):
+        load_config(ROOT / "config.toml", ai_max_output_tokens=value)
+
+
 def test_dotenv_is_loaded_next_to_config_with_priority_over_environment(tmp_path, monkeypatch):
     import os
     import shutil

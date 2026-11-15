@@ -765,6 +765,27 @@ def test_grouped_review_splits_at_configured_size(config, monkeypatch):
     assert calls == [2, 1]
 
 
+def test_group_failure_keeps_every_file_pending_and_counts_attempts_once(config, monkeypatch):
+    from goener.ai import AIError, http_attempt_count
+
+    config.ai_mode = "automatico"
+    config.ai_document_mode = "dados"
+    config.ai_batch_size = 50
+    rows = [Result(str(i), str(i), "PDF", Statement()) for i in range(5)]
+    calls = []
+
+    def request(context, cfg, **kwargs):
+        calls.append(len(context["documents"]))
+        raise AIError("http_error", [{"http_status": 503}], http_status=503)
+
+    monkeypatch.setattr("goener.ai.request_gemini_failover", request)
+    review(rows, config)
+    assert calls == [5] and http_attempt_count(rows) == 1
+    assert all(r.ai["decision"] == "indisponivel" for r in rows)
+    assert all(r.ai["error"]["batch_size"] == 5 for r in rows)
+    assert all(not r.included(config.ai_mode, config.period) for r in rows)
+
+
 def test_failover_uses_38_35_31_and_preserves_quota_reason(config):
     from goener.ai import AIError, request_gemini_failover
 
@@ -1038,3 +1059,108 @@ def test_transient_retry_can_wait_for_local_pacing_with_failover_enabled(config,
     )
     assert len(calls) == 2 and len(result["attempts"]) == 2
     assert 5 in sleeps
+
+
+def test_unfamiliar_readable_pdf_is_sent_as_original_and_kept_pending(config, monkeypatch):
+    from reportlab.pdfgen import canvas
+
+    from goener.pipeline import RunLog, process_file
+    from goener.readers import LocalOCR
+
+    path = config.input_dir / "formato_novo.pdf"
+    pdf = canvas.Canvas(str(path))
+    pdf.drawString(50, 700, "UNFAMILIAR LEDGER / DAILY SETTLEMENT")
+    pdf.drawString(50, 670, "Identifiers and balances in an unrecognized arrangement")
+    pdf.save()
+    log = RunLog(config.runtime_dir / "logs", "new-layout")
+    result = process_file(path, config, LocalOCR(), None, log)
+    assert result.status == "falhou"
+    config.ai_mode = "automatico"
+    config.ai_scope = "excecoes"
+    seen = []
+    reason = (
+        "Campos financeiros não identificados com segurança; conferir a estrutura do documento."
+    )
+
+    def analyze(context, cfg, **kwargs):
+        seen.append((context, kwargs["parts"]))
+        return {
+            "decision": "revisar",
+            "reason": reason,
+            "evidence_codes": [],
+            "source_check": {
+                "bank": None,
+                "account": None,
+                "period": None,
+                "closing": None,
+                "readable": True,
+                "location": "Página 1",
+                "quote": "UNFAMILIAR LEDGER",
+            },
+        }
+
+    monkeypatch.setattr("goener.ai.request_gemini_failover", analyze)
+    review([result], config)
+    assert len(seen) == 1
+    assert seen[0][0]["rules_status"] == "falhou"
+    assert seen[0][1][0]["inlineData"]["mimeType"] == "application/pdf"
+    assert result.ai["reason"] == reason and not result.included(config.ai_mode, config.period)
+
+
+def test_independent_disagreement_is_recorded_without_automatic_release(config):
+    config.ai_mode = "automatico"
+    config.ai_scope = "excecoes"
+    result = Result("novo.pdf", "sha", "PDF", Statement("Banco", "1", "2026-10", closing=money(10)))
+    result.statement.issue("ALERTA_NOVO", "Premissa não conclusiva")
+    reason = "Discordo da suspeita: há uma coluna adicional que explica o lançamento, na página 2."
+    review(
+        [result],
+        config,
+        lambda *_: {"decision": "considerar", "reason": reason, "evidence_codes": []},
+    )
+    assert result.ai["decision"] == "considerar" and result.ai["reason"] == reason
+    assert result.ai["policy_block"] and not result.included(config.ai_mode, config.period)
+
+
+def test_production_defaults_group_exceptions_and_allow_larger_json(monkeypatch, tmp_path):
+    from pathlib import Path
+
+    from goener.core import load_config
+
+    cfg = load_config(Path(__file__).resolve().parents[2] / "config.toml")
+    assert cfg.ai_batch_size == 50 and cfg.ai_max_output_tokens == 32768
+    cfg.runtime_dir = tmp_path / "runtime"
+    cfg.cache_enabled = False
+    monkeypatch.setenv("GEMINI_API_KEY", "test-only")
+    observed = []
+
+    def opener(req, timeout):
+        body = json.loads(req.data)
+        observed.append(body["generationConfig"]["maxOutputTokens"])
+        return io.StringIO(
+            json.dumps(
+                {
+                    "candidates": [
+                        {
+                            "content": {
+                                "parts": [
+                                    {
+                                        "text": json.dumps(
+                                            {
+                                                "decision": "revisar",
+                                                "reason": "Conferir",
+                                                "evidence_codes": [],
+                                            }
+                                        )
+                                    }
+                                ]
+                            },
+                            "finishReason": "STOP",
+                        }
+                    ]
+                }
+            )
+        )
+
+    request_gemini({"issues": []}, "gemini-3.5-flash-lite", opener, config=cfg)
+    assert observed == [32768]

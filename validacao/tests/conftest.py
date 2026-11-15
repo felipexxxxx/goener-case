@@ -11,6 +11,9 @@ ROOT = Path(__file__).resolve().parents[2]
 def config(tmp_path):
     cfg = load_config(ROOT / "config.toml")
     cfg.ai_mode = "off"
+    cfg.ai_batch_size = (
+        1  # testes individuais; o padrão de produção agrupado é testado separadamente
+    )
     cfg.ai_scope = "todos"
     cfg.input_dir = tmp_path / "input"
     cfg.input_dir.mkdir()

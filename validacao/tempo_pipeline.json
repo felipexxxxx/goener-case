@@ -1,0 +1,398 @@
+{
+  "version": "1",
+  "date": "2026-11-15",
+  "method": "Tempo externo entre iniciar e encerrar um processo Python, incluindo importação, leitura/OCR sem cache, IA via HTTP sem cache, validação, geração de destaques/Excel/HTML e publicação. Exclui instalação, navegador aberto aguardando operador e revisão humana.",
+  "configuration": {
+    "files": 17,
+    "cache_enabled": false,
+    "ai_mode": "automatico",
+    "ai_scope": "excecoes",
+    "thinking": "high",
+    "prompt_version": "3",
+    "ai_batch_size": 50,
+    "ai_max_output_tokens": 32768
+  },
+  "rounds": [
+    {
+      "run_id": "20261115T155350Z_e4928f5b",
+      "version": "1.14.0",
+      "pipeline_seconds": 118.874,
+      "files": 17,
+      "ai": {
+        "failover_files": 5,
+        "cached_decisions": 0,
+        "rules_only_files": 12,
+        "valid_decisions": 5,
+        "unavailable_files": 0,
+        "http_attempts": 4,
+        "source_disagreements": 0
+      },
+      "statuses": {
+        "ok": 12,
+        "falhou": 1,
+        "revisar": 4
+      },
+      "approved_balance": "4114372.29",
+      "published": "C:\\Users\\felip\\OneDrive\\Desktop\\goener\\.local\\benchmark_agrupado\\20261115_125350\\rodada_1\\historico\\20261115T155350Z_e4928f5b",
+      "ai_mode": "automatico",
+      "thinking": "high",
+      "prompt_version": "3",
+      "ai_batch_size": 50,
+      "ai_max_output_tokens": 32768,
+      "exit_code": 0,
+      "wall_seconds": 119.509,
+      "analyses": [
+        {
+          "file": "aviso_agencia_horizonte.pdf",
+          "decision": "nao_considerar",
+          "reason": "O documento é um comunicado de horário de atendimento da agência e explicitamente indica que não é um extrato bancário.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "EXT_102026_LagoaAzul (1).pdf",
+          "decision": "nao_considerar",
+          "reason": "Trata-se de cópia duplicada do extrato bancário. A linha é preservada para auditoria, mas desconsiderada para somas.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "EXT_102026_LagoaAzul.pdf",
+          "decision": "considerar",
+          "reason": "Os dois lançamentos em 26/10 com mesmo valor e histórico constam explicitamente no documento original e atualizam corretamente o saldo sequencial. A suspeita de lançamento repetido é descartada por evidência documental.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "extrato_sol_do_sertao_I_out2026.pdf",
+          "decision": "revisar",
+          "reason": "Há divergência confirmada entre o saldo final calculado pelas transações (R$ 456.099,12) e o saldo final declarado no extrato (R$ 457.179,12). O documento exige revisão.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "print_serra_dourada_II.png",
+          "decision": "revisar",
+          "reason": "O documento refere-se ao período de setembro de 2026 (2026-09), enquanto o período esperado é outubro de 2026 (2026-10). Divergência de competência confirmada, exigindo revisão.",
+          "batch_size": 5,
+          "error_category": null
+        }
+      ],
+      "groups": [
+        {
+          "files": [
+            "aviso_agencia_horizonte.pdf",
+            "EXT_102026_LagoaAzul (1).pdf",
+            "EXT_102026_LagoaAzul.pdf",
+            "extrato_sol_do_sertao_I_out2026.pdf",
+            "print_serra_dourada_II.png"
+          ],
+          "batch_size": 5,
+          "model": "gemini-3.5-flash-lite",
+          "usage": {
+            "promptTokenCount": 21436,
+            "candidatesTokenCount": 1036,
+            "totalTokenCount": 28160,
+            "promptTokensDetails": [
+              {
+                "modality": "IMAGE",
+                "tokenCount": 5468
+              },
+              {
+                "modality": "TEXT",
+                "tokenCount": 15968
+              }
+            ],
+            "thoughtsTokenCount": 5688,
+            "serviceTier": "standard"
+          },
+          "attempts": [
+            {
+              "number": 1,
+              "http_status": null,
+              "category": "timeout",
+              "provider_status": null,
+              "duration_ms": 60719.0,
+              "model": "gemini-3.8-flash"
+            },
+            {
+              "number": 2,
+              "http_status": null,
+              "category": "timeout",
+              "provider_status": null,
+              "duration_ms": 2094.0,
+              "model": "gemini-3.8-flash"
+            },
+            {
+              "number": 1,
+              "http_status": 503,
+              "category": "http_error",
+              "provider_status": "UNAVAILABLE",
+              "duration_ms": 3078.0,
+              "model": "gemini-3.5-flash-lite"
+            },
+            {
+              "number": 2,
+              "http_status": 200,
+              "category": "received",
+              "provider_status": null,
+              "duration_ms": 16515.0,
+              "model": "gemini-3.5-flash-lite"
+            }
+          ]
+        }
+      ],
+      "ai_scope": "excecoes"
+    },
+    {
+      "run_id": "20261115T155550Z_f6244ff9",
+      "version": "1.14.0",
+      "pipeline_seconds": 43.18,
+      "files": 17,
+      "ai": {
+        "failover_files": 5,
+        "cached_decisions": 0,
+        "rules_only_files": 12,
+        "valid_decisions": 5,
+        "unavailable_files": 0,
+        "http_attempts": 1,
+        "source_disagreements": 0
+      },
+      "statuses": {
+        "ok": 12,
+        "falhou": 1,
+        "revisar": 4
+      },
+      "approved_balance": "4114372.29",
+      "published": "C:\\Users\\felip\\OneDrive\\Desktop\\goener\\.local\\benchmark_agrupado\\20261115_125350\\rodada_2\\historico\\20261115T155550Z_f6244ff9",
+      "ai_mode": "automatico",
+      "ai_scope": "excecoes",
+      "thinking": "high",
+      "prompt_version": "3",
+      "ai_batch_size": 50,
+      "ai_max_output_tokens": 32768,
+      "exit_code": 0,
+      "wall_seconds": 43.89,
+      "analyses": [
+        {
+          "file": "aviso_agencia_horizonte.pdf",
+          "decision": "nao_considerar",
+          "reason": "O documento anexo é um comunicado de horário de atendimento da agência e não um extrato bancário, conforme a premissa de que comunicado não é extrato.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "EXT_102026_LagoaAzul (1).pdf",
+          "decision": "nao_considerar",
+          "reason": "Arquivo duplicado em relação a outro extrato idêntico enviado no lote. Deve ser preservado para auditoria, mas desconsiderado para evitar soma em duplicidade.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "EXT_102026_LagoaAzul.pdf",
+          "decision": "considerar",
+          "reason": "Extrato válido com competência, identificação e saldo corretos. Embora haja lançamentos idênticos no dia 26/10, a progressão matemática dos saldos parciais no documento original está correta e coerente.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "extrato_sol_do_sertao_I_out2026.pdf",
+          "decision": "revisar",
+          "reason": "Confirmada divergência entre a soma do saldo inicial e movimentações (R$ 456.099,12) e o saldo final declarado no extrato (R$ 457.179,12), gerando diferença de R$ 1.080,00.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "print_serra_dourada_II.png",
+          "decision": "revisar",
+          "reason": "O documento refere-se ao período de 2026-09, divergindo da competência esperada para o fechamento mensal (2026-10), exigindo revisão.",
+          "batch_size": 5,
+          "error_category": null
+        }
+      ],
+      "groups": [
+        {
+          "files": [
+            "aviso_agencia_horizonte.pdf",
+            "EXT_102026_LagoaAzul (1).pdf",
+            "EXT_102026_LagoaAzul.pdf",
+            "extrato_sol_do_sertao_I_out2026.pdf",
+            "print_serra_dourada_II.png"
+          ],
+          "batch_size": 5,
+          "model": "gemini-3.5-flash-lite",
+          "usage": {
+            "promptTokenCount": 21436,
+            "candidatesTokenCount": 1351,
+            "totalTokenCount": 26548,
+            "cachedContentTokenCount": 18858,
+            "promptTokensDetails": [
+              {
+                "modality": "IMAGE",
+                "tokenCount": 5468
+              },
+              {
+                "modality": "TEXT",
+                "tokenCount": 15968
+              }
+            ],
+            "cacheTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 14048
+              },
+              {
+                "modality": "IMAGE",
+                "tokenCount": 4810
+              }
+            ],
+            "thoughtsTokenCount": 3761,
+            "serviceTier": "standard"
+          },
+          "attempts": [
+            {
+              "number": 1,
+              "http_status": 200,
+              "category": "received",
+              "provider_status": null,
+              "duration_ms": 12891.0,
+              "model": "gemini-3.5-flash-lite"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run_id": "20261115T155634Z_a34ad010",
+      "version": "1.14.0",
+      "pipeline_seconds": 48.82,
+      "files": 17,
+      "ai": {
+        "failover_files": 5,
+        "cached_decisions": 0,
+        "rules_only_files": 12,
+        "valid_decisions": 5,
+        "unavailable_files": 0,
+        "http_attempts": 2,
+        "source_disagreements": 0
+      },
+      "statuses": {
+        "ok": 12,
+        "falhou": 1,
+        "revisar": 4
+      },
+      "approved_balance": "4114372.29",
+      "published": "C:\\Users\\felip\\OneDrive\\Desktop\\goener\\.local\\benchmark_agrupado\\20261115_125350\\rodada_3\\historico\\20261115T155634Z_a34ad010",
+      "ai_mode": "automatico",
+      "ai_scope": "excecoes",
+      "thinking": "high",
+      "prompt_version": "3",
+      "ai_batch_size": 50,
+      "ai_max_output_tokens": 32768,
+      "exit_code": 0,
+      "wall_seconds": 49.511,
+      "analyses": [
+        {
+          "file": "aviso_agencia_horizonte.pdf",
+          "decision": "nao_considerar",
+          "reason": "O documento é um comunicado de agência e explicitamente indica que não é um extrato bancário.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "EXT_102026_LagoaAzul (1).pdf",
+          "decision": "nao_considerar",
+          "reason": "Cópia idêntica de extrato bancário já processado. Preservado para auditoria, mas desconsiderado da soma para evitar duplicidade.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "EXT_102026_LagoaAzul.pdf",
+          "decision": "considerar",
+          "reason": "Extrato original válido e legível. Os lançamentos idênticos em 26/10 constam explicitamente no documento e somam corretamente ao saldo final.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "extrato_sol_do_sertao_I_out2026.pdf",
+          "decision": "revisar",
+          "reason": "Divergência confirmada entre o saldo final declarado e a soma dos movimentos do período.",
+          "batch_size": 5,
+          "error_category": null
+        },
+        {
+          "file": "print_serra_dourada_II.png",
+          "decision": "revisar",
+          "reason": "O extrato refere-se ao período de setembro de 2026 (competência 2026-09), fora do período esperado de outubro de 2026.",
+          "batch_size": 5,
+          "error_category": null
+        }
+      ],
+      "groups": [
+        {
+          "files": [
+            "aviso_agencia_horizonte.pdf",
+            "EXT_102026_LagoaAzul (1).pdf",
+            "EXT_102026_LagoaAzul.pdf",
+            "extrato_sol_do_sertao_I_out2026.pdf",
+            "print_serra_dourada_II.png"
+          ],
+          "batch_size": 5,
+          "model": "gemini-3.5-flash-lite",
+          "usage": {
+            "promptTokenCount": 21436,
+            "candidatesTokenCount": 1239,
+            "totalTokenCount": 26402,
+            "cachedContentTokenCount": 18858,
+            "promptTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 15968
+              },
+              {
+                "modality": "IMAGE",
+                "tokenCount": 5468
+              }
+            ],
+            "cacheTokensDetails": [
+              {
+                "modality": "TEXT",
+                "tokenCount": 14048
+              },
+              {
+                "modality": "IMAGE",
+                "tokenCount": 4810
+              }
+            ],
+            "thoughtsTokenCount": 3727,
+            "serviceTier": "standard"
+          },
+          "attempts": [
+            {
+              "number": 1,
+              "http_status": 503,
+              "category": "http_error",
+              "provider_status": "UNAVAILABLE",
+              "duration_ms": 3375.0,
+              "model": "gemini-3.5-flash-lite"
+            },
+            {
+              "number": 2,
+              "http_status": 200,
+              "category": "received",
+              "provider_status": null,
+              "duration_ms": 12204.0,
+              "model": "gemini-3.5-flash-lite"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "n": 3,
+  "mean_seconds": 70.97,
+  "min_seconds": 43.89,
+  "max_seconds": 119.509,
+  "sample_stdev_seconds": 42.13,
+  "limitations": "Três execuções no mesmo equipamento e mesmos documentos. API e carga da máquina variam; não é SLA nem teste de novos bancos."
+}
