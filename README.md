@@ -12,6 +12,8 @@ Instale Python 3.12, extraia o ZIP completo e, no terminal da pasta, execute:
 py -3.12 -m pip install -r requirements-lock.txt
 ```
 
+**Coloque os arquivos que serão processados na pasta `extratos/`, dentro do projeto, antes de iniciar o robô.** O caminho pode ser alterado em `config.toml`.
+
 A chave Gemini fica no `.env` ao lado de `config.toml`. Não vai para o Git. A leitura é automática; não depende de navegador logado. Falha ou ausência de IA não impede a consolidação pelas regras, mas pode deixar pendências. Faturamento e cotas dependem do projeto do provedor; não há promessa de disponibilidade externa.
 
 ### Abrir e revisar um fechamento
@@ -22,12 +24,18 @@ Cada fechamento tem uma pasta identificada por mês, data e horário dentro de `
 
 ```text
 resultados/
+  controle/                 cache, cotas, trava e índice compartilhados
   Fechamento 2026-10 -- 15-11-2026 12h01m00s -- abcd/
     Abrir painel.cmd        abre e edita ESTE fechamento
     Aplicar revisoes.cmd    aplica o Excel salvo DESTE fechamento e abre o painel
     consolidado.xlsx        planilha operacional
     relatorio.html          consulta atualizada após salvar uma revisão
-    runtime/                logs e versões técnicas; não edite os snapshots
+    runtime/                área técnica deste fechamento
+      diagnosticos/         diagnóstico de inicialização
+      historico/
+        <versão>/           Excel/HTML daquela publicação, evidências e manifesto
+          logs/             logs daquela versão
+          destaques/        cópias dos documentos com grifos
 ```
 
 **Para retomar um fechamento específico:** abra **Abrir painel.cmd dentro daquela pasta**. O atalho acompanha a pasta; não contém nome de usuário nem unidade fixa. Não seleciona outra sessão e não extrai tudo novamente. Mantenha a pasta dentro do projeto completo.
@@ -237,8 +245,8 @@ As projeções supõem um lote/mês com o mesmo volume e composição durante 12
 ### Próximos passos, por prioridade
 
 1. **P1 — Definir quais extratos são esperados e quando o fechamento está completo.** Combinar com o financeiro quais bancos, contas e competências devem chegar e até quando. Uma conta esperada sem extrato válido mantém o fechamento parcial; cópias não contam duas vezes. Assim, o robô poderá distinguir “processou tudo que recebeu” de “recebeu tudo que precisava”.
-2. **P2 — Agendar o processamento e atualizar o fechamento quando houver mudanças na pasta.** Verificar a pasta a cada hora ou diariamente. Quando entrar, mudar ou sair um documento, reconstruir o fechamento do mês sem duplicar linhas, preservando o histórico e as revisões registradas. Se nada relevante mudar, evitar processamento desnecessário. Mudanças de competência/configuração ou uma nova janela para IA pendente também devem ser consideradas. O agendamento ainda será desenvolvido.
-3. **P3 — Desenvolver um BI para acompanhar os saldos e a qualidade da automação mês a mês.** Criar duas páginas no mesmo BI: uma financeira, com saldos por banco/conta, evolução mensal e valores retidos; outra operacional, com duração, volume processado, pendências, falhas de IA, retries e revisões humanas. Alimentar o histórico após cada publicação, usando a versão válida de cada fechamento para não somar reprocessamentos. Nas métricas operacionais, distinguir processamento completo de atualização de revisões e contar tentativas HTTP por grupo. Para medir falsos alertas e erros não detectados, registrar a conclusão humana e conferir uma amostra independente, inclusive dos aprovados. Usar essas evidências com o financeiro para ajustar os critérios de aprovação automática. O BI e sua alimentação histórica ainda serão desenvolvidos.
+2. **P2 — Agendar o processamento e atualizar o fechamento quando houver mudanças na pasta.** Verificar a pasta a cada hora ou diariamente. Quando entrar, mudar ou sair um documento, atualizar o fechamento do mês, preservando o histórico e as revisões registradas. Se nada relevante mudar, evitar processamento desnecessário. Mudanças de competência/configuração ou uma nova janela para IA pendente também devem ser consideradas. Usar o Agendador de Tarefas do Windows (Task Scheduler) para iniciar a verificação automaticamente, com pasta de trabalho, usuário e permissões definidos. A tarefa deve executar o processamento em lote, sem `--panel`, para terminar após publicar os arquivos.
+3. **P3 — Desenvolver um BI para acompanhar os saldos e a qualidade da automação mês a mês.** Criar duas páginas no mesmo BI: uma financeira, com saldos por banco/conta, evolução mensal e valores retidos; outra operacional, com duração, volume processado, pendências, falhas de IA, retries e revisões humanas. Alimentar o histórico após cada publicação, usando a versão válida de cada fechamento para não somar reprocessamentos. Nas métricas operacionais, distinguir processamento completo de atualização de revisões e contar tentativas HTTP por grupo. Para medir falsos alertas e erros não detectados, registrar a conclusão humana e conferir uma amostra independente, inclusive dos aprovados. Usar essas evidências com o financeiro para ajustar os critérios de aprovação automática. A página financeira permitirá comparar a posição de caixa entre meses, bancos e contas, consultando o histórico dos fechamentos; a operacional permitirá acompanhar quais casos o robô sinalizou, quais foram confirmados na revisão, a duração das execuções e a frequência de retries/failover. Assim, o financeiro acompanha os saldos e a gestão acompanha a qualidade e o desempenho da automação.
 
 ```mermaid
 flowchart TD
@@ -252,10 +260,21 @@ flowchart TD
     G --> H[Consulta e revisões pelo painel local]
 ```
 
-Este desenho é futuro. O processo só inclui recebimento sem trabalho manual se a origem abastecer a pasta automaticamente. Ausência de mudanças não significa que todos os documentos chegaram. O robô não autentica extratos nem substitui conciliação com o razão contábil.
+Este desenho apresenta a evolução proposta em P1, P2 e P3. Com a origem abastecendo a pasta automaticamente e o Task Scheduler acionando o processamento, recebimento, leitura e publicação poderão ocorrer sem acionamento manual. As exceções financeiras continuam sujeitas aos critérios de aprovação e à revisão registrados no processo. Ausência de mudanças não significa que todos os documentos chegaram. O robô não autentica extratos nem substitui conciliação com o razão contábil.
 
 
 ## 3. Referência técnica
+
+### Pastas do projeto
+
+| Pasta | Conteúdo |
+| --- | --- |
+| extratos/ | Documentos de entrada; coloque aqui os arquivos a processar. |
+| goener/ | Código da automação e do painel local. |
+| resultados/ | Área controle e pastas dos fechamentos, conforme a árvore da seção de uso. |
+| entrega/ | ZIP, planilha e documentação de uma página para envio. |
+| validacao/ | Testes e evidências de validações anteriores. |
+| .github/ | Validação automática do código no GitHub Actions. |
 
 ### Componentes
 

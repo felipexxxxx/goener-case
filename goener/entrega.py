@@ -46,7 +46,7 @@ def one_page(path: Path, summary: dict) -> None:
         "body",
         fontName="Helvetica",
         fontSize=9.5,
-        leading=13,
+        leading=12.5,
         textColor=colors.HexColor("#293D37"),
         alignment=TA_LEFT,
     )
@@ -68,7 +68,7 @@ def one_page(path: Path, summary: dict) -> None:
 
     paragraph("O que foi automatizado", True)
     paragraph(
-        "Python 3.12 lê PDF, Excel e imagem da pasta de entrada e gera planilha, relatório, logs e evidências, com status por arquivo. Publica mesmo com pendências. O painel registra revisões e atualiza Excel e HTML juntos; cópias destacadas direcionam a conferência."
+        "A automação em Python lê PDF, Excel e imagem da pasta extratos e gera planilha, relatório, logs e evidências, com status por arquivo. Publica mesmo com pendências. O painel registra revisões e atualiza Excel e HTML juntos; cópias destacadas direcionam a conferência."
     )
     paragraph("Fluxo e controles", True)
     gap, box_height = 9, 31
@@ -166,7 +166,7 @@ def one_page(path: Path, summary: dict) -> None:
     )
     paragraph("Limites e próximos passos", True)
     paragraph(
-        "Validações e OCR não garantem detectar todo erro nem autenticam o extrato. Saldos com ressalva exigem conferência. Evoluções propostas:<br/><b>1. P1 — Definir quais extratos são esperados e quando o fechamento está completo.</b> Combinar bancos, contas, mês e prazo; conta sem extrato válido mantém o fechamento parcial.<br/><b>2. P2 — Agendar o processamento e atualizar o fechamento quando houver mudanças na pasta.</b> Verificar periodicamente e atualizar o mês sem duplicar linhas, preservando histórico e revisões; agendamento ainda não implementado.<br/><b>3. P3 — Criar BI financeiro e operacional mensal.</b> Duas páginas: saldos por banco/conta; tempo, pendências, falhas e revisões do robô. Conferir amostra humana para medir qualidade. BI ainda não implementado."
+        "Validações e OCR não garantem detectar todo erro nem autenticam o extrato. Saldos com ressalva exigem conferência. Evoluções propostas:<br/><b>1. P1 — Definir quais extratos são esperados e quando o fechamento está completo.</b> Combinar bancos, contas, mês e prazo; conta sem extrato válido mantém o fechamento parcial.<br/><b>2. P2 — Agendar o processamento e atualizar o fechamento quando houver mudanças na pasta.</b> Usar o Agendador de Tarefas do Windows para verificar a pasta e atualizar o mês automaticamente, preservando histórico e revisões.<br/><b>3. P3 — Criar BI financeiro e operacional mensal.</b> Página financeira: histórico dos saldos por banco/conta e evolução mensal. Página operacional: casos sinalizados e confirmados na revisão, desempenho, falhas e retries, apoiando ajustes nas regras e na IA."
     )
     if y < 19 * mm:
         raise ValueError("Documento ultrapassou uma página; revisar o layout")
