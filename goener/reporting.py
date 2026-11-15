@@ -419,9 +419,16 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
         return f"{float(value):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
     def plain(text):
-        return human_text(text).replace(
-            "Mantido o valor declarado.",
-            "Valor declarado preservado como referência, sem correção automática.",
+        return (
+            human_text(text)
+            .replace(
+                "Valor declarado preservado como referência, sem correção automática.",
+                "O valor exibido é apenas referência para conferência.",
+            )
+            .replace(
+                "Mantido o valor declarado.",
+                "O valor exibido é apenas referência para conferência.",
+            )
         )
 
     labels = {
@@ -610,7 +617,7 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
             f"<section><h3>2. Recomendação da IA</h3><p>{html.escape(ai_message)}</p></section></div>"
             f'<div class="reference"><h3>3. Onde conferir</h3><p><b>{html.escape(ref["where"])}</b></p><span class="caption">{html.escape(ref["origin"])}</span>{quote_block}'
             f'<a class="btn secondary" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener">Abrir documento de origem ↗</a>{highlighted_link}{review_button}</div>'
-            f'<div class="explain"><b>4. Medida aplicada automaticamente</b><br>{html.escape(r.applied_action)}<p><b>Contribuição deste arquivo no total: {contribution}.</b>{waiting}</p>{human_block}'
+            f'<div class="explain"><b>4. Medida aplicada automaticamente</b><br>{html.escape(plain(r.applied_action).replace("Saldo original preservado e retido fora dos totais; ressalva registrada.", "Saldo fora do total; aguardando revisão.").replace("Saldo confirmado e incluído por revisão humana; valor original preservado na aba Revisões e nas evidências.", "Saldo confirmado e incluído após revisão humana registrada."))}<p><b>Contribuição deste arquivo no total: {contribution}.</b>{waiting}</p>{human_block}'
             f'<p class="caption">Ressalva para acompanhamento: {html.escape(action)}</p></div></div></details>'
         )
     pending = sum(needs_attention(r) for r in results)

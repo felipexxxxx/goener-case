@@ -455,6 +455,8 @@ def test_divergent_balance_is_reference_only_and_waits_for_review(config):
     assert "Valor de referência · fora do total" in document
     assert "Contribuição deste arquivo no total: R$ 0,00" in document
     assert "Aguarda revisão humana" in document
+    assert "Valores originais preservados" not in document
+    assert "O original fica preservado" not in document
     assert "Mantido o valor declarado" not in document
     assert "Goener.exe" not in document and "Abrir painel.cmd" not in document
     assert "Executar automacao.cmd" in document
