@@ -77,7 +77,7 @@ O lote fornecido contém **17 arquivos: 12 ok, 4 revisar e 1 falhou**, com saldo
 ### Painel interativo
 
 
-Execute **Executar automacao.cmd** para processar e abrir o painel; ou `Executar automacao.cmd --panel` para abrir os resultados existentes. No painel, clique em **Revisar este arquivo**, preencha a decisão e clique em **Salvar e atualizar**. O programa mantém o Excel e o HTML sincronizados. Deixe a janela do robô aberta enquanto usa esses botões. A execução automática pela pasta continua disponível pelos mesmos parâmetros de terminal, sem intervenção manual entre etapas.
+Execute **Executar automacao.cmd** para processar e abrir o painel; ou `& ".\Executar automacao.cmd" --panel` para abrir os resultados existentes. No painel, clique em **Revisar este arquivo**, preencha a decisão e clique em **Salvar e atualizar**. O programa mantém o Excel e o HTML sincronizados. Deixe a janela do robô aberta enquanto usa esses botões. A execução automática pela pasta continua disponível pelos mesmos parâmetros de terminal, sem intervenção manual entre etapas.
 
 ### Conferir e corrigir sem perder o histórico
 
@@ -85,7 +85,7 @@ Use sempre **`resultados/consolidado.xlsx`** como planilha de trabalho. A aba **
 
 1. No HTML, clique em **Abrir cópia destacada**. Os trechos numerados têm explicação visível ao lado. O original não é alterado.
 2. Na aba **Revisões**, encontre o arquivo e preencha somente as colunas amarelas **F a J**: decisão, saldo confirmado quando necessário, justificativa, responsável e data.
-3. **Salve e feche o Excel.** Execute `Executar automacao.cmd --panel` para aplicar revisões e abrir o painel, ou `Executar automacao.cmd --update-reviews` para atualizar sem abrir o navegador.
+3. **Salve e feche o Excel.** Execute `& ".\Executar automacao.cmd" --panel` para aplicar revisões e abrir o painel, ou `& ".\Executar automacao.cmd" --update-reviews` para atualizar sem abrir o navegador.
 4. No painel, clique em **Salvar e atualizar** após preencher o formulário, ou execute `--update-reviews` se a decisão já foi registrada no Excel. O robô valida as decisões e publica Excel e HTML atualizados juntos em uma nova pasta do histórico. Abra `resultados/relatorio.html` ou use o link na célula A3 da aba Revisões.
 
 | Decisão | Resultado após atualizar |
@@ -111,7 +111,7 @@ Você também pode revisar **diretamente no HTML interativo**: execute `py -3.12
 
 Abrir o HTML diretamente pelo Explorer continua sendo consulta: os botões de edição só aparecem no painel servido pelo robô. O painel não modifica código nem pede à IA para programar; as opções são fixas e validadas. O endpoint exige token por sessão e origem local, bloqueia acesso a `.env` e rejeita envio de uma tela antiga. O modo de revisão não faz novas chamadas à IA. Não exponha esse servidor na rede: ele foi feito para uso local por um operador.
 
-Uma célula do Excel não executa esse processo automaticamente: isso exigiria macro ou abertura de programa externo, com permissões próprias do Excel. O atalho evita macros. Não é necessário recompilar ou reempacotar o Python para aplicar decisões; recompilar o EXE só é necessário quando o código muda.
+Uma célula do Excel não executa esse processo automaticamente: isso exigiria macro ou abertura de programa externo, com permissões próprias do Excel. O atalho evita macros. Não é necessário recompilar nem empacotar para aplicar decisões. O código é executado diretamente pelo Python.
 
 Editar diretamente o **Consolidado** ainda recalcula as fórmulas do **Resumo** no Excel, mas essas edições não são importadas pelo robô. Para manter o HTML sincronizado, registre a mudança em **Revisões**. A célula B3 do Resumo é uma simulação do mês apenas dentro do Excel; o fechamento do robô continua definido no config.
 
@@ -133,7 +133,7 @@ O processo manual é receber arquivos de várias contas, abrir cada formato, ide
 4. **Preservar evidências:** Decimal para centavos, SHA-256, origem dos valores, eventos por documento e histórico de publicações. Uma falha em um arquivo não apaga os demais.
 5. **Adicionar IA como complemento:** conferir exceções com o original e JSON validado, sem ferramentas para executar código ou inventar saldos.
 6. **Fechar o ciclo operacional:** relatório legível, cópias destacadas e decisões humanas rastreáveis para a mesma versão do documento.
-7. **Validar e distribuir:** testes, ensaios reais de OCR/HTTP, conferência visual, EXE e pacote final verificável.
+7. **Validar e distribuir:** testes, ensaios reais de OCR/HTTP, conferência visual, CMD e pacote final verificável.
 
 ### Como o robô confere as contas
 
@@ -459,7 +459,7 @@ O gerador usa arquivos rastreados pelo Git; adicione fontes novas antes de empac
 
 Sem mensagens de andamento adicionais. A abertura por `Executar automacao.cmd` ou `executar.py` usa um supervisor leve: registra stdout/stderr e o código de saída, inclusive se o processo de trabalho encerrar abruptamente. Na abertura interativa sem parâmetros, uma falha mantém o console aguardando Enter. Pelo terminal, o código é retornado; o CMD mantém a janela aberta em erro. Não há reinício automático do lote.
 
-Os diagnósticos de abertura ficam em `resultados/historico/diagnosticos/`; o caminho exato aparece no erro. Se esse diretório não permitir escrita, usa uma pasta temporária e informa o caminho. O arquivo `_nativo.log` usa faulthandler quando o Python consegue capturar a falha nativa; nem todo encerramento do Windows produz uma pilha. Bloqueio do Windows antes de o EXE iniciar não pode gerar log do próprio programa. Os eventos por documento continuam em `.local/runtime/logs` e no histórico publicado.
+Os diagnósticos de abertura ficam em `resultados/historico/diagnosticos/`; o caminho exato aparece no erro. Se esse diretório não permitir escrita, usa uma pasta temporária e informa o caminho. O arquivo `_nativo.log` usa faulthandler quando o Python consegue capturar a falha nativa; nem todo encerramento do Windows produz uma pilha. Se o próprio Python ou CMD for bloqueado antes de iniciar, o programa não consegue gerar seu log. Os eventos por documento continuam em `.local/runtime/logs` e no histórico publicado.
 
 Em `resultados`, use somente `consolidado.xlsx` e `relatorio.html`. O índice técnico `latest.json`, snapshots e demais artefatos ficam em `historico`. O snapshot do Excel é intencional para preservar o que foi publicado antes de alterações manuais. Feche a planilha operacional antes de atualizar.
 
@@ -467,4 +467,4 @@ Em `resultados`, use somente `consolidado.xlsx` e `relatorio.html`. O índice t�
 
 ### Distribuição Python 1.10.0
 
-Os registros antigos de EXE permanecem somente em validacao como histórico; não homologam nem integram a distribuição atual. O empacotamento de binários foi retirado. O CMD atual chama apenas `py -3.12 executar.py`, aceita os mesmos parâmetros e mantém erros visíveis. Para abrir somente os resultados e aplicar revisões existentes, use `Executar automacao.cmd --panel`; para atualizar sem abrir painel, use `Executar automacao.cmd --update-reviews`.
+Os registros antigos de EXE permanecem somente em validacao como histórico; não homologam nem integram a distribuição atual. O empacotamento de binários foi retirado. O CMD atual chama apenas `py -3.12 executar.py`, aceita os mesmos parâmetros e mantém erros visíveis. Para abrir somente os resultados e aplicar revisões existentes, use `& ".\Executar automacao.cmd" --panel`; para atualizar sem abrir painel, use `& ".\Executar automacao.cmd" --update-reviews`.

@@ -84,3 +84,5 @@ O EXE 1.9.1 também concluiu `--update-reviews` na primeira tentativa deste ensa
 ## Distribuição Python 1.10.0
 
 PyInstaller e EXE foram retirados da entrega por decisão do responsável. Os registros de binários anteriores são históricos. A versão atual usa Python 3.12 e Executar automacao.cmd, preservando o supervisor, os diagnósticos, a recuperação de trava, as revisões e o histórico organizado. 128 testes passaram.
+
+O CMD da distribuição 1.10.0 foi executado a partir do ZIP extraído em pasta temporária, com IA desligada e sem cache distribuído: 17 arquivos, 12 ok, 4 revisar, 1 falhou, R$ 4.114.372,29 e 34,523 segundos de processamento. Registro em python.json. Nenhum processo Goener.exe permaneceu ativo durante essa validação.

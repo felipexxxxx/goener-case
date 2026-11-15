@@ -1,0 +1,20 @@
+{
+  "version": "1.10.0",
+  "tests_passed": 128,
+  "zip_contains_exe": false,
+  "extracted_cmd_passed": true,
+  "files": 17,
+  "statuses": {
+    "ok": 12,
+    "falhou": 1,
+    "revisar": 4
+  },
+  "balance": "4114372.29",
+  "duration_seconds": 34.523,
+  "http_attempts": 0,
+  "root_results": [
+    "consolidado.xlsx",
+    "historico",
+    "relatorio.html"
+  ]
+}
