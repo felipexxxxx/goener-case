@@ -23,6 +23,7 @@ from .readers import LocalOCR, extract
 from .reporting import (
     estimate_effort,
     latest_pointer,
+    operational_counts,
     publication_directory,
     status_counts,
     write_html,
@@ -43,16 +44,7 @@ def atomic_json(path: Path, data: dict | list) -> None:
 def publish_shortcuts(directory: Path, log, *, require_workbook=False, output_dir=None) -> None:
     """Atalhos para a última execução; o histórico publicado permanece intacto."""
     output_dir = output_dir or directory.parent
-    relative = os.path.relpath(directory, output_dir).replace("\\", "/")
-    targets = {
-        "consolidado.xlsx": None,
-        "relatorio.html": (
-            '<!doctype html><html lang="pt-BR"><meta charset="utf-8">'
-            f'<meta http-equiv="refresh" content="0;url={relative}/relatorio.html">'
-            "<title>Relatório Goener</title>"
-            f'<a href="{relative}/relatorio.html">Abrir último relatório</a></html>'
-        ),
-    }
+    targets = {"consolidado.xlsx": None}
     for name, content in targets.items():
         target = output_dir / name
         temporary = target.with_suffix(target.suffix + ".tmp")
@@ -514,6 +506,7 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
                         bool(r.ai.get("source_disagreements")) for r in results
                     ),
                 },
+                "outcomes": operational_counts(results, config.ai_mode, config.period),
                 "human_reviews_applied": sum(
                     r.human_review.get("state") == "applied" for r in results
                 ),
@@ -532,7 +525,8 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
                 results,
                 config.period,
                 review_rows,
-                report_path=config.output_dir / "relatorio.html",
+                report_path=config.output_dir / "Abrir relatorio dinamico.cmd",
+                ai_mode=config.ai_mode,
             )
             atomic_json(stage / "evidencias.json", [r.to_dict() for r in results])
             summary["duration_seconds"] = round(time.perf_counter() - start, 3)
@@ -682,6 +676,7 @@ def main(argv=None) -> int:
             json.dumps(
                 {
                     "output": str(directory),
+                    "outcomes": summary.get("outcomes", {}),
                     **{
                         k: summary[k]
                         for k in (

@@ -253,7 +253,7 @@ def serve(config):
         try:
             read_reviews(operational)  # Não sobrescrever um Excel aberto.
             wb = load_workbook(operational, keep_links=False)
-            target = (config.output_dir / "relatorio.html").resolve().as_uri()
+            target = (config.output_dir / "Abrir relatorio dinamico.cmd").resolve().as_uri()
             link = wb["Revisões"]["A3"].hyperlink
             if link is None or link.target != target:
                 wb["Revisões"]["A3"].hyperlink = target

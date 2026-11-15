@@ -11,6 +11,7 @@ from openpyxl import load_workbook
 
 from goener.painel import make_server
 from goener.pipeline import run
+from goener.reporting import publication_directory
 
 ROOT = Path(__file__).resolve().parents[2]
 NAME = "extrato_sol_do_sertao_I_out2026.pdf"
@@ -98,7 +99,7 @@ def test_editing_pinned_session_updates_its_static_html_and_not_other_session(co
     second_dir, _, _ = run(second)
     remember_session(second, config.output_dir)
     second_before = (second.output_dir / "consolidado.xlsx").read_bytes()
-    static_before = (first.output_dir / "relatorio.html").read_bytes()
+    static_before = (first_dir / "relatorio.html").read_bytes()
     with make_server(first) as server:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
@@ -130,13 +131,16 @@ def test_editing_pinned_session_updates_its_static_html_and_not_other_session(co
             )
             with urlopen(request) as response:
                 assert response.status == 200
-            assert (first.output_dir / "relatorio.html").read_bytes() != static_before
+            assert (
+                publication_directory(first.output_dir) / "relatorio.html"
+            ).read_bytes() != static_before
+            assert not (first.output_dir / "relatorio.html").exists()
             with urlopen(origin) as response:
                 assert "Revisão humana registrada" in response.read().decode()
             assert (second.output_dir / "consolidado.xlsx").read_bytes() == second_before
             assert select_session(config).output_dir == second.output_dir
-            assert (first.output_dir / "Abrir painel.cmd").is_file()
-            assert (first.output_dir / "Aplicar revisoes.cmd").is_file()
+            assert (first.output_dir / "Abrir relatorio dinamico.cmd").is_file()
+            assert (first.output_dir / "Aplicar revisoes (Excel).cmd").is_file()
         finally:
             server.shutdown()
             thread.join(timeout=5)

@@ -1,6 +1,6 @@
 # Goener — consolidação bancária
 
-Versão **1.14.0**. Automação Python de ponta a ponta: lê PDF, imagem e Excel, confere os saldos e publica planilha, relatório e logs. O Gemini ajuda a analisar exceções; regras obrigatórias do Python continuam valendo. No lote fornecido: **17 arquivos, 12 ok, 4 revisar, 1 falhou e R$ 4.114.372,29 no total**. Dados fictícios.
+Versão **1.14.0**. Automação Python de ponta a ponta: lê PDF, imagem e Excel, confere os saldos e publica planilha, relatório e logs. O Gemini ajuda a analisar exceções; regras obrigatórias do Python continuam valendo. No lote fornecido: **17 arquivos, 12 incluídos, 3 excluídos, 2 pendentes de decisão e R$ 4.114.372,29 no total**. Dados fictícios.
 
 ## 1. Usar sem conhecer o código
 
@@ -18,7 +18,7 @@ A chave Gemini fica no `.env` ao lado de `config.toml`. Não vai para o Git. A l
 
 ### Abrir e revisar um fechamento
 
-Dê dois cliques em **Executar automacao.cmd**, na raiz. Ele inicia um novo processamento dos extratos e depois abre o painel do novo fechamento. Para retomar uma execução existente, use Abrir painel.cmd dentro da pasta daquele fechamento. Mantenha a janela do robô aberta.
+Dê dois cliques em **Executar automacao.cmd**, na raiz. Ele inicia um novo processamento dos extratos e depois abre o painel do novo fechamento. Para retomar uma execução existente, use Abrir relatorio dinamico.cmd dentro da pasta daquele fechamento. Mantenha a janela do robô aberta.
 
 Cada fechamento tem uma pasta identificada por mês, data e horário dentro de `resultados/`. Não existem mais Excel e HTML soltos nessa raiz.
 
@@ -26,10 +26,9 @@ Cada fechamento tem uma pasta identificada por mês, data e horário dentro de `
 resultados/
   controle/                 cache, cotas, trava e índice compartilhados
   Fechamento 2026-10 -- 15-11-2026 12h01m00s -- abcd/
-    Abrir painel.cmd        abre e edita ESTE fechamento
-    Aplicar revisoes.cmd    aplica o Excel salvo DESTE fechamento e abre o painel
+    Abrir relatorio dinamico.cmd        abre e edita ESTE fechamento
+    Aplicar revisoes (Excel).cmd    aplica o Excel salvo DESTE fechamento e abre o painel
     consolidado.xlsx        planilha operacional
-    relatorio.html          consulta atualizada após salvar uma revisão
     runtime/                área técnica deste fechamento
       diagnosticos/         diagnóstico de inicialização
       historico/
@@ -38,23 +37,23 @@ resultados/
           destaques/        cópias dos documentos com grifos
 ```
 
-**Para retomar um fechamento específico:** abra **Abrir painel.cmd dentro daquela pasta**. O atalho acompanha a pasta; não contém nome de usuário nem unidade fixa. Não seleciona outra sessão e não extrai tudo novamente. Mantenha a pasta dentro do projeto completo.
+**Para retomar um fechamento específico:** abra **Abrir relatorio dinamico.cmd dentro daquela pasta**. O atalho acompanha a pasta; não contém nome de usuário nem unidade fixa. Não seleciona outra sessão e não extrai tudo novamente. Mantenha a pasta dentro do projeto completo.
 
-**No painel:** Conferir arquivos → expanda um arquivo → Revisar este arquivo → escolha a decisão e preencha os campos → Salvar e atualizar. Isso grava a revisão no Excel e atualiza a consulta HTML **do mesmo fechamento**. As versões anteriores permanecem no histórico. Para atualizar uma consulta já aberta em um snapshot antigo, reabra relatorio.html na pasta do fechamento. O formulário exige Excel fechado ao salvar.
+**No painel:** Conferir arquivos → expanda um arquivo → Revisar este arquivo → escolha a decisão e preencha os campos → Salvar e atualizar. Isso grava a revisão no Excel e atualiza a consulta HTML **do mesmo fechamento**. As versões anteriores permanecem no histórico. O atalho Abrir relatorio dinamico.cmd sempre carrega a versão atual daquele fechamento. O HTML de consulta fica somente no histórico técnico. O formulário exige Excel fechado ao salvar.
 
-**Se preferir o Excel:** na aba Revisões, preencha as células amarelas, salve e feche. Dê dois cliques em **Aplicar revisoes.cmd na mesma pasta**. Não precisa digitar parâmetros. Não foi criado botão de macro dentro do Excel.
+**Se preferir o Excel:** na aba Revisões, preencha as células amarelas, salve e feche. Dê dois cliques em **Aplicar revisoes (Excel).cmd na mesma pasta**. Não precisa digitar parâmetros. Não foi criado botão de macro dentro do Excel.
 
-A aba Consolidado tem os indicadores de quantidade alinhados verticalmente nas colunas A/B (incluídos, para conferir, com falha e recebidos), resumo no topo e as oito colunas do enunciado a partir da linha 7: Arquivo, Banco, Conta, Período, Saldo final, Formato de origem, Status, Observação. Uma linha por arquivo, inclusive cópias e falhas. Revisões mostra apenas casos que exigem decisão e decisões/rascunhos preenchidos; identificadores técnicos ficam ocultos. Nas pendências, a observação inclui **o motivo retornado pela IA**, quando disponível, e não apenas a decisão genérica. Ela é uma recomendação, não comprovação de que o documento está correto.
+A aba Consolidado tem os indicadores alinhados verticalmente nas colunas A/B: incluídos no mês, excluídos, pendentes de decisão e recebidos. A partir da linha 7, mantém as oito colunas do enunciado: Arquivo, Banco, Conta, Período, Saldo final, Formato de origem, Status, Observação. Acrescenta somente a coluna **Situação final** (Incluído, Excluído ou Pendente), usada nos indicadores e filtros. Status continua sendo a classificação de leitura do contrato; Situação final é o resultado operacional após regras, IA e revisão. Uma linha por arquivo, inclusive cópias e falhas. Revisões mostra apenas casos que exigem decisão e decisões/rascunhos preenchidos; identificadores técnicos ficam ocultos. Nas pendências, a observação inclui **o motivo retornado pela IA**, quando disponível, e não apenas a decisão genérica. Ela é uma recomendação, não comprovação de que o documento está correto.
 
-O link **Abrir relatório com detalhes** na aba Revisões usa URI local explícita para evitar a resolução relativa do Office pelo OneDrive. Ao abrir o painel, o robô atualiza o link para a localização atual do projeto, se o Excel estiver fechado. Após mover/extrair o projeto em outro computador, abra primeiro Abrir painel.cmd para atualizar esse vínculo. A consulta HTML é local; a edição exige o painel em execução. O Office pode pedir confirmação ao abrir o arquivo local; não é um redirecionamento para o OneDrive.
+O link **Abrir relatório dinâmico** na aba Revisões aponta para o CMD daquele fechamento, com URI local explícita. O painel atualiza esse vínculo para a localização atual quando é aberto com o Excel fechado. Após mover/extrair o projeto, abra primeiro o atalho pela pasta. O Office pode pedir confirmação ou bloquear a abertura de scripts; nesse caso, use Abrir relatorio dinamico.cmd pelo Explorador de Arquivos. Não há macros. O HTML estático existe só em runtime/historico/<versão>/relatorio.html para consulta daquela versão; a pasta principal não contém HTML para confundir consulta com edição.
 
 ### Decisões e efeitos
 
-Na aba Revisões, clique na célula da coluna **Decisão** e use a seta da lista (ou Alt+↓). Não digite zero para excluir: escolha **Excluir** e deixe Saldo confirmado vazio. Para aceitar os R$ 457.179,12 declarados, escolha **Liberar saldo original**, sem preencher outro valor. Para substituir por R$ 456.099,12 após conferência, escolha **Corrigir e liberar** e informe 456099,12. Zero só deve ser informado se o saldo correto for realmente R$ 0,00. A coluna de valor fica cinza quando a decisão não exige preenchimento. Justifique, informe responsável/data, salve e feche o Excel e abra Aplicar revisoes.cmd do mesmo fechamento.
+Na aba Revisões, clique na célula da coluna **Decisão** e use a seta da lista (ou Alt+↓). Não digite zero para excluir: escolha **Excluir** e deixe Saldo confirmado vazio. Para aceitar os R$ 457.179,12 declarados, escolha **Liberar saldo original**, sem preencher outro valor. Para substituir por R$ 456.099,12 após conferência, escolha **Corrigir e liberar** e informe 456099,12. Zero só deve ser informado se o saldo correto for realmente R$ 0,00. A coluna de valor fica cinza quando a decisão não exige preenchimento. Justifique, informe responsável/data, salve e feche o Excel e abra Aplicar revisoes (Excel).cmd do mesmo fechamento.
 
-Cópias exatas são exclusões determinísticas. No modo automático, documento de outra competência pode ser encerrado como exclusão quando a leitura legível da IA confirma o mesmo período identificado pelas regras, com localização/citação e sem divergência de leitura. Documento sem saldo/movimentos pode ser encerrado quando a IA recomenda não considerar e cita explicitamente que não é extrato. Esses casos permanecem no Consolidado e na consulta Todos/Tratados do HTML, fora dos totais, e saem da fila de decisão. Se houver incerteza ou discordância, continuam pendentes. Divergência matemática não é liberada pela IA; exige revisão registrada.
+Cópias exatas são exclusões determinísticas. No modo automático, documento de outra competência pode ser encerrado como exclusão quando a leitura legível da IA confirma o mesmo período identificado pelas regras, com localização/citação e sem divergência de leitura. Documento sem saldo/movimentos pode ser encerrado quando a IA recomenda não considerar e cita explicitamente que não é extrato. Esses casos permanecem no Consolidado e na consulta Todos/Excluídos do HTML, fora dos totais, e saem da fila de decisão. Se houver incerteza ou discordância, continuam pendentes. Divergência matemática não é liberada pela IA; exige revisão registrada.
 
-Os três Status do enunciado (ok/revisar/falhou) são mantidos para compatibilidade. O indicador **Com ressalvas** conta o status revisar; não equivale ao número de decisões humanas pendentes. A aba Revisões e o filtro Revisão necessária mostram a fila operacional. No lote de referência, são três exclusões concluídas (cópia, comunicado e outro mês) e dois casos para decisão (lançamento suspeito e divergência de saldo).
+Os três Status do enunciado (ok/revisar/falhou) são mantidos para compatibilidade. Os indicadores do Excel e do HTML usam a **Situação final**, com grupos distintos: incluídos, excluídos e pendentes. Excluído não é considerado sem ressalvas: o motivo e a confirmação da IA (quando houve) continuam visíveis, e o valor não entra na soma. No lote de referência, são **12 incluídos, 3 excluídos e 2 pendentes**, totalizando 17 arquivos. As três exclusões são cópia idêntica, comunicado e outro mês; os dois pendentes são lançamento suspeito e divergência de saldo. Status de leitura não deve ser contado como fila de revisão. No modo consultivo, alertas da IA continuam orientativos e os totais seguem as regras, conforme a política desse modo.
 
 | Decisão | Efeito |
 | --- | --- |
@@ -109,10 +108,10 @@ A geração termina mesmo que haja pendências; revisar é uma etapa posterior, 
 
 ```mermaid
 flowchart TD
-    A[Abrir painel.cmd da pasta escolhida] --> B[Consultar motivo e cópia destacada]
+    A[Abrir relatorio dinamico.cmd da pasta escolhida] --> B[Consultar motivo e cópia destacada]
     B --> C{Como registrar a decisão?}
     C -- No painel --> D[Preencher formulário e salvar]
-    C -- No Excel --> E[Salvar, fechar e abrir Aplicar revisoes.cmd]
+    C -- No Excel --> E["Salvar, fechar e abrir Aplicar revisoes (Excel).cmd"]
     D --> F[Validar decisão e integridade dos originais]
     E --> F
     F --> G[Atualizar Excel e consulta HTML da mesma pasta]
@@ -221,6 +220,8 @@ A referência de desempenho agora é um ensaio de **três execuções completas*
 O ensaio individual anterior permanece em `validacao/tempo_pipeline_individual.json`: média 226,62 s, 14/15 análises e 32 tentativas. **Não é um experimento controlado para atribuir toda a diferença ao agrupamento:** disponibilidade da API, modelo efetivamente usado, cotas e cache implícito do provedor variaram. O cache local foi desativado; os metadados registram quando houve reaproveitamento no próprio provedor. As médias das duas configurações não são misturadas.
 
 Registro das medições e tentativas: `validacao/tempo_pipeline.json`. Para repetir o ensaio, execute `py -3.12 validacao/medir_pipeline.py`; ele faz três rodadas sem cache local e consome chamadas/tokens da API configurada. Não usa as pastas operacionais de resultados nem aplica suas revisões. A tabela também informa quantas análises de IA ficaram disponíveis. Publicar Excel/HTML com ressalvas não equivale a obter todas as respostas da IA. O tempo inclui esperas, retries, troca de modelo e limites locais, quando ocorreram; não são descontados para melhorar o resultado. Três rodadas na mesma máquina e com o mesmo lote não estabelecem SLA nem desempenho de qualquer outro volume. O tempo gravado como `duration_seconds` em resumos de atualização é a duração daquela operação, não essa média de processamento completo.
+
+Na conferência da execução do usuário de 15/11/2026 (run_id 20261115T195114Z_1b0de390), o pipeline registrou **114,386 s**, 17 arquivos, 5/5 análises válidas, 3 tentativas HTTP e código 0. Esse tempo interno tem outro ponto de início/fim e foi preservado separadamente em `last_user_execution` no registro de medições; não é misturado com as médias externas de 70,97 s e 46,70 s, que também não são SLA.
 
 #### Economia: atividades diferentes têm pesos diferentes
 
@@ -416,7 +417,7 @@ Até 50 documentos, 100 mil caracteres de contexto e 16 MiB nas partes serializa
 
 ## 4. Validação e entrega
 
-Na versão 1.14.0, **160 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
+Na versão 1.14.0, **162 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
 
 Testes e registros ficam em validacao/. A suíte cobre regras financeiras, duplicidade, OCR, JSON, retries, fórmulas, segurança de entrada, publicação, revisão, arquivos alterados e isolamento entre dois fechamentos. A abertura no Excel Desktop e a navegação do link são verificadas separadamente; abrir com openpyxl não basta para comprovar compatibilidade.
 
@@ -426,7 +427,7 @@ py -3.12 -m pytest -q
 py -3.12 -m goener.entrega --include-env
 ```
 
-A entrega tem três arquivos: goener_automacao.zip, consolidado.xlsx e documentacao_1_pagina.pdf. O ZIP contém o projeto e um resultado de referência em resultado/, com Abrir painel.cmd e Aplicar revisoes.cmd próprios. Novos fechamentos são criados em resultados/. O empacotamento compara fontes atuais e preserva os artefatos da execução escolhida. Não há EXE/PyInstaller nem macros.
+A entrega tem três arquivos: goener_automacao.zip, consolidado.xlsx e documentacao_1_pagina.pdf. O ZIP contém o projeto e um fechamento de referência em resultado/, com consolidado.xlsx, os atalhos Abrir relatorio dinamico.cmd e Aplicar revisoes (Excel).cmd e o histórico completo dentro de runtime/. Não há HTML de consulta solto na pasta principal desse fechamento. Novos fechamentos são criados em resultados/. O empacotamento compara fontes atuais e preserva os artefatos da execução escolhida. Não há EXE/PyInstaller nem macros.
 
 Fonte, configuração e validação são versionados. Relatórios, ZIP, cache e .env não vão para o Git. O ZIP privado inclui .env somente por solicitação explícita do responsável; quem receber a chave poderá consumir a cota dela. Não publique esse pacote privado em repositório aberto.
 

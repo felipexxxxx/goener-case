@@ -100,6 +100,12 @@ def one_page(path: Path, summary: dict) -> None:
     )
     paragraph("Resultado do lote fornecido", True)
     counts = summary["statuses"]
+    outcomes = summary.get("outcomes")
+    distribution = (
+        f"{outcomes['incluido']} incluídos, {outcomes['excluido']} excluídos e {outcomes['pendente']} pendentes de decisão."
+        if outcomes is not None
+        else f"{counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} com status revisar e {counts.get('falhou', 0)} com falha."
+    )
     benchmark_path = ROOT / "validacao/tempo_pipeline.json"
     benchmark = (
         json.loads(benchmark_path.read_text(encoding="utf-8")) if benchmark_path.exists() else None
@@ -129,9 +135,11 @@ def one_page(path: Path, summary: dict) -> None:
         ]
         valid = sum(r["ai"]["valid_decisions"] for r in rounds)
         expected = sum(r["ai"]["valid_decisions"] + r["ai"]["unavailable_files"] for r in rounds)
-        timing += f" IA no cenário: {valid}/{expected} análises válidas; esperas e falhas incluídas."
+        timing += (
+            f" IA no cenário: {valid}/{expected} análises válidas; esperas e falhas incluídas."
+        )
     paragraph(
-        f"<b>{summary['files']} arquivos</b>: {counts.get('ok', 0)} com status ok, {counts.get('revisar', 0)} com status revisar e {counts.get('falhou', 0)} com falha. {timing} Ressalvas: cópia idêntica, lançamento suspeito de repetição, diferença de R$ 1.080,00, outro mês e comunicado sem dados."
+        f"<b>{summary['files']} arquivos</b>: {distribution} {timing} Cada exclusão tem motivo registrado; os pendentes exigem decisão humana."
     )
     paragraph("Tempo estimado e qualidade da evidência", True)
     estimate = summary.get("time_estimate", {})
@@ -217,19 +225,18 @@ def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
         with tempfile.TemporaryDirectory(prefix="goener-atalhos-") as temporary:
             folder = Path(temporary)
             write_launchers(folder)
-            payloads.update({p.name: p.read_bytes() for p in folder.glob("*.cmd")})
+            for p in folder.glob("*.cmd"):
+                z.writestr("goener-case/resultado/" + p.name, p.read_bytes())
         if "relatorio.html" in payloads:
             input_dir = summary.get("configuration", {}).get("input_dir", ROOT / "extratos")
             prefix = source_root(run_dir, input_dir) + "/"
             payloads["relatorio.html"] = (
                 payloads["relatorio.html"]
                 .decode("utf-8")
-                .replace('href="' + prefix, 'href="../extratos/')
+                .replace('href="' + prefix, 'href="../../../../extratos/')
                 .encode("utf-8")
             )
             manifest = json.loads(payloads["manifesto.json"])
-            for name in ("Abrir painel.cmd", "Aplicar revisoes.cmd"):
-                manifest["artifacts"][name] = hashlib.sha256(payloads[name]).hexdigest()
             manifest["artifacts"]["relatorio.html"] = hashlib.sha256(
                 payloads["relatorio.html"]
             ).hexdigest()
@@ -237,7 +244,20 @@ def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
                 "utf-8"
             )
         for name, data in payloads.items():
-            z.writestr("goener-case/resultado/" + name, data)
+            z.writestr(
+                "goener-case/resultado/runtime/historico/" + summary["run_id"] + "/" + name, data
+            )
+        z.writestr("goener-case/resultado/consolidado.xlsx", payloads["consolidado.xlsx"])
+        z.writestr(
+            "goener-case/resultado/runtime/historico/latest.json",
+            json.dumps(
+                {
+                    "run_id": summary["run_id"],
+                    "directory": summary["run_id"],
+                    "exit_code": summary["exit_code"],
+                }
+            ),
+        )
         z.write(destination / "documentacao_1_pagina.pdf", "goener-case/documentacao_1_pagina.pdf")
     return archive
 

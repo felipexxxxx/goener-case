@@ -69,9 +69,15 @@ def select_session(config, requested=None, *, create=False):
 
 def write_launchers(folder):
     folder = Path(folder)
+    for name in ("Abrir painel.cmd", "Aplicar revisoes.cmd", "relatorio.html"):
+        old = folder / name
+        if old.is_file():
+            content = old.read_text(encoding="utf-8", errors="replace")
+            if "GOENER_SESSION" in content or 'http-equiv="refresh"' in content:
+                old.unlink()
     for name, flags in (
-        ("Abrir painel.cmd", "--panel"),
-        ("Aplicar revisoes.cmd", "--update-reviews --panel"),
+        ("Abrir relatorio dinamico.cmd", "--panel"),
+        ("Aplicar revisoes (Excel).cmd", "--update-reviews --panel"),
     ):
         text = r"""@echo off
 setlocal

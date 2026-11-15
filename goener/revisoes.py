@@ -191,12 +191,12 @@ def write_reviews(wb, results, previous, period):
     ws.row_dimensions[1].height = 40
     ws.merge_cells("A2:K2")
     ws["A2"] = (
-        "1. Clique em Decisão e escolha na seta (Alt+↓). 2. Só preencha Saldo confirmado para Corrigir e liberar. 3. Justifique, identifique-se, salve e feche; abra Aplicar revisoes.cmd nesta pasta."
+        "1. Clique em Decisão e escolha na seta (Alt+↓). 2. Só preencha Saldo confirmado para Corrigir e liberar. 3. Justifique, identifique-se, salve e feche; abra Aplicar revisoes (Excel).cmd nesta pasta."
     )
     ws["A2"].alignment = Alignment(wrap_text=True, vertical="center")
     ws.row_dimensions[2].height = 34
-    ws["A3"] = "Abrir relatório com detalhes"
-    ws["A3"].hyperlink = "relatorio.html"
+    ws["A3"] = "Abrir relatório dinâmico"
+    ws["A3"].hyperlink = "Abrir relatorio dinamico.cmd"
     ws["A3"].font = Font(name="Aptos", color="007F78", underline="single")
     for col, label in enumerate(HEADERS, 1):
         c = ws.cell(4, col, label)

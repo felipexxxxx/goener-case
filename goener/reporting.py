@@ -27,6 +27,8 @@ HEADERS = [
     "Status",
     "Observação",
 ]
+OUTPUT_HEADERS = [*HEADERS, "Situação final"]
+OUTCOME_LABELS = {"incluido": "Incluído", "excluido": "Excluído", "pendente": "Pendente"}
 
 
 def needs_attention(result):
@@ -39,6 +41,22 @@ def needs_attention(result):
         or bool(result.ai.get("source_disagreements"))
         or result.ai.get("decision") in ("revisar", "nao_considerar")
     )
+
+
+def operational_state(result, mode, period):
+    if result.automatic_exclusion or (
+        result.human_review.get("state") == "applied"
+        and result.human_review.get("decision") == "Excluir"
+    ):
+        return "excluido"
+    if needs_attention(result) or not result.included(mode, period):
+        return "pendente"
+    return "incluido"
+
+
+def operational_counts(results, mode, period):
+    counts = Counter(operational_state(r, mode, period) for r in results)
+    return {state: counts[state] for state in OUTCOME_LABELS}
 
 
 def latest_pointer(output_dir):
@@ -248,7 +266,7 @@ def write_summary(wb, period):
         if name not in ("Consolidado", "Revisões"):
             del wb[name]
     ws = wb["Consolidado"]
-    ws.merge_cells("A1:H1")
+    ws.merge_cells("A1:I1")
     ws["A1"] = "GOENER | Saldos bancários"
     ws["A1"].font = Font(name="Aptos", size=20, bold=True, color="FFFFFF")
     ws["A1"].fill = PatternFill("solid", fgColor="003836")
@@ -261,29 +279,29 @@ def write_summary(wb, period):
     ws["B2"].number_format = "@"
     ws.merge_cells("C2:D2")
     ws["C2"] = "Saldo considerado"
-    ws.merge_cells("E2:H3")
+    ws.merge_cells("E2:I3")
     ws["E2"] = '=SUMIFS(Extratos[Saldo final],Extratos[Status],"ok",Extratos[Período],$B$2)'
     ws["E2"].font = Font(name="Aptos", size=22, bold=True, color="003836")
     ws["E2"].number_format = '"R$" #,##0.00;[Red]-"R$" #,##0.00'
     ws["E2"].alignment = Alignment(vertical="center", horizontal="left")
     ws["A3"] = "Incluídos no mês"
-    ws["B3"] = '=COUNTIFS(Extratos[Status],"ok",Extratos[Período],$B$2)'
+    ws["B3"] = '=COUNTIFS(Extratos[Situação final],"Incluído",Extratos[Período],$B$2)'
     for label_cell, label, value_cell, formula in (
-        ("A4", "Com ressalvas", "B4", '=COUNTIF(Extratos[Status],"revisar")'),
-        ("A5", "Com falha", "B5", '=COUNTIF(Extratos[Status],"falhou")'),
+        ("A4", "Excluídos", "B4", '=COUNTIF(Extratos[Situação final],"Excluído")'),
+        ("A5", "Pendentes de decisão", "B5", '=COUNTIF(Extratos[Situação final],"Pendente")'),
         ("A6", "Arquivos recebidos", "B6", "=COUNTA(Extratos[Arquivo])"),
     ):
         ws[label_cell] = label
         ws[value_cell] = formula
-    for row in ws.iter_rows(min_row=2, max_row=6, max_col=8):
+    for row in ws.iter_rows(min_row=2, max_row=6, max_col=9):
         for c in row:
             if c.coordinate not in ("B2", "E2"):
                 c.font = Font(name="Aptos", size=11, bold=c.data_type == "f", color="003836")
             if c.coordinate != "B2":
                 c.fill = PatternFill("solid", fgColor="F0F7F6")
-    ws.merge_cells("C4:H6")
+    ws.merge_cells("C4:I6")
     ws["C4"] = (
-        "Filtre os arquivos abaixo. Para corrigir, use a aba Revisões, salve, feche e reexecute. Detalhes no relatório HTML."
+        "Situação final separa incluídos, excluídos e pendentes. Somente pendentes exigem decisão na aba Revisões. Status mantém a classificação de leitura do enunciado."
     )
     ws["C4"].font = Font(name="Aptos", size=10, color="526762")
     ws["C4"].alignment = Alignment(wrap_text=True, vertical="center")
@@ -296,6 +314,7 @@ def write_workbook(
     period: str | None = None,
     review_rows: list | None = None,
     report_path: Path | None = None,
+    ai_mode: str = "off",
 ) -> None:
     wb = load_workbook(template, keep_links=False)
     try:
@@ -312,6 +331,7 @@ def write_workbook(
         for row_number, result in enumerate(results, 8):
             values = result.row()
             values[7] = workbook_note(result)
+            values.append(OUTCOME_LABELS[operational_state(result, ai_mode, period or "")])
             for col_number, value in enumerate(values, 1):
                 cell = ws.cell(row_number, col_number, value)
                 if isinstance(value, str):
@@ -324,7 +344,7 @@ def write_workbook(
                 cell.border = Border(bottom=bottom)
                 cell.alignment = Alignment(
                     vertical="center",
-                    wrap_text=col_number in (1, 2, 8),
+                    wrap_text=col_number in (1, 2, 8, 9),
                     horizontal="center"
                     if col_number in (3, 4, 6, 7)
                     else "right"
@@ -346,11 +366,20 @@ def write_workbook(
                     bg, fg = colors[result.status]
                     cell.fill = PatternFill("solid", fgColor=bg)
                     cell.font = Font(name="Calibri", size=11, bold=True, color=fg)
+                if col_number == 9:
+                    bg, fg = {
+                        "Incluído": ("E7F3EC", "176038"),
+                        "Excluído": ("E8EFF5", "375B87"),
+                        "Pendente": ("FFF2CD", "805A00"),
+                    }[value]
+                    cell.fill = PatternFill("solid", fgColor=bg)
+                    cell.font = Font(name="Aptos", size=10, bold=True, color=fg)
             lines = sum(
                 max(1, math.ceil(len(line) / 64)) for line in workbook_note(result).splitlines()
             )
             ws.row_dimensions[row_number].height = min(409, max(40, lines * 13 + 10))
-        for col, width in zip("ABCDEFGH", (37, 22, 16, 14, 21, 19, 13, 66), strict=True):
+        ws["I7"] = OUTPUT_HEADERS[-1]
+        for col, width in zip("ABCDEFGHI", (37, 22, 16, 14, 21, 19, 13, 56, 20), strict=True):
             ws.column_dimensions[col].width = width
         ws.freeze_panes = "C8"
         # O filtro pertence à tabela. Um AutoFilter da planilha na mesma área
@@ -362,7 +391,7 @@ def write_workbook(
             cell.fill = PatternFill("solid", fgColor="003836")
             cell.alignment = Alignment(horizontal="center", vertical="center")
         ws.print_options.horizontalCentered = True
-        ws.print_area = f"A1:H{len(results) + 7}"
+        ws.print_area = f"A1:I{len(results) + 7}"
         ws.print_title_rows = "7:7"
         ws.sheet_properties.pageSetUpPr.fitToPage = True
         ws.page_setup.orientation = "landscape"
@@ -371,7 +400,7 @@ def write_workbook(
         ws.page_setup.fitToHeight = 0
         ws.tables.clear()
         if results:
-            table = Table(displayName="Extratos", ref=f"A7:H{len(results) + 7}")
+            table = Table(displayName="Extratos", ref=f"A7:I{len(results) + 7}")
             table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True)
             ws.add_table(table)
             status_validation = DataValidation(type="list", formula1='"ok,revisar,falhou"')
@@ -402,7 +431,7 @@ def write_workbook(
 
         write_reviews(wb, results, review_rows or [], period or "")
         wb["Revisões"]["A3"].hyperlink = (
-            (report_path or destination.parent / "relatorio.html").resolve().as_uri()
+            (report_path or destination.parent / "Abrir relatorio dinamico.cmd").resolve().as_uri()
         )
         wb.calculation = CalcProperties(
             calcId=0, fullCalcOnLoad=True, forceFullCalc=True, calcMode="auto"
@@ -418,13 +447,13 @@ def write_workbook(
             raise ValueError("Contagem de linhas gravadas não confere com a entrada")
         if results:
             table = ws.tables["Extratos"]
-            expected_ref = f"A7:H{len(results) + 7}"
+            expected_ref = f"A7:I{len(results) + 7}"
             if (
                 ws.auto_filter.ref is not None
                 or table.ref != expected_ref
                 or table.autoFilter is None
                 or table.autoFilter.ref != expected_ref
-                or [column.name for column in table.tableColumns] != HEADERS
+                or [column.name for column in table.tableColumns] != OUTPUT_HEADERS
             ):
                 raise ValueError("Estrutura da tabela/filtro gravado não confere")
         for row, result in zip(ws.iter_rows(min_row=8), results, strict=True):
@@ -457,13 +486,6 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
             )
         )
 
-    labels = {
-        "ok": "Sem pendências",
-        "revisar": "Saldo retido"
-        if summary.get("ai_mode") == "automatico"
-        else "Confira este arquivo",
-        "falhou": "Sem dados válidos",
-    }
     actions = {
         "ARQUIVO_DUPLICADO": "Use o arquivo original. Esta cópia permanece registrada, mas não entra na soma.",
         "LANCAMENTO_REPETIDO": "Confira os dois lançamentos com o responsável pela conta antes de considerar este saldo.",
@@ -473,6 +495,7 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
     }
     rows, bank_totals, bank_counts, attention_links = [], {}, Counter(), []
     cfg = summary.get("configuration", {})
+    outcomes = operational_counts(results, summary.get("ai_mode", "off"), summary["period"])
     input_dir = Path(cfg.get("input_dir", path.parent))
     source_base = source_root(source_directory or path.parent, input_dir)
     decisions = {
@@ -499,6 +522,7 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
 
     for r in sorted(results, key=priority):
         s = r.statement
+        outcome = operational_state(r, summary.get("ai_mode", "off"), summary["period"])
         messages = [
             plain(i.message)
             for i in s.issues
@@ -616,7 +640,7 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
             bank = s.bank or "Banco não identificado"
             bank_totals[bank] = bank_totals.get(bank, 0) + r.effective_balance
             bank_counts[bank] += 1
-        if needs_attention(r):
+        if outcome == "pendente":
             attention_links.append(
                 f'<button class="attention-link" data-open-file="{html.escape(r.filename, quote=True)}"><span class="attention-dot {r.status}"></span><span><b>{html.escape(s.bank or r.filename)}</b><small>{html.escape(finding)}</small></span><span class="arrow" aria-hidden="true">↗</span></button>'
             )
@@ -645,8 +669,8 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
             if r.automatic_exclusion == "nao_extrato":
                 action = "Documento informativo; não há saldo a liberar neste fechamento."
         rows.append(
-            f'<details class="item" data-status="{r.status}" data-attention="{str(needs_attention(r)).lower()}" data-ai="{ai_state}" data-file="{html.escape(r.filename, quote=True)}">'
-            f'<summary><span class="pill {r.status}">{"Excluído automaticamente" if r.automatic_exclusion else labels[r.status]}</span><div><span class="filename">{html.escape(r.filename)}</span>'
+            f'<details class="item" data-status="{r.status}" data-outcome="{outcome}" data-attention="{str(outcome == "pendente").lower()}" data-ai="{ai_state}" data-file="{html.escape(r.filename, quote=True)}">'
+            f'<summary><span class="pill {outcome}">{OUTCOME_LABELS[outcome]}</span><div><span class="filename">{html.escape(r.filename)}</span>'
             f'<span class="meta">{meta}</span><span class="finding">{html.escape(finding)}</span><span class="ai-badge {ai_state}">{html.escape(ai_label)}</span></div>'
             f'<span class="amount">{amount}<small class="caption">{amount_note}</small></span></summary><div class="body"><div class="reviewgrid"><section><h3>1. O que as regras encontraram</h3>{issues}</section>'
             f"<section><h3>2. Recomendação da IA</h3><p>{html.escape(ai_message)}</p></section></div>"
@@ -655,7 +679,7 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
             f'<div class="explain"><b>4. Medida aplicada automaticamente</b><br>{html.escape(plain(r.applied_action).replace("Saldo original preservado e retido fora dos totais; ressalva registrada.", "Saldo fora do total; aguardando revisão.").replace("Saldo confirmado e incluído por revisão humana; valor original preservado na aba Revisões e nas evidências.", "Saldo confirmado e incluído após revisão humana registrada."))}<p><b>Contribuição deste arquivo no total: {contribution}.</b>{waiting}</p>{human_block}'
             f'<p class="caption">Ressalva para acompanhamento: {html.escape(action)}</p></div></div></details>'
         )
-    pending = sum(needs_attention(r) for r in results)
+    pending = outcomes["pendente"]
     largest_bank = max((abs(value) for value in bank_totals.values()), default=1) or 1
     bank_rows = (
         "".join(
@@ -684,7 +708,8 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
         "COUNT": len(results),
         "BALANCE": "R$ " + br(summary["approved_balance"]),
         "INCLUDED": summary.get("included_files", summary["statuses"].get("ok", 0)),
-        "OK": sum(not needs_attention(r) for r in results),
+        "OK": outcomes["incluido"],
+        "EXCLUDED": outcomes["excluido"],
         "BALANCE_LABEL": "Saldo incluído após as validações"
         if summary.get("ai_mode") == "automatico"
         else "Saldo validado pelas regras",
@@ -694,14 +719,15 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
         if cfg.get("ai_scope") == "excecoes"
         else "IA em todo o lote",
         "ATTENTION": pending,
-        "REVIEW": pending - summary["statuses"].get("falhou", 0),
-        "FAILED": summary["statuses"].get("falhou", 0),
+        "REVIEW": pending,
         "RECEIVED_PERCENT": round(summary["statuses"].get("ok", 0) / max(len(results), 1) * 100, 1),
-        "STATUS_LABEL": "Gerado com ressalvas"
+        "STATUS_LABEL": "Há decisões pendentes"
         if pending
+        else "Há exclusões registradas"
+        if outcomes["excluido"]
         else "Pendências tratadas por revisão"
         if summary.get("human_reviews_applied")
-        else "Sem ressalvas identificadas",
+        else "Todos os arquivos incluídos",
         "CACHE_LABEL": "Reexecução com cache"
         if summary.get("cache_hits", 0) or summary.get("ai_summary", {}).get("cached_decisions", 0)
         else "Execução sem cache",
@@ -733,7 +759,8 @@ def write_html(path: Path, summary: dict, results: list[Result], *, source_direc
     document = document.replace("__ROWS__", "".join(rows))
     document = document.replace("__BANKS__", bank_rows).replace(
         "__ATTENTION_LINKS__",
-        "".join(attention_links) or '<p class="muted">Não há ressalvas nesta execução.</p>',
+        "".join(attention_links)
+        or '<p class="muted">Não há decisões pendentes. Consulte também as exclusões registradas.</p>',
     )
     path.write_text(document, encoding="utf-8")
 

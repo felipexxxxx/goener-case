@@ -1,0 +1,21 @@
+{
+  "tracked_files_identical": 100,
+  "manifest_artifacts_valid": 11,
+  "local_links_valid": 26,
+  "baseline_outcomes": {
+    "incluido": 12,
+    "excluido": 3,
+    "pendente": 2
+  },
+  "panel_routes": 5,
+  "review_sync": "Excel e HTML do mesmo fechamento atualizados; teste apenas na cópia temporária",
+  "tests_passed": 162,
+  "excel_desktop": {
+    "opened_without_repair": true,
+    "included": 12,
+    "excluded": 3,
+    "pending": 2,
+    "received": 17,
+    "calculated_balance": "4114372.29"
+  }
+}

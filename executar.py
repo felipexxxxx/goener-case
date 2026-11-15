@@ -75,7 +75,10 @@ def supervise(command, root: Path, *, desktop=False):
         log.flush()
     try:
         selected = Path(session_target.read_text(encoding="utf-8")).resolve()
-        if selected.is_relative_to((root / "resultados").resolve()):
+        if (
+            selected.is_relative_to((root / "resultados").resolve())
+            or selected == (root / "resultado").resolve()
+        ):
             destination = selected / "runtime/diagnosticos"
             destination.mkdir(parents=True, exist_ok=True)
             if path.parent != destination:

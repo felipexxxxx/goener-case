@@ -8,7 +8,8 @@ from openpyxl import load_workbook
 
 from goener.core import Result, Statement, money
 from goener.pipeline import RunLock, file_hash, publish_shortcuts, run
-from goener.reporting import HEADERS, write_workbook
+from goener.reporting import OUTPUT_HEADERS as HEADERS
+from goener.reporting import write_workbook
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -171,7 +172,7 @@ def test_workbook_retains_model_with_human_review_reference(config):
     write_workbook(config.template, path, [r])
     wb = load_workbook(path)
     ws = wb["Consolidado"]
-    assert ws.max_column == 8 and [c.value for c in ws[7]] == HEADERS
+    assert ws.max_column == 9 and [c.value for c in ws[7]] == HEADERS
     assert ws["A7"].fill.fgColor.rgb.endswith("003836")
     assert (
         "Confira:" in ws["H8"].value
@@ -180,7 +181,7 @@ def test_workbook_retains_model_with_human_review_reference(config):
     )
     assert not ws.sheet_view.showGridLines and ws.freeze_panes == "C8"
     assert ws.auto_filter.ref is None
-    assert ws.tables["Extratos"].autoFilter.ref == "A7:H8"
+    assert ws.tables["Extratos"].autoFilter.ref == "A7:I8"
     wb.close()
 
 
@@ -191,7 +192,7 @@ def test_summary_uses_editable_table_and_formulas_without_changing_source(config
     write_workbook(config.template, path, [r], "2026-11")
     wb = load_workbook(path, data_only=False)
     assert [c.value for c in wb["Consolidado"][7]] == HEADERS
-    assert wb["Consolidado"].tables["Extratos"].ref == "A7:H8"
+    assert wb["Consolidado"].tables["Extratos"].ref == "A7:I8"
     assert wb["Consolidado"].auto_filter.ref is None
     assert wb["Consolidado"]["E8"].value == 10
     assert wb["Consolidado"]["B2"].value == "2026-11"
@@ -202,8 +203,8 @@ def test_summary_uses_editable_table_and_formulas_without_changing_source(config
     assert all(wb["Consolidado"][cell].data_type == "f" for cell in ["E2", "B3", "B4", "B5", "B6"])
     assert [wb["Consolidado"][f"A{n}"].value for n in range(3, 7)] == [
         "Incluídos no mês",
-        "Com ressalvas",
-        "Com falha",
+        "Excluídos",
+        "Pendentes de decisão",
         "Arquivos recebidos",
     ]
     assert wb.calculation.calcMode == "auto" and wb.calculation.fullCalcOnLoad
@@ -231,7 +232,7 @@ def test_generated_table_has_no_overlapping_sheet_filter_from_template(config, t
         table = ET.fromstring(package.read("xl/tables/table1.xml"))
         assert sheet.find("s:autoFilter", ns) is None
         assert sheet.find("s:tableParts", ns).get("count") == "1"
-        assert table.find("s:autoFilter", ns).get("ref") == "A7:H8"
+        assert table.find("s:autoFilter", ns).get("ref") == "A7:I8"
         assert [c.get("name") for c in table.find("s:tableColumns", ns)] == HEADERS
 
 
@@ -374,9 +375,8 @@ def test_latest_shortcuts_match_published_run(config):
     assert (config.output_dir / "consolidado.xlsx").read_bytes() == (
         directory / "consolidado.xlsx"
     ).read_bytes()
-    assert f"runtime/historico/{directory.name}/relatorio.html" in (
-        config.output_dir / "relatorio.html"
-    ).read_text(encoding="utf-8")
+    assert not (config.output_dir / "relatorio.html").exists()
+    assert (directory / "relatorio.html").is_file()
 
 
 def test_locked_shortcut_does_not_discard_published_run(tmp_path, monkeypatch):
@@ -399,7 +399,7 @@ def test_locked_shortcut_does_not_discard_published_run(tmp_path, monkeypatch):
     monkeypatch.setattr("goener.pipeline.os.replace", locked)
     publish_shortcuts(directory, Log())
     assert (directory / "consolidado.xlsx").read_bytes() == b"published"
-    assert (tmp_path / "relatorio.html").is_file()
+    assert not (tmp_path / "relatorio.html").exists()
     assert events[0][0] == "SHORTCUT_UNAVAILABLE"
 
 
@@ -464,8 +464,8 @@ def test_divergent_balance_is_reference_only_and_waits_for_review(config):
     assert "Valores originais preservados" not in document
     assert "O original fica preservado" not in document
     assert "Mantido o valor declarado" not in document
-    assert "Goener.exe" not in document and "Abrir painel.cmd" not in document
-    assert "Executar automacao.cmd" in document
+    assert "Goener.exe" not in document
+    assert "Abrir relatorio dinamico.cmd" in document
     assert 'review-open" disabled' in document
     assert "button.disabled=false" in document
 
@@ -607,3 +607,79 @@ def test_execution_has_one_runtime_and_no_internal_launchers_or_duplicate_logs(c
     assert not list((config.output_dir / "runtime").glob("*.jsonl"))
     assert (directory / "logs/execucao.log").is_file()
     assert (directory / "logs/execucao.jsonl").is_file()
+
+
+def test_operational_groups_keep_exclusions_separate_from_included_and_pending(config):
+    from goener.reporting import operational_counts, operational_state, write_html
+
+    source(config)
+    _, summary, _ = run(config)
+    included = Result(
+        "regular.xlsx", "ok", "Excel", Statement("Banco", "1", "2026-10", closing=money(10))
+    )
+    included.ai = {"mode": "automatico", "routing": "rules_passed"}
+    duplicate = Result(
+        "copia.xlsx",
+        "ok",
+        "Excel",
+        Statement("Banco", "1", "2026-10", closing=money(10)),
+        duplicate_of="regular.xlsx",
+    )
+    duplicate.statement.issue("ARQUIVO_DUPLICADO", "Cópia")
+    pending = Result(
+        "divergente.xlsx", "bad", "Excel", Statement("Banco", "2", "2026-10", closing=money(20))
+    )
+    pending.statement.issue("CONCILIACAO_NAO_FECHA", "Valores não conferem")
+    rows = [included, duplicate, pending]
+    counts = operational_counts(rows, "automatico", "2026-10")
+    assert counts == {"incluido": 1, "excluido": 1, "pendente": 1}
+    path = config.output_dir / "grupos.xlsx"
+    write_workbook(config.template, path, rows, "2026-10", ai_mode="automatico")
+    wb = load_workbook(path)
+    ws = wb["Consolidado"]
+    assert [ws.cell(i, 9).value for i in range(8, 11)] == ["Incluído", "Excluído", "Pendente"]
+    assert [ws[f"A{i}"].value for i in range(3, 6)] == [
+        "Incluídos no mês",
+        "Excluídos",
+        "Pendentes de decisão",
+    ]
+    assert "Situação final" in ws["B4"].value and "Excluído" in ws["B4"].value
+    wb.close()
+    summary.update(files=3, ai_mode="automatico", outcomes=counts)
+    page = config.output_dir / "grupos.html"
+    write_html(page, summary, rows)
+    text = page.read_text(encoding="utf-8")
+    for r in rows:
+        assert 'data-outcome="' + operational_state(r, "automatico", "2026-10") + '"' in text
+    assert 'data-filter="excluded"' in text and 'data-filter="included"' in text
+    assert "Tratados" not in text and "Sem ressalvas</small>" not in text
+
+
+def test_delivery_reference_uses_runtime_and_only_dynamic_launcher_in_root(
+    config, tmp_path, monkeypatch
+):
+    import zipfile
+    from types import SimpleNamespace
+
+    from goener import entrega
+
+    source(config)
+    publication, summary, _ = run(config)
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "executar.py").write_text("# fonte de teste", encoding="utf-8")
+    monkeypatch.setattr(entrega, "ROOT", project)
+    monkeypatch.setattr(
+        entrega.subprocess, "run", lambda *a, **k: SimpleNamespace(stdout=b"executar.py\0")
+    )
+    archive = entrega.build(publication, tmp_path / "entrega")
+    prefix = "goener-case/resultado/"
+    with zipfile.ZipFile(archive) as z:
+        names = z.namelist()
+        assert prefix + "relatorio.html" not in names
+        assert prefix + "Abrir relatorio dinamico.cmd" in names
+        assert prefix + "Aplicar revisoes (Excel).cmd" in names
+        version = prefix + "runtime/historico/" + summary["run_id"] + "/"
+        assert version + "relatorio.html" in names
+        assert not any(n.startswith(version) and n.endswith(".cmd") for n in names)
+        assert z.read(prefix + "consolidado.xlsx") == z.read(version + "consolidado.xlsx")
