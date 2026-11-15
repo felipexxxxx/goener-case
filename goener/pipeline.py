@@ -184,7 +184,9 @@ class RunLog:
         messages = {
             "RUN_STARTED": lambda: f"Preparando fechamento: {fields.get('files')} arquivos.",
             "FILE_STARTED": lambda: f"Lendo arquivo: {fields.get('file')}",
-            "FILE_EXTRACTION_FAILED": lambda: f"Não foi possível ler {fields.get('file')}; a falha será registrada e os demais arquivos continuam.",
+            "FILE_EXTRACTION_FAILED": lambda: (
+                f"Não foi possível ler {fields.get('file')}; a falha será registrada e os demais arquivos continuam."
+            ),
             "AI_CACHE_HIT": lambda: "Resposta da IA reaproveitada do cache, sem nova chamada HTTP.",
             "AI_BATCH_STARTED": lambda: (
                 f"Analisando {fields.get('size')} documentos juntos com a IA."
@@ -371,7 +373,7 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
             previous_dir = publication_directory(config.output_dir)
             if previous_dir != config.output_dir.resolve() and previous_dir.parent not in (
                 config.output_dir.resolve(),
-                (config.output_dir / "historico").resolve(),
+                (config.output_dir / "runtime/historico").resolve(),
             ):
                 raise ValueError("A execução anterior não pertence à pasta de resultados.")
             previous_summary = json.loads(
@@ -523,9 +525,6 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
             stage = config.output_dir / f".{run_id}.pending"
             log.event("GENERATING_OUTPUTS")
             stage.mkdir()
-            from .sessao import write_launchers
-
-            write_launchers(stage)
             write_highlights(stage, results, config, ocr, log)
             write_workbook(
                 config.template,
@@ -543,16 +542,16 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
                 stage / "relatorio.html",
                 summary,
                 results,
-                source_directory=config.output_dir / "historico" / run_id,
+                source_directory=config.output_dir / "runtime/historico" / run_id,
             )
             log.event(
                 "ARTIFACTS_VALIDATED",
                 rows=len(results),
                 statuses=json.dumps(statuses, sort_keys=True),
             )
-            (stage / "runtime").mkdir()
-            shutil.copyfile(log.json_path, stage / "runtime/execucao.jsonl")
-            shutil.copyfile(log.text_path, stage / "runtime/execucao.log")
+            (stage / "logs").mkdir()
+            shutil.copyfile(log.json_path, stage / "logs/execucao.jsonl")
+            shutil.copyfile(log.text_path, stage / "logs/execucao.log")
             manifest = {
                 "run_id": run_id,
                 "algorithm": "SHA-256",
@@ -569,7 +568,7 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
                 raise RuntimeError(
                     "A planilha operacional mudou durante o processamento. Salve, feche e execute novamente; revisões preservadas."
                 )
-            history = config.output_dir / "historico"
+            history = config.output_dir / "runtime/historico"
             history.mkdir(exist_ok=True)
             published = history / run_id
             os.replace(stage, published)
@@ -584,6 +583,11 @@ def run(config: Config, *, reviews_only=False) -> tuple[Path, dict, int]:
                 exit_code=exit_code,
                 duration_seconds=summary["duration_seconds"],
             )
+            for temporary_log in (log.json_path, log.text_path):
+                try:
+                    temporary_log.unlink(missing_ok=True)
+                except OSError:
+                    print(f"Log temporário em uso; mantido em {temporary_log}", flush=True)
             return published, summary, exit_code
         except BaseException as exc:
             log.event("RUN_ABORTED", error=type(exc).__name__, message=str(exc))

@@ -7,6 +7,8 @@ from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
+from .reporting import latest_pointer
+
 
 def select_session(config, requested=None, *, create=False):
     root = config.output_dir
@@ -26,20 +28,15 @@ def select_session(config, requested=None, *, create=False):
         if not folder.is_relative_to(root.resolve()) or not folder.is_dir():
             pointer.unlink(missing_ok=True)
             return select_session(config, create=False)
-        if (
-            not (folder / "historico/latest.json").exists()
-            and not (folder / "resumo.json").exists()
-        ):
-            candidates = [
-                p for p in root.iterdir() if p.is_dir() and (p / "historico/latest.json").exists()
-            ]
+        if not latest_pointer(folder).exists() and not (folder / "resumo.json").exists():
+            candidates = [p for p in root.iterdir() if p.is_dir() and latest_pointer(p).exists()]
             if not candidates:
                 raise ValueError(
                     "Ainda não há fechamento concluído. Execute o processamento completo."
                 )
-            folder = max(candidates, key=lambda p: (p / "historico/latest.json").stat().st_mtime)
+            folder = max(candidates, key=lambda p: latest_pointer(p).stat().st_mtime)
 
-    elif not create and (root / "historico/latest.json").exists():
+    elif not create and latest_pointer(root).exists():
         # Compatibilidade com saídas anteriores; a migração local preserva o histórico.
         folder = root
     else:
@@ -100,7 +97,7 @@ exit /b 1
 
 def remember_session(config, root):
     if (
-        not (config.output_dir / "historico/latest.json").is_file()
+        not latest_pointer(config.output_dir).is_file()
         and not (config.output_dir / "resumo.json").is_file()
     ):
         return

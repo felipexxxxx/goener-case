@@ -53,7 +53,7 @@ def make_server(config, *, port=0):
             )
             if directory != config.output_dir.resolve() and directory.parent not in (
                 config.output_dir.resolve(),
-                (config.output_dir / "historico").resolve(),
+                (config.output_dir / "runtime/historico").resolve(),
             ):
                 raise ValueError("Publicação fora da pasta de resultados.")
             return pointer, directory
@@ -70,7 +70,7 @@ def make_server(config, *, port=0):
                     base = config.input_dir.resolve()
                     path = base / route.removeprefix("extratos/")
                 elif (
-                    route in {"runtime/execucao.log", "runtime/execucao.jsonl"}
+                    route in {"logs/execucao.log", "logs/execucao.jsonl"}
                     or route.startswith("destaques/")
                     or route
                     in {

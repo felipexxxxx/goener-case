@@ -39,8 +39,9 @@ jobs:
           name: validacao-${{ matrix.os }}
           include-hidden-files: true
           path: |
-            resultados/ci/**/runtime/*.log
-            resultados/ci/**/runtime/*.jsonl
+            resultados/ci/**/logs/*.log
+            resultados/ci/**/diagnosticos/*.log
+            resultados/ci/**/logs/*.jsonl
             resultados/ci/**/resumo.json
             resultados/ci/**/evidencias.json
             test-results.xml

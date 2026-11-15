@@ -41,7 +41,7 @@ def test_batch_preserves_duplicates_and_failures_and_has_evidence(config):
     assert all(file_hash(out / n) == sha for n, sha in manifest["artifacts"].items())
     events = [
         json.loads(line)
-        for line in (out / "runtime/execucao.jsonl").read_text(encoding="utf8").splitlines()
+        for line in (out / "logs/execucao.jsonl").read_text(encoding="utf8").splitlines()
     ]
     assert sum(e["event"] == "FILE_FINISHED" for e in events) == 4
 
@@ -87,7 +87,7 @@ def test_lock_prevents_overlapping_execution(config):
 def test_failed_publication_does_not_advance_latest(config, monkeypatch):
     source(config)
     out, _, _ = run(config)
-    latest = (config.output_dir / "historico/latest.json").read_bytes()
+    latest = (config.output_dir / "runtime/historico/latest.json").read_bytes()
 
     def denied(*args, **kwargs):
         raise PermissionError("Destino indisponível")
@@ -95,7 +95,7 @@ def test_failed_publication_does_not_advance_latest(config, monkeypatch):
     monkeypatch.setattr("goener.pipeline.write_workbook", denied)
     with pytest.raises(PermissionError):
         run(config)
-    assert (config.output_dir / "historico/latest.json").read_bytes() == latest
+    assert (config.output_dir / "runtime/historico/latest.json").read_bytes() == latest
     assert out.is_dir()
     assert not (config.runtime_dir / "execution.lock").exists()
 
@@ -374,7 +374,7 @@ def test_latest_shortcuts_match_published_run(config):
     assert (config.output_dir / "consolidado.xlsx").read_bytes() == (
         directory / "consolidado.xlsx"
     ).read_bytes()
-    assert f"historico/{directory.name}/relatorio.html" in (
+    assert f"runtime/historico/{directory.name}/relatorio.html" in (
         config.output_dir / "relatorio.html"
     ).read_text(encoding="utf-8")
 
@@ -593,3 +593,17 @@ def test_terminal_announces_reading_before_waiting_for_ai(config, monkeypatch, c
     assert code == 0
     final = capsys.readouterr().out
     assert "Gerando destaques, Excel" in final and "Fechamento publicado" in final
+
+
+def test_execution_has_one_runtime_and_no_internal_launchers_or_duplicate_logs(config):
+    source(config)
+    directory, _, code = run(config)
+    assert code == 0
+    assert directory.parent == config.output_dir / "runtime/historico"
+    assert list(config.output_dir.rglob("runtime")) == [config.output_dir / "runtime"]
+    assert not (config.output_dir / "historico").exists()
+    assert not list(directory.glob("*.cmd"))
+    assert not list((config.output_dir / "runtime").glob("*.log"))
+    assert not list((config.output_dir / "runtime").glob("*.jsonl"))
+    assert (directory / "logs/execucao.log").is_file()
+    assert (directory / "logs/execucao.jsonl").is_file()

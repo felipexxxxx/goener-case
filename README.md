@@ -27,7 +27,7 @@ resultados/
     Aplicar revisoes.cmd    aplica o Excel salvo DESTE fechamento e abre o painel
     consolidado.xlsx        planilha operacional
     relatorio.html          consulta atualizada após salvar uma revisão
-    historico/              versões e evidências técnicas; não edite os snapshots
+    runtime/                logs e versões técnicas; não edite os snapshots
 ```
 
 **Para retomar um fechamento específico:** abra **Abrir painel.cmd dentro daquela pasta**. O atalho acompanha a pasta; não contém nome de usuário nem unidade fixa. Não seleciona outra sessão e não extrai tudo novamente. Mantenha a pasta dentro do projeto completo.
@@ -362,7 +362,7 @@ O CMD mostra uma mensagem assim que o supervisor inicia, antes de importar OCR e
 | Revisar depois da publicação | Valida decisão, justificativa, responsável, data e hash; atualiza Excel/HTML da mesma sessão sem nova extração financeira ou HTTP de IA. |
 | Publicar ou abortar | Publicação usa área temporária, verifica evidências/planilha e preserva versões. Erro fatal registra diagnóstico; STOP interrompe de forma controlada e não equivale a fechamento completo. |
 
-`resultados/controle/` é a área compartilhada entre fechamentos: cache SQLite, contadores/pausas de API, trava e índice da sessão. Cada fechamento possui seu próprio `runtime/` com logs. Os snapshots em historico conservam a evidência daquela publicação. Assim, controle compartilhado e logs da execução têm nomes e funções diferentes.
+`resultados/controle/` é a área compartilhada entre fechamentos: cache SQLite, contadores/pausas de API, trava e índice da sessão. Cada fechamento possui seu próprio `runtime/` com logs. Os snapshots em runtime/historico conservam a evidência daquela publicação. Assim, controle compartilhado e logs da execução têm nomes e funções diferentes.
 
 ### IA: decisão, raciocínio e disponibilidade
 
@@ -391,7 +391,7 @@ Até 50 documentos, 100 mil caracteres de contexto e 16 MiB nas partes serializa
 
 ## 4. Validação e entrega
 
-Na versão 1.14.0, **154 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
+Na versão 1.14.0, **155 testes passaram** e três rodadas reais agrupadas receberam 15/15 pareceres válidos. A planilha da entrega abriu no Excel Desktop sem reparos, com o total calculado de R$ 4.114.372,29.
 
 Testes e registros ficam em validacao/. A suíte cobre regras financeiras, duplicidade, OCR, JSON, retries, fórmulas, segurança de entrada, publicação, revisão, arquivos alterados e isolamento entre dois fechamentos. A abertura no Excel Desktop e a navegação do link são verificadas separadamente; abrir com openpyxl não basta para comprovar compatibilidade.
 
@@ -407,6 +407,6 @@ Fonte, configuração e validação são versionados. Relatórios, ZIP, cache e 
 
 O servidor aceita somente origem local e token da sessão, rejeita tela antiga e não serve .env. Responsável é informado pelo operador, não autenticação corporativa. Não exponha o painel na rede. Hash detecta diferença de conteúdo, não garante autenticidade ou qualidade da leitura. Os testes nesta máquina não substituem homologação de novos formatos ou de outro Excel.
 
-Os logs de cada fechamento ficam na sua pasta `runtime/`; cada publicação também conserva os logs em `historico/<execução>/runtime/`. Diagnósticos anteriores à seleção do fechamento ficam em `resultados/controle/diagnosticos/`. Cache, cotas e índice compartilhados ficam em `resultados/controle/`. A pasta `.local` não é necessária para executar nem deve ser incluída no ZIP. Extraia o pacote completo antes de abrir o CMD; ele exige a instalação inicial das dependências descrita acima.
+Cada fechamento possui uma única pasta `runtime/`, que reúne diagnósticos e o histórico técnico em `runtime/historico/<execução>/`. Os logs publicados ficam em `logs/` dentro de cada versão; após publicação bem-sucedida, os arquivos temporários de log são removidos. Falhas anteriores à publicação mantêm o diagnóstico no runtime. As versões internas não contêm atalhos CMD repetidos; use somente os atalhos da pasta do fechamento. Diagnósticos anteriores à seleção do fechamento ficam em `resultados/controle/diagnosticos/`. Cache, cotas e índice compartilhados ficam em `resultados/controle/`. A pasta `.local` não é necessária para executar nem deve ser incluída no ZIP. Extraia o pacote completo antes de abrir o CMD; ele exige a instalação inicial das dependências descrita acima.
 
 No GitHub Actions, o ensaio ponta a ponta usa `--ai-mode off` para validar OCR, regras e publicação sem credencial ou dependência da API. Os testes de HTTP usam respostas controladas; as medições reais de IA estão registradas separadamente.

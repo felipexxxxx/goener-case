@@ -7,6 +7,7 @@ import hashlib
 import json
 import shutil
 import subprocess
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -187,7 +188,6 @@ def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
         raise ValueError("Arquivo .env não encontrado para inclusão no pacote privado")
     from .sessao import write_launchers
 
-    write_launchers(run_dir)
     summary = json.loads((run_dir / "resumo.json").read_text(encoding="utf-8"))
     destination.mkdir(parents=True, exist_ok=True)
     shutil.copy2(run_dir / "consolidado.xlsx", destination / "consolidado.xlsx")
@@ -214,6 +214,10 @@ def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
             for p in sorted(run_dir.rglob("*"))
             if p.is_file() and not p.name.startswith("~$")
         }
+        with tempfile.TemporaryDirectory(prefix="goener-atalhos-") as temporary:
+            folder = Path(temporary)
+            write_launchers(folder)
+            payloads.update({p.name: p.read_bytes() for p in folder.glob("*.cmd")})
         if "relatorio.html" in payloads:
             input_dir = summary.get("configuration", {}).get("input_dir", ROOT / "extratos")
             prefix = source_root(run_dir, input_dir) + "/"
@@ -224,6 +228,8 @@ def build(run_dir: Path, destination: Path, include_env: bool = False) -> Path:
                 .encode("utf-8")
             )
             manifest = json.loads(payloads["manifesto.json"])
+            for name in ("Abrir painel.cmd", "Aplicar revisoes.cmd"):
+                manifest["artifacts"][name] = hashlib.sha256(payloads[name]).hexdigest()
             manifest["artifacts"]["relatorio.html"] = hashlib.sha256(
                 payloads["relatorio.html"]
             ).hexdigest()

@@ -39,8 +39,11 @@ def needs_attention(result):
 
 
 def latest_pointer(output_dir):
-    current = output_dir / "historico/latest.json"
-    return current if current.exists() else output_dir / "latest.json"
+    current = output_dir / "runtime/historico/latest.json"
+    if current.exists():
+        return current
+    legacy = output_dir / "historico/latest.json"
+    return legacy if legacy.exists() else output_dir / "latest.json"
 
 
 def publication_directory(output_dir):
@@ -57,11 +60,11 @@ def publication_directory(output_dir):
     if not isinstance(run_id, str) or not re.fullmatch(r"[0-9]{8}T[0-9]{6}Z_[0-9a-f]{8}", run_id):
         raise ValueError("Identificador de publicação inválido.")
     raw = Path(data["directory"])
-    allowed = (output_dir, output_dir / "historico")
+    allowed = (output_dir, output_dir / "runtime/historico", output_dir / "historico")
     directory = (raw if raw.is_absolute() else pointer.parent / raw).resolve()
     if directory.parent not in allowed or directory.name != run_id:
         # Índice legado pode ter o usuário/unidade anterior. Usar somente o ID local validado.
-        directory = (output_dir / "historico" / run_id).resolve()
+        directory = (output_dir / "runtime/historico" / run_id).resolve()
         if not directory.is_dir():
             directory = (output_dir / run_id).resolve()
     if directory.parent not in allowed or not directory.is_dir():
