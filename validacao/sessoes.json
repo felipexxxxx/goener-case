@@ -20,5 +20,14 @@
   },
   "cmd_test": "Aplicar revisoes.cmd executado da pasta de fechamento, sem parâmetros do operador; abriu painel local.",
   "historical_data": "Execuções anteriores preservadas dentro do fechamento migrado; iniciadores e diagnósticos legados em .local/legado.",
-  "external_ai_calls": 0
+  "external_ai_calls": 0,
+  "distribution": {
+    "source_files_compared": 96,
+    "source_bytes_equal": true,
+    "xlsx_operational_delivery_zip_equal": true,
+    "manifest_hashes_valid": true,
+    "extracted_zip_session_launcher_http": 200,
+    "one_page_pdf_rendered": true,
+    "reference_panel_did_not_reprocess": true
+  }
 }
